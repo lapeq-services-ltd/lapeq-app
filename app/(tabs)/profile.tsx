@@ -14,7 +14,8 @@ export default function ProfileScreen() {
     const router = useRouter();
     const { theme, toggleTheme, C } = useTheme();
     const [userName, setUserName] = useState("Nife");
-    const [userLocation, setUserLocation] = useState("Lagos State");
+    const [userLocation, setUserLocation] = useState("Lagos");
+    const [userCountry, setUserCountry] = useState("Nigeria");
     const [imageUri, setImageUri] = useState<string | null>(null);
 
     useFocusEffect(
@@ -25,6 +26,7 @@ export default function ProfileScreen() {
                     if (parsed.name) setUserName(parsed.name);
                     if (parsed.imageUri) setImageUri(parsed.imageUri);
                     if (parsed.state) setUserLocation(parsed.state);
+                    if (parsed.country) setUserCountry(parsed.country);
                 }
             });
         }, [])
@@ -54,7 +56,7 @@ export default function ProfileScreen() {
                     </View>
                     <View style={{ flex: 1 }}>
                         <Text style={s.name}>{userName}</Text>
-                        <Text style={s.location}>{userLocation}</Text>
+                        <Text style={s.location}>{userLocation}, {userCountry}</Text>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 6 }}>
                             <Crown size={16} color={C.primary} />
                             <Text style={s.tier}>Gold Member</Text>

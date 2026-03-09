@@ -14,6 +14,19 @@ const NIGERIAN_STATES = [
     "Sokoto", "Taraba", "Yobe", "Zamfara"
 ];
 
+const COUNTRIES = [
+    { name: "Nigeria", flag: "🇳🇬" },
+    { name: "United Kingdom", flag: "🇬🇧" },
+    { name: "United States", flag: "🇺🇸" },
+    { name: "Canada", flag: "🇨🇦" },
+    { name: "Ghana", flag: "🇬🇭" },
+    { name: "South Africa", flag: "🇿🇦" },
+    { name: "Kenya", flag: "🇰🇪" },
+    { name: "United Arab Emirates", flag: "🇦🇪" },
+    { name: "France", flag: "🇫🇷" },
+    { name: "Germany", flag: "🇩🇪" }
+];
+
 export default function PersonalInfoScreen() {
     const router = useRouter();
     const { C, theme } = useTheme();
@@ -27,6 +40,7 @@ export default function PersonalInfoScreen() {
     const [imageUri, setImageUri] = useState<string | null>(null);
 
     const [showStateModal, setShowStateModal] = useState(false);
+    const [showCountryModal, setShowCountryModal] = useState(false);
     const [toastVisible, setToastVisible] = useState(false);
     const toastAnim = useRef(new Animated.Value(-100)).current;
 
@@ -174,18 +188,13 @@ export default function PersonalInfoScreen() {
 
                     <View style={s.formGroup}>
                         <Text style={s.label}>Country</Text>
-                        <View style={s.inputContainer}>
+                        <TouchableOpacity style={s.inputContainer} onPress={() => setShowCountryModal(true)}>
                             <MapPin size={20} color={C.muted} style={s.inputIcon} />
-                            <TextInput
-                                style={s.input}
-                                value={country}
-                                onChangeText={setCountry}
-                                placeholder="Enter your Country"
-                                placeholderTextColor={C.muted}
-                                returnKeyType="done"
-                                onSubmitEditing={() => Keyboard.dismiss()}
-                            />
-                        </View>
+                            <Text style={[s.input, { height: 'auto', color: country ? C.text : C.muted }]}>
+                                {country ? `${COUNTRIES.find(c => c.name === country)?.flag || ""} ${country}`.trim() : "Select your Country"}
+                            </Text>
+                            <ChevronDown size={20} color={C.muted} />
+                        </TouchableOpacity>
                     </View>
 
                     <View style={s.formGroup}>
@@ -215,7 +224,6 @@ export default function PersonalInfoScreen() {
                 </TouchableOpacity>
             </View>
 
-            {/* State Picker Modal */}
             <Modal visible={showStateModal} animationType="slide" transparent={true} onRequestClose={() => setShowStateModal(false)}>
                 <View style={s.modalOverlay}>
                     <View style={s.modalContent}>
@@ -243,6 +251,41 @@ export default function PersonalInfoScreen() {
                                         <Text style={[s.stateText, state === item && s.stateTextActive]}>{item}</Text>
                                     </View>
                                     {state === item && <Check size={20} color={C.primary} />}
+                                </TouchableOpacity>
+                            )}
+                        />
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Country Picker Modal */}
+            <Modal visible={showCountryModal} animationType="slide" transparent={true} onRequestClose={() => setShowCountryModal(false)}>
+                <View style={s.modalOverlay}>
+                    <View style={s.modalContent}>
+                        <View style={s.modalHeader}>
+                            <Text style={s.modalTitle}>Select Country</Text>
+                            <TouchableOpacity onPress={() => setShowCountryModal(false)} style={s.modalCloseBtn}>
+                                <X size={24} color={C.text} />
+                            </TouchableOpacity>
+                        </View>
+                        <FlatList
+                            data={COUNTRIES}
+                            keyExtractor={(item) => item.name}
+                            showsVerticalScrollIndicator={false}
+                            contentContainerStyle={{ paddingBottom: 40 }}
+                            renderItem={({ item }) => (
+                                <TouchableOpacity
+                                    style={[s.stateItem, country === item.name && s.stateItemActive]}
+                                    onPress={() => {
+                                        setCountry(item.name);
+                                        setShowCountryModal(false);
+                                    }}
+                                >
+                                    <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                                        <MapPin size={18} color={country === item.name ? C.primary : C.muted} />
+                                        <Text style={[s.stateText, country === item.name && s.stateTextActive]}>{item.flag} {item.name}</Text>
+                                    </View>
+                                    {country === item.name && <Check size={20} color={C.primary} />}
                                 </TouchableOpacity>
                             )}
                         />
@@ -278,7 +321,7 @@ const getStyles = (C: any) => StyleSheet.create({
     saveBtn: { borderRadius: 20, paddingVertical: 18, backgroundColor: C.primary, alignItems: "center" },
     saveBtnText: { fontSize: 18, fontWeight: "700", color: C.black },
 
-    toastContainer: { position: "absolute", top: 0, left: 20, right: 20, backgroundColor: C.primary, borderRadius: 16, padding: 16, flexDirection: "row", alignItems: "center", gap: 12, zIndex: 100, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 5 },
+    toastContainer: { position: "absolute", top: 60, left: 20, right: 20, backgroundColor: C.primary, borderRadius: 16, padding: 16, flexDirection: "row", alignItems: "center", gap: 12, zIndex: 100, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 5 },
     toastText: { fontSize: 15, fontWeight: "600", color: C.background },
 
     modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },

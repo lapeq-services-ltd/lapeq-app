@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import {
-    View, Text, ScrollView, TouchableOpacity, StyleSheet, Animated,
+    View, Text, ScrollView, TouchableOpacity, StyleSheet, Animated, Image
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ChevronLeft, ShieldCheck, Crown, Star, MessageCircle, Phone, CalendarDays, Clock } from "lucide-react-native";
+import { ChevronLeft, ShieldCheck, Crown, Star, MessageCircle, Phone, CalendarDays, Clock, Bell } from "lucide-react-native";
 import Svg, { Path, Circle } from "react-native-svg";
 
 import { useTheme } from "@/context/ThemeContext";
@@ -24,6 +24,7 @@ export default function CoordinationScreen() {
     const s = useMemo(() => getStyles(C, theme), [C, theme]);
 
     const [activeTab, setActiveTab] = useState<"current" | "upcoming">("current");
+    const [hasActiveRide, setHasActiveRide] = useState(false); // Default to empty state
     const progressAnim = useRef(new Animated.Value(35)).current;
 
     useEffect(() => {
@@ -43,6 +44,9 @@ export default function CoordinationScreen() {
                     <ChevronLeft size={32} color={C.cardFg} />
                 </TouchableOpacity>
                 <Text style={s.headerTitle}>Coordination</Text>
+                <TouchableOpacity style={s.debugToggle} onPress={() => setHasActiveRide(!hasActiveRide)}>
+                    <Text style={s.debugToggleText}>{hasActiveRide ? "Sim Empty" : "Sim Ride"}</Text>
+                </TouchableOpacity>
             </View>
 
             {/* Tabs */}
@@ -62,116 +66,142 @@ export default function CoordinationScreen() {
 
             <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}>
                 {activeTab === "current" ? (
-                    <>
-                        {/* ETA Card */}
-                        <View style={s.etaCard}>
-                            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                                <Text style={s.etaLabel}>Arriving in</Text>
-                                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                                    <ShieldCheck size={18} color={C.green} />
-                                    <Text style={s.verifiedText}>Verified</Text>
-                                </View>
-                            </View>
-                            <Text style={s.etaTime}>8 min</Text>
-                            <Text style={s.etaCar}>Toyota Camry — Silver — LND 234 GH</Text>
-                            <View style={s.membershipTag}>
-                                <Crown size={16} color={theme === 'dark' ? C.black : C.primary} />
-                                <Text style={s.membershipTagText}>Included in your membership</Text>
-                            </View>
-                        </View>
-
-                        {/* Progress */}
-                        <View style={{ marginBottom: 32 }}>
-                            <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 16 }}>
-                                <View>
-                                    <Text style={s.stopLabel}>Pickup</Text>
-                                    <Text style={s.stopName}>Lekki Phase 1</Text>
-                                </View>
-                                <View style={{ alignItems: "flex-end" }}>
-                                    <Text style={s.stopLabel}>Destination</Text>
-                                    <Text style={s.stopName}>Nok by Alara, VI</Text>
-                                </View>
-                            </View>
-                            <View style={{ position: "relative", marginBottom: 12 }}>
-                                <View style={s.trackBar}>
-                                    <Animated.View style={[s.trackFill, { width: progressAnim.interpolate({ inputRange: [0, 100], outputRange: ["0%", "100%"] }) }]} />
-                                </View>
-                                <Animated.View
-                                    style={[
-                                        s.carIconWrap,
-                                        { left: progressAnim.interpolate({ inputRange: [0, 100], outputRange: ["0%", "100%"] }) }
-                                    ]}
-                                >
-                                    <View style={s.carIconInner}>
-                                        <Svg width="20" height="20" viewBox="0 0 24 24" fill="none" color={C.black}>
-                                            <Path d="M5 17h2m10 0h2M3 11l1.5-5.5A2 2 0 016.4 4h11.2a2 2 0 011.9 1.5L21 11M3 11h18M3 11v6a1 1 0 001 1h1m14 0h1a1 1 0 001-1v-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                            <Circle cx="7" cy="17" r="1.5" fill="currentColor" />
-                                            <Circle cx="17" cy="17" r="1.5" fill="currentColor" />
-                                        </Svg>
-                                    </View>
-                                </Animated.View>
-                            </View>
-                            <View style={s.trackDots}>
-                                <View style={s.trackDotFilled} />
-                                <View style={s.trackLine} />
-                                <View style={s.trackDotEmpty} />
-                            </View>
-                        </View>
-
-                        <View style={s.driverCard}>
-                            <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
-                                <View style={s.driverAvatar}>
-                                    <Text style={s.driverInitials}>AB</Text>
-                                </View>
-                                <View style={{ flex: 1 }}>
-                                    <Text style={s.driverName}>Abubakar S.</Text>
+                    hasActiveRide ? (
+                        <>
+                            {/* ETA Card */}
+                            <View style={s.etaCard}>
+                                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                                    <Text style={s.etaLabel}>Arriving in</Text>
                                     <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                                        <Star size={14} color={C.primary} fill={C.primary} />
-                                        <Text style={s.driverRating}>4.92</Text>
+                                        <ShieldCheck size={18} color={C.green} />
+                                        <Text style={s.verifiedText}>Verified</Text>
                                     </View>
                                 </View>
-                                <View style={{ flexDirection: "row", gap: 12 }}>
-                                    <TouchableOpacity style={s.driverActionSecondary}>
-                                        <MessageCircle size={24} color={C.cardFg} />
-                                    </TouchableOpacity>
-                                    <TouchableOpacity style={s.driverActionPrimary}>
-                                        <Phone size={24} color={C.black} />
-                                    </TouchableOpacity>
+                                <Text style={s.etaTime}>8 min</Text>
+                                <Text style={s.etaCar}>Toyota Camry — Silver — LND 234 GH</Text>
+                                <View style={s.membershipTag}>
+                                    <Crown size={16} color={theme === 'dark' ? C.black : C.primary} />
+                                    <Text style={s.membershipTagText}>Included in your membership</Text>
                                 </View>
                             </View>
-                        </View>
 
-                        {/* Updates */}
-                        <Text style={s.sectionTitle}>Updates</Text>
-                        <View style={{ gap: 12, marginBottom: 20 }}>
-                            <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
-                                <View style={[s.updateDot, { backgroundColor: C.green }]} />
-                                <View style={{ flex: 1 }}>
-                                    <Text style={s.updateTitle}>Driver en route to you</Text>
-                                    <Text style={s.updateSub}>Passing Admiralty Way</Text>
+                            {/* Progress */}
+                            <View style={{ marginBottom: 32 }}>
+                                <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 16 }}>
+                                    <View>
+                                        <Text style={s.stopLabel}>Pickup</Text>
+                                        <Text style={s.stopName}>Lekki Phase 1</Text>
+                                    </View>
+                                    <View style={{ alignItems: "flex-end" }}>
+                                        <Text style={s.stopLabel}>Destination</Text>
+                                        <Text style={s.stopName}>Nok by Alara, VI</Text>
+                                    </View>
                                 </View>
-                                <Text style={s.updateTime}>Now</Text>
-                            </View>
-                            <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
-                                <View style={[s.updateDot, { backgroundColor: "rgba(6,6,6,0.15)" }]} />
-                                <View style={{ flex: 1 }}>
-                                    <Text style={s.updateTitle}>Arrangement confirmed</Text>
-                                    <Text style={s.updateSub}>Your concierge arranged this ride</Text>
+                                <View style={{ position: "relative", marginBottom: 12 }}>
+                                    <View style={s.trackBar}>
+                                        <Animated.View style={[s.trackFill, { width: progressAnim.interpolate({ inputRange: [0, 100], outputRange: ["0%", "100%"] }) }]} />
+                                    </View>
+                                    <Animated.View
+                                        style={[
+                                            s.carIconWrap,
+                                            { left: progressAnim.interpolate({ inputRange: [0, 100], outputRange: ["0%", "100%"] }) }
+                                        ]}
+                                    >
+                                        <View style={s.carIconInner}>
+                                            <Svg width="20" height="20" viewBox="0 0 24 24" fill="none" color={C.black}>
+                                                <Path d="M5 17h2m10 0h2M3 11l1.5-5.5A2 2 0 016.4 4h11.2a2 2 0 011.9 1.5L21 11M3 11h18M3 11v6a1 1 0 001 1h1m14 0h1a1 1 0 001-1v-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                                <Circle cx="7" cy="17" r="1.5" fill="currentColor" />
+                                                <Circle cx="17" cy="17" r="1.5" fill="currentColor" />
+                                            </Svg>
+                                        </View>
+                                    </Animated.View>
                                 </View>
-                                <Text style={s.updateTime}>2 min</Text>
+                                <View style={s.trackDots}>
+                                    <View style={s.trackDotFilled} />
+                                    <View style={s.trackLine} />
+                                    <View style={s.trackDotEmpty} />
+                                </View>
                             </View>
-                        </View>
 
-                        {/* Safety */}
-                        <View style={s.safetyBox}>
-                            <ShieldCheck size={28} color={C.primary} />
-                            <View style={{ flex: 1 }}>
-                                <Text style={s.safetyTitle}>Share trip details</Text>
-                                <Text style={s.safetySub}>Discreetly share your live location with someone you trust</Text>
+                            <View style={s.driverCard}>
+                                <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
+                                    <View style={s.driverAvatar}>
+                                        <Text style={s.driverInitials}>AB</Text>
+                                    </View>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={s.driverName}>Abubakar S.</Text>
+                                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                                            <Star size={14} color={C.primary} fill={C.primary} />
+                                            <Text style={s.driverRating}>4.92</Text>
+                                        </View>
+                                    </View>
+                                    <View style={{ flexDirection: "row", gap: 12 }}>
+                                        <TouchableOpacity style={s.driverActionSecondary}>
+                                            <MessageCircle size={24} color={C.cardFg} />
+                                        </TouchableOpacity>
+                                        <TouchableOpacity style={s.driverActionPrimary}>
+                                            <Phone size={24} color={C.black} />
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            </View>
+
+                            {/* Updates */}
+                            <Text style={s.sectionTitle}>Updates</Text>
+                            <View style={{ gap: 12, marginBottom: 20 }}>
+                                <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
+                                    <View style={[s.updateDot, { backgroundColor: C.green }]} />
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={s.updateTitle}>Driver en route to you</Text>
+                                        <Text style={s.updateSub}>Passing Admiralty Way</Text>
+                                    </View>
+                                    <Text style={s.updateTime}>Now</Text>
+                                </View>
+                                <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
+                                    <View style={[s.updateDot, { backgroundColor: "rgba(6,6,6,0.15)" }]} />
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={s.updateTitle}>Arrangement confirmed</Text>
+                                        <Text style={s.updateSub}>Your concierge arranged this ride</Text>
+                                    </View>
+                                    <Text style={s.updateTime}>2 min</Text>
+                                </View>
+                            </View>
+
+                            {/* Safety */}
+                            <View style={s.safetyBox}>
+                                <ShieldCheck size={28} color={C.primary} />
+                                <View style={{ flex: 1 }}>
+                                    <Text style={s.safetyTitle}>Share trip details</Text>
+                                    <Text style={s.safetySub}>Discreetly share your live location with someone you trust</Text>
+                                </View>
+                            </View>
+                        </>
+                    ) : (
+                        <View style={s.emptyStateContainer}>
+                            <View style={s.emptyImageWrap}>
+                                <Image
+                                    source={{ uri: "https://images.unsplash.com/photo-1563720223185-11003d516935?w=800&q=80" }}
+                                    style={s.emptyStateImage}
+                                    resizeMode="cover"
+                                />
+                                <View style={s.emptyImageOverlay} />
+                            </View>
+
+                            <Text style={s.emptyStateTitle}>No active movements.</Text>
+                            <Text style={s.emptyStateSub}>Your concierge is ready to arrange premium transportation safely and discreetly.</Text>
+
+                            <TouchableOpacity style={s.bookRideBtn} onPress={() => router.push("/services/driving")}>
+                                <Text style={s.bookRideBtnText}>Book a Ride</Text>
+                            </TouchableOpacity>
+
+                            <View style={s.notificationHint}>
+                                <View style={s.notificationIconWrap}>
+                                    <Bell size={18} color={C.primary} />
+                                </View>
+                                <Text style={s.notificationHintText}>You will be notified via Push Notification the moment your driver is en route or arrives.</Text>
                             </View>
                         </View>
-                    </>
-                ) : (
+                    )) : (
                     <>
                         <View style={s.memberBanner}>
                             <Crown size={20} color={C.primary} />
@@ -216,7 +246,9 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     root: { flex: 1, backgroundColor: C.background },
     header: { flexDirection: "row", alignItems: "center", gap: 16, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16 },
     backBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" },
-    headerTitle: { fontSize: 24, fontWeight: "700", color: C.text },
+    headerTitle: { fontSize: 24, fontWeight: "700", color: C.text, flex: 1 },
+    debugToggle: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border },
+    debugToggleText: { fontSize: 11, fontWeight: "600", color: C.muted },
     tabBar: { flexDirection: "row", marginHorizontal: 20, padding: 6, backgroundColor: C.surface, borderRadius: 16, marginBottom: 20 },
     tab: { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: "center" },
     tabActive: { backgroundColor: C.background, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
@@ -255,8 +287,8 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     safetyTitle: { fontSize: 14, fontWeight: "600", color: C.text, marginBottom: 2 },
     safetySub: { fontSize: 12, color: C.muted, lineHeight: 18 },
     memberBanner: { borderRadius: 16, backgroundColor: C.black, padding: 16, flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 16 },
-    memberBannerText: { fontSize: 14, color: "rgba(240,236,228,0.7)", flex: 1, lineHeight: 20 },
-    memberBannerBold: { fontWeight: "700", color: C.background },
+    memberBannerText: { fontSize: 14, color: theme === 'dark' ? "rgba(0,0,0,0.7)" : "rgba(240,236,228,0.7)", flex: 1, lineHeight: 20 },
+    memberBannerBold: { fontWeight: "700", color: theme === 'dark' ? "#000000" : C.background },
     tripCard: { borderRadius: 20, borderWidth: 1, borderColor: theme === 'dark' ? C.primary : C.border, backgroundColor: C.background, padding: 20, marginBottom: 12 },
     tripTitle: { fontSize: 16, fontWeight: "600", color: C.text },
     arrangedBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99, backgroundColor: "rgba(201,168,76,0.15)", fontSize: 11, fontWeight: "600", color: C.primary },
@@ -265,4 +297,17 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     routeLine: { width: 2, height: 16, backgroundColor: theme === 'dark' ? C.primary : C.border },
     routeDotEmpty: { width: 10, height: 10, borderRadius: 5, borderWidth: 2.5, borderColor: C.primary, backgroundColor: C.background },
     routeStop: { fontSize: 14, fontWeight: "500", color: C.text },
+
+    // Empty State
+    emptyStateContainer: { alignItems: "center", paddingTop: 20 },
+    emptyImageWrap: { width: "100%", height: 260, borderRadius: 24, overflow: "hidden", marginBottom: 28 },
+    emptyStateImage: { width: "100%", height: "100%" },
+    emptyImageOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: theme === 'dark' ? "rgba(0,0,0,0.3)" : "rgba(0,0,0,0.1)" },
+    emptyStateTitle: { fontSize: 22, fontWeight: "700", color: C.text, marginBottom: 12, textAlign: "center" },
+    emptyStateSub: { fontSize: 15, color: C.muted, textAlign: "center", paddingHorizontal: 20, marginBottom: 32, lineHeight: 22 },
+    bookRideBtn: { width: "100%", backgroundColor: C.black, borderRadius: 16, paddingVertical: 18, alignItems: "center", marginBottom: 32 },
+    bookRideBtnText: { color: C.cream, fontSize: 16, fontWeight: "700" },
+    notificationHint: { flexDirection: "row", alignItems: "center", backgroundColor: C.surface, borderRadius: 16, padding: 16, gap: 14, borderWidth: 1, borderColor: C.border },
+    notificationIconWrap: { width: 40, height: 40, borderRadius: 20, backgroundColor: theme === 'dark' ? "rgba(201,168,76,0.15)" : C.background, alignItems: "center", justifyContent: "center" },
+    notificationHintText: { flex: 1, fontSize: 13, color: C.muted, lineHeight: 18 }
 });

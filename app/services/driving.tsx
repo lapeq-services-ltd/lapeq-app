@@ -14,6 +14,19 @@ export default function DrivingServiceScreen() {
     const [instructions, setInstructions] = useState("");
     const [loading, setLoading] = useState(false);
 
+    const handleDateChange = (text: string) => {
+        // Remove non-numeric characters
+        const cleaned = text.replace(/\D/g, "");
+        let formatted = cleaned;
+        if (cleaned.length > 2) {
+            formatted = `${cleaned.slice(0, 2)}/${cleaned.slice(2)}`;
+        }
+        if (cleaned.length > 4) {
+            formatted = `${cleaned.slice(0, 2)}/${cleaned.slice(2, 4)}/${cleaned.slice(4, 6)}`;
+        }
+        setDate(formatted);
+    };
+
     const handleSubmit = async () => {
         if (!pickup || !dropoff || !date || !time) return Alert.alert("Fill in all required fields");
         setLoading(true);
@@ -49,7 +62,15 @@ export default function DrivingServiceScreen() {
                 <TextInput style={styles.input} placeholder="e.g. Murtala Muhammed Airport" placeholderTextColor={Colors.muted} value={dropoff} onChangeText={setDropoff} />
 
                 <Text style={styles.label}>Date *</Text>
-                <TextInput style={styles.input} placeholder="e.g. 15 March 2025" placeholderTextColor={Colors.muted} value={date} onChangeText={setDate} />
+                <TextInput
+                    style={styles.input}
+                    placeholder="MM/DD/YY"
+                    placeholderTextColor={Colors.muted}
+                    value={date}
+                    onChangeText={handleDateChange}
+                    keyboardType="numeric"
+                    maxLength={8}
+                />
 
                 <Text style={styles.label}>Time *</Text>
                 <TextInput style={styles.input} placeholder="e.g. 9:00 AM" placeholderTextColor={Colors.muted} value={time} onChangeText={setTime} />
