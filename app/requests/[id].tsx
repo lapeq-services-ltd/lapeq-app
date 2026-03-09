@@ -1,12 +1,15 @@
 import { View, Text, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useLocalSearchParams } from "expo-router";
 import { Colors } from "@/constants/colors";
 
-export default function NotificationsScreen() {
+export default function RequestDetailsScreen() {
+    const { id } = useLocalSearchParams();
+
     return (
         <SafeAreaView style={styles.container}>
-            <Text style={styles.title}>Notifications</Text>
-            <Text style={styles.empty}>You're all caught up.</Text>
+            <Text style={styles.title}>Request Details</Text>
+            <Text style={styles.body}>Viewing configuration for Request ID: {id}</Text>
         </SafeAreaView>
     );
 }
@@ -14,5 +17,5 @@ export default function NotificationsScreen() {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.cream, padding: 20 },
     title: { fontSize: 22, fontWeight: "700", color: Colors.black, marginBottom: 12 },
-    empty: { fontSize: 13, color: Colors.muted, marginTop: 40, textAlign: "center" },
+    body: { fontSize: 16, color: Colors.muted },
 });

@@ -5,8 +5,8 @@ import { Colors } from "@/constants/colors";
 export default function RequestsScreen() {
     return (
         <SafeAreaView style={styles.container}>
-            <Text style={styles.title}>My Requests</Text>
-            <Text style={styles.empty}>No requests yet. Submit one from Home.</Text>
+            <Text style={styles.title}>Requests</Text>
+            <Text style={styles.empty}>You have no active requests.</Text>
         </SafeAreaView>
     );
 }
