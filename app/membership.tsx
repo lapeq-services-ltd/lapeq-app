@@ -191,6 +191,11 @@ export default function MembershipScreen() {
                         <Text style={s.securitySub}>Private security arrangements available upon request.</Text>
                     </View>
                 </View>
+
+                {/* Demo Entry Point */}
+                <TouchableOpacity style={[s.corpBtn, { marginTop: 24, backgroundColor: 'transparent', borderWidth: 1, borderColor: C.primary }]} onPress={() => router.push("/join/request")}>
+                    <Text style={[s.corpBtnText, { color: C.primary }]}>Demo: Request Flow Simulation</Text>
+                </TouchableOpacity>
             </ScrollView>
         </SafeAreaView>
     );
