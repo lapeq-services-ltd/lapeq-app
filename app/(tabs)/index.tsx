@@ -63,7 +63,7 @@ export default function HomeScreen() {
                 {/* Quick Actions */}
                 <View style={s.quickActions}>
                     {[
-                        { label: "Reservations", Icon: Calendar, route: "/trip-planner" as const },
+                        { label: "Bookings", Icon: Calendar, route: "/trip-planner" as const },
                         { label: "Travel", Icon: Plane, route: "/services/lifestyle-travel" as const },
                         { label: "Car Hire", Icon: Car, route: "/coordination" as const },
                         { label: "Concierge", Icon: Headphones, route: "/services/concierge-request" as const },

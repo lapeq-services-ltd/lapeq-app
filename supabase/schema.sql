@@ -9,6 +9,8 @@ create table public.profiles (
   full_name text,
   phone text,
   avatar_url text,
+  tier text default 'Standard' check (tier in ('Standard', 'Gold', 'Black')),
+  expo_push_token text,
   created_at timestamp with time zone default now()
 );
 
@@ -30,10 +32,11 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
--- 2. REQUESTS
+-- 2. REQUESTS (Explicit columns for Admin tracking)
 create table public.requests (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references public.profiles(id) on delete cascade not null,
+  assigned_staff_id uuid references public.profiles(id) on delete set null,
   service_type text not null check (service_type in (
     'driving-service',
     'logistics',
@@ -44,10 +47,20 @@ create table public.requests (
   )),
   status text not null default 'pending' check (status in (
     'pending',
+    'approved',
+    'arranged',
+    'en-route',
     'in-progress',
     'completed',
     'cancelled'
   )),
+  -- Explicit tracking columns
+  title text,
+  pickup_location text,
+  dropoff_location text,
+  scheduled_time timestamp with time zone,
+  
+  -- Flexible JSON fallback for highly bespoke requests 
   details jsonb not null default '{}',
   admin_notes text,
   created_at timestamp with time zone default now(),
@@ -87,6 +100,42 @@ create table public.notifications (
   body text not null,
   read boolean default false,
   request_id uuid references public.requests(id) on delete set null,
+  created_at timestamp with time zone default now()
+);
+
+-- 5. MESSAGES (Concierge Chat)
+create table public.messages (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  sender_type text default 'client' check (sender_type in ('client', 'admin')),
+  content text not null,
+  created_at timestamp with time zone default now()
+);
+
+-- 6. EVENTS (With Map Coordinates)
+create table public.events (
+  id uuid default gen_random_uuid() primary key,
+  title text not null,
+  description text,
+  date timestamp with time zone not null,
+  location_name text not null,
+  latitude double precision,
+  longitude double precision,
+  image_url text,
+  badge text,
+  confirmed_count integer default 0,
+  created_at timestamp with time zone default now()
+);
+
+-- 7. EXPLORE ITEMS (Curated For You - Hotels, Restaurants, etc.)
+create table public.explore_items (
+  id uuid default gen_random_uuid() primary key,
+  category text not null check (category in ('restaurant', 'hotel', 'experience')),
+  title text not null,
+  subtitle text not null,
+  description text,
+  image_url text,
+  badge text,
   created_at timestamp with time zone default now()
 );
 
@@ -139,3 +188,26 @@ create policy "Users can view own notifications"
 create policy "Users can mark notifications read"
   on public.notifications for update
   using (auth.uid() = user_id);
+
+-- Messages: users can only see/send in their own chat
+alter table public.messages enable row level security;
+
+create policy "Users can view own messages"
+  on public.messages for select
+  using (auth.uid() = user_id);
+
+create policy "Users can insert own messages"
+  on public.messages for insert
+  with check (auth.uid() = user_id);
+
+-- Events & Explore: World readable (assuming clients can see all catalog items)
+alter table public.events enable row level security;
+alter table public.explore_items enable row level security;
+
+create policy "Anyone can view events"
+  on public.events for select
+  using (true);
+
+create policy "Anyone can view explore items"
+  on public.explore_items for select
+  using (true);
