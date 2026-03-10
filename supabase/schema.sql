@@ -3,6 +3,23 @@
 -- Run this in: Supabase Dashboard > SQL Editor
 -- =============================================
 
+-- =============================================
+-- WARNING: THIS WILL DELETE EXISTING DATA
+-- Remove these DROP statements if you want to keep existing data
+-- =============================================
+drop trigger if exists on_auth_user_created on auth.users;
+drop function if exists public.handle_new_user cascade;
+drop trigger if exists on_request_updated on public.requests;
+drop function if exists public.handle_updated_at cascade;
+
+drop table if exists public.explore_items cascade;
+drop table if exists public.events cascade;
+drop table if exists public.messages cascade;
+drop table if exists public.notifications cascade;
+drop table if exists public.reports cascade;
+drop table if exists public.requests cascade;
+drop table if exists public.profiles cascade;
+
 -- 1. PROFILES (extends Supabase Auth users)
 create table public.profiles (
   id uuid references auth.users on delete cascade primary key,

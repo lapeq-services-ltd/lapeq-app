@@ -1,17 +1,27 @@
 import { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, Platform, Keyboard, KeyboardAvoidingView } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, Platform, Keyboard, KeyboardAvoidingView, Image } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Colors } from "@/constants/colors";
 import { supabase } from "@/lib/supabase";
+import { useTheme } from "@/context/ThemeContext";
+
+const CAR_OPTIONS = [
+    { id: "luxury-sedan", name: "Luxury Sedan", desc: "Mercedes E-Class or similar", icon: require("@/assets/images/mercedes-sedan.png") },
+    { id: "premium-suv", name: "Premium SUV", desc: "Range Rover or similar", icon: require("@/assets/images/range-rover-suv.png") },
+    { id: "executive-van", name: "Executive Van", desc: "Sprinter Van", icon: require("@/assets/images/sprinter-van.png") }
+];
 
 export default function DrivingServiceScreen() {
     const router = useRouter();
+    const { C, theme } = useTheme();
+
     const [pickup, setPickup] = useState("");
     const [dropoff, setDropoff] = useState("");
     const [date, setDate] = useState("");
     const [time, setTime] = useState("");
+    const [carType, setCarType] = useState(CAR_OPTIONS[0].id);
     const [instructions, setInstructions] = useState("");
     const [loading, setLoading] = useState(false);
 
@@ -34,7 +44,11 @@ export default function DrivingServiceScreen() {
             user_id: user?.id,
             service_type: "driving-service",
             status: "pending",
-            details: { pickup, dropoff, date, time, instructions },
+            title: `${CAR_OPTIONS.find(c => c.id === carType)?.name || 'Car Hire'} Booking`,
+            pickup_location: pickup,
+            dropoff_location: dropoff,
+            scheduled_time: new Date(`${date} ${time}`).toISOString() || null,
+            details: { instructions, carType },
         });
         setLoading(false);
         if (error) {
@@ -54,42 +68,62 @@ export default function DrivingServiceScreen() {
                     keyboardDismissMode="on-drag"
                 >
                     <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-                        <Text style={styles.backText}>← Back</Text>
+                        <Text style={[styles.backText, { color: C.primary }]}>← Back</Text>
                     </TouchableOpacity>
-                    <Text style={styles.title}>Driving Service</Text>
-                    <Text style={styles.subtitle}>Book a chauffeur or scheduled ride</Text>
+                    <Text style={[styles.title, { color: C.text }]}>Driving Service</Text>
+                    <Text style={[styles.subtitle, { color: C.muted }]}>Book a chauffeur or scheduled ride</Text>
 
-                    <Text style={styles.label}>Pickup Location *</Text>
+                    <Text style={[styles.label, { color: C.text }]}>Vehicle Class *</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.carScroller}>
+                        {CAR_OPTIONS.map((car) => {
+                            const isSelected = carType === car.id;
+                            return (
+                                <TouchableOpacity
+                                    key={car.id}
+                                    style={[styles.carOption, { backgroundColor: C.surface, borderColor: isSelected ? C.primary : C.border }]}
+                                    onPress={() => setCarType(car.id)}
+                                >
+                                    <View style={styles.carImgWrap}>
+                                        <Image source={car.icon} style={styles.carImg} resizeMode="contain" />
+                                    </View>
+                                    <Text style={[styles.carName, { color: C.text }]}>{car.name}</Text>
+                                    <Text style={[styles.carDesc, { color: C.muted }]}>{car.desc}</Text>
+                                </TouchableOpacity>
+                            )
+                        })}
+                    </ScrollView>
+
+                    <Text style={[styles.label, { color: C.text }]}>Pickup Location *</Text>
                     <TextInput
-                        style={styles.input}
+                        style={[styles.input, { backgroundColor: C.surface, borderColor: C.border, color: C.text }]}
                         placeholder="e.g. 14 Ahmadu Bello Way, VI"
-                        placeholderTextColor={Colors.muted}
+                        placeholderTextColor={C.muted}
                         value={pickup}
                         onChangeText={setPickup}
                         returnKeyType="done"
                         onSubmitEditing={() => Keyboard.dismiss()}
                     />
 
-                    <Text style={styles.label}>Drop-off Location *</Text>
+                    <Text style={[styles.label, { color: C.text }]}>Drop-off Location *</Text>
                     <TextInput
-                        style={styles.input}
+                        style={[styles.input, { backgroundColor: C.surface, borderColor: C.border, color: C.text }]}
                         placeholder="e.g. Murtala Muhammed Airport"
-                        placeholderTextColor={Colors.muted}
+                        placeholderTextColor={C.muted}
                         value={dropoff}
                         onChangeText={setDropoff}
                         returnKeyType="done"
                         onSubmitEditing={() => Keyboard.dismiss()}
                     />
 
-                    <Text style={styles.label}>Date *</Text>
+                    <Text style={[styles.label, { color: C.text }]}>Date *</Text>
                     <TouchableOpacity
-                        style={styles.input}
+                        style={[styles.input, { backgroundColor: C.surface, borderColor: C.border }]}
                         onPress={() => {
                             Keyboard.dismiss();
                             setShowDatePicker(true);
                         }}
                     >
-                        <Text style={{ color: date ? Colors.black : Colors.muted }}>
+                        <Text style={{ color: date ? C.text : C.muted }}>
                             {date || "Select Date"}
                         </Text>
                     </TouchableOpacity>
@@ -106,26 +140,26 @@ export default function DrivingServiceScreen() {
                     )}
                     {Platform.OS === "ios" && showDatePicker && (
                         <TouchableOpacity style={styles.iosDoneBtn} onPress={() => setShowDatePicker(false)}>
-                            <Text style={styles.iosDoneText}>Done</Text>
+                            <Text style={[styles.iosDoneText, { color: C.primary }]}>Done</Text>
                         </TouchableOpacity>
                     )}
 
-                    <Text style={styles.label}>Time *</Text>
+                    <Text style={[styles.label, { color: C.text }]}>Time *</Text>
                     <TextInput
-                        style={styles.input}
+                        style={[styles.input, { backgroundColor: C.surface, borderColor: C.border, color: C.text }]}
                         placeholder="e.g. 9:00 AM"
-                        placeholderTextColor={Colors.muted}
+                        placeholderTextColor={C.muted}
                         value={time}
                         onChangeText={setTime}
                         returnKeyType="done"
                         onSubmitEditing={() => Keyboard.dismiss()}
                     />
 
-                    <Text style={styles.label}>Special Instructions</Text>
+                    <Text style={[styles.label, { color: C.text }]}>Special Instructions</Text>
                     <TextInput
-                        style={[styles.input, styles.textarea]}
+                        style={[styles.input, styles.textarea, { backgroundColor: C.surface, borderColor: C.border, color: C.text }]}
                         placeholder="Any preferences or requirements..."
-                        placeholderTextColor={Colors.muted}
+                        placeholderTextColor={C.muted}
                         multiline
                         numberOfLines={4}
                         value={instructions}
@@ -134,8 +168,8 @@ export default function DrivingServiceScreen() {
                         onSubmitEditing={() => Keyboard.dismiss()}
                     />
 
-                    <TouchableOpacity style={[styles.btn, loading && styles.btnDisabled]} onPress={handleSubmit} disabled={loading}>
-                        <Text style={styles.btnText}>{loading ? "Submitting..." : "Submit Request"}</Text>
+                    <TouchableOpacity style={[styles.btn, { backgroundColor: C.primary }, loading && styles.btnDisabled]} onPress={handleSubmit} disabled={loading}>
+                        <Text style={[styles.btnText, { color: C.card }]}>{loading ? "Submitting..." : "Submit Request"}</Text>
                     </TouchableOpacity>
                 </ScrollView>
             </KeyboardAvoidingView>
@@ -144,17 +178,25 @@ export default function DrivingServiceScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: Colors.cream, paddingHorizontal: 20 },
+    container: { flex: 1, paddingHorizontal: 20 },
     backBtn: { paddingVertical: 16 },
-    backText: { color: Colors.gold, fontSize: 14 },
-    title: { fontSize: 24, fontWeight: "700", color: Colors.black, marginBottom: 4 },
-    subtitle: { fontSize: 13, color: Colors.muted, marginBottom: 28 },
-    label: { fontSize: 12, fontWeight: "600", color: Colors.black, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 },
-    input: { backgroundColor: Colors.white, borderWidth: 1, borderColor: Colors.border, borderRadius: 14, padding: 14, fontSize: 14, color: Colors.black, marginBottom: 18 },
+    backText: { fontSize: 14 },
+    title: { fontSize: 24, fontWeight: "700", marginBottom: 4 },
+    subtitle: { fontSize: 13, marginBottom: 28 },
+    label: { fontSize: 12, fontWeight: "600", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 },
+
+    carScroller: { marginBottom: 24 },
+    carOption: { width: 140, padding: 12, borderRadius: 16, borderWidth: 2, marginRight: 12 },
+    carImgWrap: { height: 60, marginBottom: 10, justifyContent: "center", alignItems: "center" },
+    carImg: { width: "100%", height: "100%" },
+    carName: { fontSize: 13, fontWeight: "700", marginBottom: 2 },
+    carDesc: { fontSize: 10, lineHeight: 14 },
+
+    input: { borderWidth: 1, borderRadius: 14, padding: 14, fontSize: 14, marginBottom: 18 },
     textarea: { height: 100, textAlignVertical: "top" },
-    btn: { backgroundColor: Colors.black, borderRadius: 14, padding: 16, alignItems: "center", marginTop: 8, marginBottom: 40 },
+    btn: { borderRadius: 14, padding: 16, alignItems: "center", marginTop: 8, marginBottom: 40 },
     btnDisabled: { opacity: 0.6 },
-    btnText: { color: Colors.cream, fontSize: 15, fontWeight: "700" },
+    btnText: { fontSize: 15, fontWeight: "700" },
     iosDoneBtn: { alignItems: "flex-end", paddingHorizontal: 16, marginBottom: 12 },
-    iosDoneText: { color: Colors.gold, fontWeight: "600", fontSize: 16 },
+    iosDoneText: { fontWeight: "600", fontSize: 16 },
 });

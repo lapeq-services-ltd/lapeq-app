@@ -4,7 +4,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useFocusEffect } from "expo-router";
-import { Settings, Crown, Star, MapPin, CalendarDays, Moon } from "lucide-react-native";
+import { Settings, Crown, Star, MapPin, CalendarDays, Moon, Package, ArrowRight } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -92,6 +92,17 @@ export default function ProfileScreen() {
                     />
                 </View>
 
+                {/* My Requests Link */}
+                <TouchableOpacity style={s.themeRow} onPress={() => router.push("/requests")}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                        <View style={s.themeIconBox}>
+                            <Package size={18} color={C.primary} />
+                        </View>
+                        <Text style={s.themeLabel}>My Requests</Text>
+                    </View>
+                    <ArrowRight size={20} color={C.muted} />
+                </TouchableOpacity>
+
                 {/* Stats */}
                 <View style={s.stats}>
                     {[{ val: "12", label: "Experiences" }, { val: "8", label: "Events" }, { val: "3", label: "Cities" }].map((st) => (
@@ -146,8 +157,8 @@ export default function ProfileScreen() {
                 <TouchableOpacity onPress={() => supabase.auth.signOut()} style={{ marginTop: 24, alignItems: "center" }}>
                     <Text style={{ fontSize: 15, color: C.muted, fontWeight: "500" }}>Sign out</Text>
                 </TouchableOpacity>
-            </ScrollView>
-        </SafeAreaView>
+            </ScrollView >
+        </SafeAreaView >
     );
 }
 
