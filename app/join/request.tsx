@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform, Keyboard } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { ChevronLeft } from "lucide-react-native";
 import { useTheme } from "@/context/ThemeContext";
 
@@ -10,10 +10,12 @@ export default function MembershipRequestScreen() {
     const { C } = useTheme();
     const s = useMemo(() => getStyles(C), [C]);
 
+    const { tier } = useLocalSearchParams();
+
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [phone, setPhone] = useState("");
-    const [intent, setIntent] = useState("");
+    const [intent, setIntent] = useState(tier ? `I am interested in the ${tier} membership.` : "");
 
     return (
         <SafeAreaView style={s.root}>
@@ -22,7 +24,7 @@ export default function MembershipRequestScreen() {
                     <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
                         <ChevronLeft size={32} color={C.cardFg} />
                     </TouchableOpacity>
-                    <Text style={s.title}>Request Membership</Text>
+                    <Text style={s.title}>Request {tier ? `${tier} ` : ""}Membership</Text>
                     <Text style={s.subtitle}>Apply to join LAPEQ and unlock exclusive concierge services.</Text>
 
                     <Text style={s.label}>Full Name</Text>

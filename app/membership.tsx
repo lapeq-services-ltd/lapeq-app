@@ -163,7 +163,7 @@ export default function MembershipScreen() {
                                 ))}
                             </View>
                             {!tier.active && !tier.done && (
-                                <TouchableOpacity style={s.enquireBtn}>
+                                <TouchableOpacity style={s.enquireBtn} onPress={() => router.push({ pathname: "/join/request", params: { tier: tier.name } })}>
                                     <Text style={s.enquireBtnText}>{tier.invite ? "Request Invitation" : `Enquire About ${tier.name}`}</Text>
                                 </TouchableOpacity>
                             )}
@@ -178,7 +178,7 @@ export default function MembershipScreen() {
                         <Text style={s.corpTitle}>Corporate Membership</Text>
                     </View>
                     <Text style={s.corpDesc}>Tailored concierge solutions for teams and executives. Bespoke packages designed around your organisation.</Text>
-                    <TouchableOpacity style={s.corpBtn}>
+                    <TouchableOpacity style={s.corpBtn} onPress={() => router.push({ pathname: "/join/request", params: { tier: "Corporate" } })}>
                         <Text style={s.corpBtnText}>Contact Us</Text>
                     </TouchableOpacity>
                 </View>
