@@ -187,8 +187,8 @@ const styles = StyleSheet.create({
     label: { fontSize: 12, fontWeight: "600", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 },
 
     carScroller: { marginBottom: 24 },
-    carOption: { width: 140, padding: 12, borderRadius: 16, borderWidth: 2, marginRight: 12 },
-    carImgWrap: { height: 60, marginBottom: 10, justifyContent: "center", alignItems: "center" },
+    carOption: { width: 160, padding: 12, borderRadius: 16, borderWidth: 2, marginRight: 12 },
+    carImgWrap: { height: 85, marginBottom: 8, justifyContent: "center", alignItems: "center" },
     carImg: { width: "100%", height: "100%" },
     carName: { fontSize: 13, fontWeight: "700", marginBottom: 2 },
     carDesc: { fontSize: 10, lineHeight: 14 },
