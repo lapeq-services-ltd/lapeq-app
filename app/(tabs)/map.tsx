@@ -22,13 +22,9 @@ export default function MapScreen() {
     const s = useMemo(() => getStyles(C), [C]);
 
     return (
-        <View style={s.root}>
-            {/* Map Background */}
-            <Image
-                source={require("@/assets/images/lagos-map.jpg")}
-                style={StyleSheet.absoluteFillObject}
-                resizeMode="cover"
-            />
+        <View style={[s.root, { backgroundColor: C.background }]}>
+            {/* Map Background Placeholder */}
+            <View style={StyleSheet.absoluteFillObject} />
 
             {/* Header overlay */}
             <SafeAreaView style={s.headerOverlay}>
