@@ -1,164 +1,247 @@
-import { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, Platform, Keyboard, KeyboardAvoidingView, Image } from "react-native";
+import { useState, useMemo } from "react";
+import {
+    View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
+    Alert, Platform, Keyboard, KeyboardAvoidingView, Image, ActivityIndicator
+} from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { Colors } from "@/constants/colors";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import * as Location from "expo-location";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
+import { MapPin, Clock, Users, Minus, Plus, Navigation } from "lucide-react-native";
 
 const CAR_OPTIONS = [
     { id: "standard-sedan", name: "Standard Sedan", desc: "Toyota Camry or similar", icon: require("@/assets/images/standard-sedan.png") },
     { id: "luxury-sedan", name: "Luxury Sedan", desc: "Mercedes E-Class or similar", icon: require("@/assets/images/mercedes-sedan.png") },
     { id: "premium-suv", name: "Premium SUV", desc: "Range Rover or similar", icon: require("@/assets/images/range-rover-suv.png") },
-    { id: "executive-van", name: "Executive Van", desc: "Sprinter Van", icon: require("@/assets/images/sprinter-van.png") }
+    { id: "executive-van", name: "Executive Van", desc: "Sprinter Van", icon: require("@/assets/images/sprinter-van.png") },
 ];
 
 export default function DrivingServiceScreen() {
     const router = useRouter();
-    const { C, theme } = useTheme();
+    const { C } = useTheme();
+    const s = useMemo(() => getStyles(C), [C]);
 
     const [pickup, setPickup] = useState("");
     const [dropoff, setDropoff] = useState("");
-    const [date, setDate] = useState("");
-    const [time, setTime] = useState("");
     const [carType, setCarType] = useState(CAR_OPTIONS[0].id);
+    const [passengers, setPassengers] = useState(1);
     const [instructions, setInstructions] = useState("");
     const [loading, setLoading] = useState(false);
+    const [locating, setLocating] = useState(false);
 
-    const [showDatePicker, setShowDatePicker] = useState(false);
+    // Date
     const [dateObj, setDateObj] = useState(new Date());
+    const [showDatePicker, setShowDatePicker] = useState(false);
+
+    // Time
+    const [timeObj, setTimeObj] = useState(new Date());
+    const [showTimePicker, setShowTimePicker] = useState(false);
+
+    const formattedDate = dateObj.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+    const formattedTime = timeObj.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
 
     const onDateChange = (event: any, selected?: Date) => {
         if (Platform.OS === "android") setShowDatePicker(false);
-        if (selected) {
-            setDateObj(selected);
-            setDate(selected.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "2-digit" }));
+        if (selected) setDateObj(selected);
+    };
+
+    const onTimeChange = (event: any, selected?: Date) => {
+        if (Platform.OS === "android") setShowTimePicker(false);
+        if (selected) setTimeObj(selected);
+    };
+
+    const detectLocation = async () => {
+        setLocating(true);
+        try {
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== "granted") {
+                Alert.alert("Permission Denied", "Allow location access to auto-fill your pickup address.");
+                setLocating(false);
+                return;
+            }
+            const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+            const [address] = await Location.reverseGeocodeAsync(loc.coords);
+            if (address) {
+                const formatted = [
+                    address.streetNumber,
+                    address.street,
+                    address.district ?? address.subregion,
+                    address.city,
+                ].filter(Boolean).join(", ");
+                setPickup(formatted);
+            }
+        } catch {
+            Alert.alert("Could not detect location", "Please enter it manually.");
         }
+        setLocating(false);
     };
 
     const handleSubmit = async () => {
-        if (!pickup || !dropoff || !date || !time) return Alert.alert("Fill in all required fields");
+        if (!pickup || !dropoff) return Alert.alert("Fill in all required fields");
         setLoading(true);
         const { data: { user } } = await supabase.auth.getUser();
+
+        const combined = new Date(dateObj);
+        combined.setHours(timeObj.getHours(), timeObj.getMinutes());
+
         const { error } = await supabase.from("requests").insert({
             user_id: user?.id,
             service_type: "driving-service",
             status: "pending",
-            title: `${CAR_OPTIONS.find(c => c.id === carType)?.name || 'Car Hire'} Booking`,
+            title: `${CAR_OPTIONS.find(c => c.id === carType)?.name || "Car Hire"} — ${passengers} pax`,
             pickup_location: pickup,
             dropoff_location: dropoff,
-            scheduled_time: new Date(`${date} ${time}`).toISOString() || null,
-            details: { instructions, carType },
+            scheduled_time: combined.toISOString(),
+            details: { instructions, carType, passengers },
         });
+
         setLoading(false);
         if (error) {
             Alert.alert("Submission failed", error.message);
         } else {
-            Alert.alert("Request submitted", "Your concierge will confirm shortly.");
+            Alert.alert("Request submitted ✓", "Your concierge will confirm shortly.");
             router.back();
         }
     };
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: C.background }]}>
+        <SafeAreaView style={[s.root, { backgroundColor: C.background }]}>
             <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
-                <ScrollView
-                    showsVerticalScrollIndicator={false}
-                    keyboardShouldPersistTaps="handled"
-                    keyboardDismissMode="on-drag"
-                >
-                    <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-                        <Text style={[styles.backText, { color: C.primary }]}>← Back</Text>
+                <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+                    <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+                        <Text style={[s.backText, { color: C.primary }]}>← Back</Text>
                     </TouchableOpacity>
-                    <Text style={[styles.title, { color: C.text }]}>Driving Service</Text>
-                    <Text style={[styles.subtitle, { color: C.muted }]}>Book a chauffeur or scheduled ride</Text>
+                    <Text style={[s.title, { color: C.text }]}>Driving Service</Text>
+                    <Text style={[s.subtitle, { color: C.muted }]}>Book a chauffeur or scheduled ride</Text>
 
-                    <Text style={[styles.label, { color: C.text }]}>Vehicle Class *</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.carScroller}>
+                    {/* Vehicle Class */}
+                    <Text style={[s.label, { color: C.text }]}>Vehicle Class</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.carScroller}>
                         {CAR_OPTIONS.map((car) => {
                             const isSelected = carType === car.id;
                             return (
                                 <TouchableOpacity
                                     key={car.id}
-                                    style={[styles.carOption, { backgroundColor: C.surface, borderColor: isSelected ? C.primary : C.border }]}
+                                    style={[s.carOption, { backgroundColor: C.surface, borderColor: isSelected ? C.primary : C.border }]}
                                     onPress={() => setCarType(car.id)}
                                 >
-                                    <View style={styles.carImgWrap}>
-                                        <Image source={car.icon} style={styles.carImg} resizeMode="contain" />
+                                    <View style={s.carImgWrap}>
+                                        <Image source={car.icon} style={s.carImg} resizeMode="contain" />
                                     </View>
-                                    <Text style={[styles.carName, { color: C.text }]}>{car.name}</Text>
-                                    <Text style={[styles.carDesc, { color: C.muted }]}>{car.desc}</Text>
+                                    <Text style={[s.carName, { color: isSelected ? C.primary : C.text }]}>{car.name}</Text>
+                                    <Text style={[s.carDesc, { color: C.muted }]}>{car.desc}</Text>
                                 </TouchableOpacity>
-                            )
+                            );
                         })}
                     </ScrollView>
 
-                    <Text style={[styles.label, { color: C.text }]}>Pickup Location *</Text>
-                    <TextInput
-                        style={[styles.input, { backgroundColor: C.surface, borderColor: C.border, color: C.text }]}
-                        placeholder="e.g. 14 Ahmadu Bello Way, VI"
-                        placeholderTextColor={C.muted}
-                        value={pickup}
-                        onChangeText={setPickup}
-                        returnKeyType="done"
-                        onSubmitEditing={() => Keyboard.dismiss()}
-                    />
+                    {/* Pickup Location */}
+                    <Text style={[s.label, { color: C.text }]}>Pickup Location *</Text>
+                    <View style={[s.inputRow, { backgroundColor: C.surface, borderColor: C.border }]}>
+                        <MapPin size={18} color={C.primary} style={{ marginRight: 8 }} />
+                        <TextInput
+                            style={[s.inputFlex, { color: C.text }]}
+                            placeholder="e.g. 14 Ahmadu Bello Way, VI"
+                            placeholderTextColor={C.muted}
+                            value={pickup}
+                            onChangeText={setPickup}
+                            returnKeyType="done"
+                            onSubmitEditing={() => Keyboard.dismiss()}
+                        />
+                        <TouchableOpacity onPress={detectLocation} style={s.locateBtn} disabled={locating}>
+                            {locating
+                                ? <ActivityIndicator size="small" color={C.primary} />
+                                : <Navigation size={18} color={C.primary} />
+                            }
+                        </TouchableOpacity>
+                    </View>
 
-                    <Text style={[styles.label, { color: C.text }]}>Drop-off Location *</Text>
-                    <TextInput
-                        style={[styles.input, { backgroundColor: C.surface, borderColor: C.border, color: C.text }]}
-                        placeholder="e.g. Murtala Muhammed Airport"
-                        placeholderTextColor={C.muted}
-                        value={dropoff}
-                        onChangeText={setDropoff}
-                        returnKeyType="done"
-                        onSubmitEditing={() => Keyboard.dismiss()}
-                    />
+                    {/* Dropoff Location */}
+                    <Text style={[s.label, { color: C.text }]}>Drop-off Location *</Text>
+                    <View style={[s.inputRow, { backgroundColor: C.surface, borderColor: C.border }]}>
+                        <MapPin size={18} color={C.muted} style={{ marginRight: 8 }} />
+                        <TextInput
+                            style={[s.inputFlex, { color: C.text }]}
+                            placeholder="e.g. Murtala Muhammed Airport"
+                            placeholderTextColor={C.muted}
+                            value={dropoff}
+                            onChangeText={setDropoff}
+                            returnKeyType="done"
+                            onSubmitEditing={() => Keyboard.dismiss()}
+                        />
+                    </View>
 
-                    <Text style={[styles.label, { color: C.text }]}>Date *</Text>
-                    <TouchableOpacity
-                        style={[styles.input, { backgroundColor: C.surface, borderColor: C.border }]}
-                        onPress={() => {
-                            Keyboard.dismiss();
-                            setShowDatePicker(true);
-                        }}
-                    >
-                        <Text style={{ color: date ? C.text : C.muted }}>
-                            {date || "Select Date"}
-                        </Text>
-                    </TouchableOpacity>
+                    {/* Date & Time row */}
+                    <View style={s.dtRow}>
+                        <View style={{ flex: 1 }}>
+                            <Text style={[s.label, { color: C.text }]}>Date *</Text>
+                            <TouchableOpacity
+                                style={[s.inputRow, { backgroundColor: C.surface, borderColor: C.border }]}
+                                onPress={() => { Keyboard.dismiss(); setShowDatePicker(true); }}
+                            >
+                                <Clock size={18} color={C.primary} style={{ marginRight: 8 }} />
+                                <Text style={{ color: C.text, fontSize: 14 }}>{formattedDate}</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={{ flex: 1 }}>
+                            <Text style={[s.label, { color: C.text }]}>Time *</Text>
+                            <TouchableOpacity
+                                style={[s.inputRow, { backgroundColor: C.surface, borderColor: C.border }]}
+                                onPress={() => { Keyboard.dismiss(); setShowTimePicker(true); }}
+                            >
+                                <Clock size={18} color={C.primary} style={{ marginRight: 8 }} />
+                                <Text style={{ color: C.text, fontSize: 14 }}>{formattedTime}</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
 
                     {showDatePicker && (
-                        <DateTimePicker
-                            key="datepicker"
-                            value={dateObj}
-                            mode="date"
-                            display="default"
-                            onChange={onDateChange}
-                            minimumDate={new Date()}
-                        />
+                        <DateTimePicker value={dateObj} mode="date" display="default" onChange={onDateChange} minimumDate={new Date()} />
                     )}
                     {Platform.OS === "ios" && showDatePicker && (
-                        <TouchableOpacity style={styles.iosDoneBtn} onPress={() => setShowDatePicker(false)}>
-                            <Text style={[styles.iosDoneText, { color: C.primary }]}>Done</Text>
+                        <TouchableOpacity style={s.iosDoneBtn} onPress={() => setShowDatePicker(false)}>
+                            <Text style={[s.iosDoneText, { color: C.primary }]}>Done</Text>
                         </TouchableOpacity>
                     )}
 
-                    <Text style={[styles.label, { color: C.text }]}>Time *</Text>
-                    <TextInput
-                        style={[styles.input, { backgroundColor: C.surface, borderColor: C.border, color: C.text }]}
-                        placeholder="e.g. 9:00 AM"
-                        placeholderTextColor={C.muted}
-                        value={time}
-                        onChangeText={setTime}
-                        returnKeyType="done"
-                        onSubmitEditing={() => Keyboard.dismiss()}
-                    />
+                    {showTimePicker && (
+                        <DateTimePicker value={timeObj} mode="time" display="default" onChange={onTimeChange} />
+                    )}
+                    {Platform.OS === "ios" && showTimePicker && (
+                        <TouchableOpacity style={s.iosDoneBtn} onPress={() => setShowTimePicker(false)}>
+                            <Text style={[s.iosDoneText, { color: C.primary }]}>Done</Text>
+                        </TouchableOpacity>
+                    )}
 
-                    <Text style={[styles.label, { color: C.text }]}>Special Instructions</Text>
+                    {/* Passengers */}
+                    <Text style={[s.label, { color: C.text }]}>Passengers</Text>
+                    <View style={[s.stepperRow, { backgroundColor: C.surface, borderColor: C.border }]}>
+                        <Users size={18} color={C.primary} />
+                        <TouchableOpacity
+                            style={[s.stepperBtn, { borderColor: C.border }]}
+                            onPress={() => setPassengers(p => Math.max(1, p - 1))}
+                        >
+                            <Minus size={16} color={C.text} />
+                        </TouchableOpacity>
+                        <Text style={[s.stepperVal, { color: C.text }]}>{passengers}</Text>
+                        <TouchableOpacity
+                            style={[s.stepperBtn, { borderColor: C.border }]}
+                            onPress={() => setPassengers(p => Math.min(14, p + 1))}
+                        >
+                            <Plus size={16} color={C.text} />
+                        </TouchableOpacity>
+                        <Text style={{ color: C.muted, fontSize: 13, marginLeft: 4 }}>
+                            {passengers === 1 ? "passenger" : "passengers"}
+                        </Text>
+                    </View>
+
+                    {/* Special Instructions */}
+                    <Text style={[s.label, { color: C.text }]}>Special Instructions</Text>
                     <TextInput
-                        style={[styles.input, styles.textarea, { backgroundColor: C.surface, borderColor: C.border, color: C.text }]}
+                        style={[s.input, s.textarea, { backgroundColor: C.surface, borderColor: C.border, color: C.text }]}
                         placeholder="Any preferences or requirements..."
                         placeholderTextColor={C.muted}
                         multiline
@@ -169,35 +252,53 @@ export default function DrivingServiceScreen() {
                         onSubmitEditing={() => Keyboard.dismiss()}
                     />
 
-                    <TouchableOpacity style={[styles.btn, { backgroundColor: C.primary }, loading && styles.btnDisabled]} onPress={handleSubmit} disabled={loading}>
-                        <Text style={[styles.btnText, { color: C.card }]}>{loading ? "Submitting..." : "Submit Request"}</Text>
+                    <TouchableOpacity
+                        style={[s.btn, { backgroundColor: C.primary }, loading && s.btnDisabled]}
+                        onPress={handleSubmit}
+                        disabled={loading}
+                    >
+                        <Text style={[s.btnText, { color: C.black }]}>{loading ? "Submitting..." : "Submit Request"}</Text>
                     </TouchableOpacity>
+
+                    <View style={{ height: 40 }} />
                 </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>
     );
 }
 
-const styles = StyleSheet.create({
-    container: { flex: 1, paddingHorizontal: 20 },
+const getStyles = (C: any) => StyleSheet.create({
+    root: { flex: 1, paddingHorizontal: 20 },
     backBtn: { paddingVertical: 16 },
-    backText: { fontSize: 14 },
+    backText: { fontSize: 14, fontWeight: "600" },
     title: { fontSize: 24, fontWeight: "700", marginBottom: 4 },
     subtitle: { fontSize: 13, marginBottom: 28 },
-    label: { fontSize: 12, fontWeight: "600", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 },
+    label: { fontSize: 12, fontWeight: "700", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.6 },
 
-    carScroller: { marginBottom: 24 },
+    carScroller: { marginBottom: 28 },
     carOption: { width: 160, padding: 12, borderRadius: 16, borderWidth: 2, marginRight: 12 },
     carImgWrap: { height: 85, marginBottom: 8, justifyContent: "center", alignItems: "center" },
     carImg: { width: "100%", height: "100%" },
     carName: { fontSize: 13, fontWeight: "700", marginBottom: 2 },
     carDesc: { fontSize: 10, lineHeight: 14 },
 
+    inputRow: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderRadius: 14, padding: 14, marginBottom: 20 },
+    inputFlex: { flex: 1, fontSize: 14 },
+    locateBtn: { padding: 4, marginLeft: 8 },
+
+    dtRow: { flexDirection: "row", gap: 12, marginBottom: 4 },
+
+    stepperRow: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderRadius: 14, padding: 14, marginBottom: 20, gap: 12 },
+    stepperBtn: { width: 32, height: 32, borderRadius: 8, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+    stepperVal: { fontSize: 18, fontWeight: "700", minWidth: 24, textAlign: "center" },
+
     input: { borderWidth: 1, borderRadius: 14, padding: 14, fontSize: 14, marginBottom: 18 },
     textarea: { height: 100, textAlignVertical: "top" },
-    btn: { borderRadius: 14, padding: 16, alignItems: "center", marginTop: 8, marginBottom: 40 },
+
+    btn: { borderRadius: 14, padding: 18, alignItems: "center", marginTop: 8 },
     btnDisabled: { opacity: 0.6 },
     btnText: { fontSize: 15, fontWeight: "700" },
+
     iosDoneBtn: { alignItems: "flex-end", paddingHorizontal: 16, marginBottom: 12 },
     iosDoneText: { fontWeight: "600", fontSize: 16 },
 });
