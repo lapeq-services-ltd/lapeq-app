@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import {
     View, Text, TextInput, TouchableOpacity, StyleSheet,
-    Alert, KeyboardAvoidingView, Platform, Animated, Image
+    Alert, KeyboardAvoidingView, Platform, Animated, Image, ImageBackground
 } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -9,10 +9,9 @@ import { Eye, EyeOff } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 
 const GOLD = "#C9A84C";
-const DARK = "#060606";
-const SURFACE = "#111111";
-const BORDER = "#222222";
+const DARK = "#0A0A0A";
 const MUTED = "#555555";
+const INPUT_LINE = "#282828";
 
 export default function LoginScreen() {
     const router = useRouter();
@@ -20,12 +19,17 @@ export default function LoginScreen() {
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [emailFocused, setEmailFocused] = useState(false);
+    const [passwordFocused, setPasswordFocused] = useState(false);
 
-    // Subtle fade in
     const opacity = useRef(new Animated.Value(0)).current;
-    // Fade in on mount
+    const slideUp = useRef(new Animated.Value(30)).current;
+
     useEffect(() => {
-        Animated.timing(opacity, { toValue: 1, duration: 600, useNativeDriver: true }).start();
+        Animated.parallel([
+            Animated.timing(opacity, { toValue: 1, duration: 800, useNativeDriver: true }),
+            Animated.timing(slideUp, { toValue: 0, duration: 700, useNativeDriver: true }),
+        ]).start();
     }, []);
 
     const handleLogin = async () => {
@@ -37,131 +41,137 @@ export default function LoginScreen() {
     };
 
     return (
-        <SafeAreaView style={s.root}>
-            <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
-                <Animated.View style={[s.content, { opacity }]}>
-                    {/* Logo */}
-                    <View style={s.logoRow}>
-                        <Image
-                            source={require("@/assets/logo/Gemini_Generated_Image_ht0yyyht0yyyht0y-removebg-preview.png")}
-                            style={s.logoImg}
-                            resizeMode="contain"
-                        />
-                    </View>
+        <ImageBackground
+            source={require("@/assets/images/auth-bg.png")}
+            style={s.bg}
+            resizeMode="cover"
+        >
+            {/* Dark overlay */}
+            <View style={s.overlay} />
 
-                    {/* Headline */}
-                    <Text style={s.title}>Welcome back.</Text>
-                    <Text style={s.subtitle}>Sign in to your concierge account.</Text>
+            <SafeAreaView style={s.safe}>
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === "ios" ? "padding" : "height"}
+                    style={s.kav}
+                >
+                    <Animated.View style={[s.content, { opacity, transform: [{ translateY: slideUp }] }]}>
+                        {/* Logo + Tagline */}
+                        <View style={s.logoArea}>
+                            <Image
+                                source={require("@/assets/logo/Gemini_Generated_Image_ht0yyyht0yyyht0y-removebg-preview.png")}
+                                style={s.logo}
+                                resizeMode="contain"
+                            />
+                            <Text style={s.tagline}>Your world, handled.</Text>
+                        </View>
 
-                    {/* Divider */}
-                    <View style={s.divider} />
+                        {/* Form card */}
+                        <View style={s.card}>
+                            <Text style={s.heading}>Sign In</Text>
 
-                    {/* Email */}
-                    <Text style={s.label}>Email Address</Text>
-                    <TextInput
-                        style={s.input}
-                        placeholder="you@example.com"
-                        placeholderTextColor={MUTED}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                        value={email}
-                        onChangeText={setEmail}
-                        returnKeyType="next"
-                    />
+                            {/* Email */}
+                            <View style={[s.inputWrap, emailFocused && s.inputWrapFocused]}>
+                                <Text style={s.inputLabel}>Email</Text>
+                                <TextInput
+                                    style={s.input}
+                                    placeholder="you@example.com"
+                                    placeholderTextColor="#333"
+                                    keyboardType="email-address"
+                                    autoCapitalize="none"
+                                    value={email}
+                                    onChangeText={setEmail}
+                                    onFocus={() => setEmailFocused(true)}
+                                    onBlur={() => setEmailFocused(false)}
+                                    returnKeyType="next"
+                                />
+                            </View>
 
-                    {/* Password */}
-                    <Text style={s.label}>Password</Text>
-                    <View style={s.passwordWrap}>
-                        <TextInput
-                            style={s.passwordInput}
-                            placeholder="••••••••"
-                            placeholderTextColor={MUTED}
-                            secureTextEntry={!showPassword}
-                            value={password}
-                            onChangeText={setPassword}
-                            returnKeyType="done"
-                            onSubmitEditing={handleLogin}
-                        />
-                        <TouchableOpacity onPress={() => setShowPassword(p => !p)} style={s.eyeBtn}>
-                            {showPassword
-                                ? <EyeOff size={18} color={MUTED} />
-                                : <Eye size={18} color={MUTED} />
-                            }
+                            {/* Password */}
+                            <View style={[s.inputWrap, passwordFocused && s.inputWrapFocused]}>
+                                <Text style={s.inputLabel}>Password</Text>
+                                <View style={s.passwordRow}>
+                                    <TextInput
+                                        style={[s.input, { flex: 1 }]}
+                                        placeholder="••••••••"
+                                        placeholderTextColor="#333"
+                                        secureTextEntry={!showPassword}
+                                        value={password}
+                                        onChangeText={setPassword}
+                                        onFocus={() => setPasswordFocused(true)}
+                                        onBlur={() => setPasswordFocused(false)}
+                                        returnKeyType="done"
+                                        onSubmitEditing={handleLogin}
+                                    />
+                                    <TouchableOpacity onPress={() => setShowPassword(p => !p)} style={s.eyeBtn}>
+                                        {showPassword ? <EyeOff size={16} color={MUTED} /> : <Eye size={16} color={MUTED} />}
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+
+                            {/* Forgot */}
+                            <TouchableOpacity onPress={() => router.push("/(auth)/forgot-password")} style={s.forgotRow}>
+                                <Text style={s.forgot}>Forgot password?</Text>
+                            </TouchableOpacity>
+
+                            {/* CTA */}
+                            <TouchableOpacity
+                                style={[s.btn, loading && { opacity: 0.6 }]}
+                                onPress={handleLogin}
+                                disabled={loading}
+                            >
+                                <Text style={s.btnText}>{loading ? "Signing in..." : "Sign In"}</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Register link */}
+                        <TouchableOpacity onPress={() => router.push("/(auth)/register")} style={s.switchRow}>
+                            <Text style={s.switchText}>
+                                Don't have an account?{"  "}
+                                <Text style={s.switchLink}>Request Access</Text>
+                            </Text>
                         </TouchableOpacity>
-                    </View>
-
-                    {/* Forgot */}
-                    <TouchableOpacity onPress={() => router.push("/(auth)/forgot-password")} style={s.forgotRow}>
-                        <Text style={s.forgot}>Forgot password?</Text>
-                    </TouchableOpacity>
-
-                    {/* CTA */}
-                    <TouchableOpacity
-                        style={[s.btn, loading && s.btnDisabled]}
-                        onPress={handleLogin}
-                        disabled={loading}
-                    >
-                        <Text style={s.btnText}>{loading ? "Signing in..." : "Sign In"}</Text>
-                    </TouchableOpacity>
-
-                    {/* Register link */}
-                    <TouchableOpacity onPress={() => router.push("/(auth)/register")} style={s.switchRow}>
-                        <Text style={s.switchText}>
-                            Don't have an account?{"  "}
-                            <Text style={s.switchLink}>Request Access</Text>
-                        </Text>
-                    </TouchableOpacity>
-                </Animated.View>
-            </KeyboardAvoidingView>
-        </SafeAreaView>
+                    </Animated.View>
+                </KeyboardAvoidingView>
+            </SafeAreaView>
+        </ImageBackground>
     );
 }
 
 const s = StyleSheet.create({
-    root: { flex: 1, backgroundColor: DARK },
-    content: { flex: 1, paddingHorizontal: 28, justifyContent: "center", paddingBottom: 32 },
+    bg: { flex: 1, backgroundColor: DARK },
+    overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.82)" },
+    safe: { flex: 1 },
+    kav: { flex: 1, justifyContent: "center" },
+    content: { paddingHorizontal: 28, paddingBottom: 24 },
 
-    logoRow: { alignItems: "center", marginBottom: 40 },
-    logoImg: { width: 72, height: 72 },
+    logoArea: { alignItems: "center", marginBottom: 48 },
+    logo: { width: 72, height: 72, marginBottom: 14 },
+    tagline: { fontSize: 14, fontStyle: "italic", color: MUTED, letterSpacing: 0.5, fontWeight: "300" },
 
-    title: { fontSize: 30, fontWeight: "300", color: "#FFFFFF", letterSpacing: 0.5, marginBottom: 8 },
-    subtitle: { fontSize: 14, color: MUTED, marginBottom: 32, letterSpacing: 0.2 },
-
-    divider: { height: 1, backgroundColor: BORDER, marginBottom: 32 },
-
-    label: { fontSize: 11, fontWeight: "700", color: MUTED, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 },
-
-    input: {
-        backgroundColor: SURFACE,
-        borderWidth: 1, borderColor: BORDER,
-        borderRadius: 12,
-        padding: 16, paddingHorizontal: 18,
-        fontSize: 15, color: "#FFFFFF",
-        marginBottom: 20,
+    card: {
+        backgroundColor: "rgba(255,255,255,0.03)",
+        borderWidth: 1, borderColor: "#1a1a1a",
+        borderRadius: 20, padding: 24, marginBottom: 24,
     },
+    heading: { fontSize: 22, fontWeight: "300", color: "#fff", letterSpacing: 0.5, marginBottom: 28 },
 
-    passwordWrap: {
-        flexDirection: "row", alignItems: "center",
-        backgroundColor: SURFACE,
-        borderWidth: 1, borderColor: BORDER,
-        borderRadius: 12,
-        marginBottom: 12,
+    inputWrap: {
+        borderBottomWidth: 1, borderBottomColor: INPUT_LINE,
+        marginBottom: 24, paddingBottom: 8,
     },
-    passwordInput: { flex: 1, padding: 16, paddingHorizontal: 18, fontSize: 15, color: "#FFFFFF" },
-    eyeBtn: { padding: 16 },
+    inputWrapFocused: { borderBottomColor: GOLD },
+    inputLabel: { fontSize: 10, fontWeight: "700", color: MUTED, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 },
+    input: { fontSize: 15, color: "#fff", paddingVertical: 0 },
+    passwordRow: { flexDirection: "row", alignItems: "center" },
+    eyeBtn: { paddingLeft: 12 },
 
-    forgotRow: { alignItems: "flex-end", marginBottom: 32 },
-    forgot: { fontSize: 12, color: GOLD, fontWeight: "600" },
+    forgotRow: { alignItems: "flex-end", marginBottom: 28 },
+    forgot: { fontSize: 12, color: MUTED },
 
     btn: {
-        backgroundColor: GOLD,
-        borderRadius: 12, padding: 17,
-        alignItems: "center",
-        marginBottom: 24,
-        shadowColor: GOLD, shadowOpacity: 0.2, shadowRadius: 10, shadowOffset: { width: 0, height: 4 },
-        elevation: 4,
+        backgroundColor: GOLD, borderRadius: 12,
+        paddingVertical: 16, alignItems: "center",
     },
-    btnDisabled: { opacity: 0.5 },
     btnText: { color: DARK, fontSize: 15, fontWeight: "800", letterSpacing: 0.5 },
 
     switchRow: { alignItems: "center" },
