@@ -37,7 +37,16 @@ export default function LoginScreen() {
         setLoading(true);
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         setLoading(false);
-        if (error) Alert.alert("Login failed", error.message);
+        if (error) {
+            Alert.alert(
+                "Access Denied",
+                "You do not have a registered membership. Please request access to join Lapeq.",
+                [
+                    { text: "Try Again", style: "cancel" },
+                    { text: "Request Access", onPress: () => router.push("/(auth)/register") }
+                ]
+            );
+        }
     };
 
     return (
