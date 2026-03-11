@@ -66,7 +66,7 @@ export default function OnboardingScreen() {
             <View style={s.topRow}>
                 {currentIndex > 0 ? (
                     <TouchableOpacity onPress={goBack} style={s.backBtn}>
-                        <ChevronLeft size={22} color={DARK} />
+                        <ChevronLeft size={22} color="#fff" />
                     </TouchableOpacity>
                 ) : (
                     <Image
