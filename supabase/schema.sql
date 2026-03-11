@@ -21,23 +21,6 @@ drop table if exists public.reports cascade;
 drop table if exists public.requests cascade;
 drop table if exists public.profiles cascade;
 
--- =============================================
--- HELPER: is_admin()
--- Returns true if the current authenticated user
--- has is_admin = true on their profile row.
--- Used as the bypass condition in all RLS policies.
--- =============================================
-create or replace function public.is_admin()
-returns boolean as $$
-  select coalesce(
-    (select is_admin from public.profiles where id = auth.uid()),
-    false
-  );
-$$ language sql security definer stable;
-
--- =============================================
--- 1. PROFILES (extends Supabase Auth users)
--- =============================================
 create table public.profiles (
   id uuid references auth.users on delete cascade primary key,
   full_name text,
@@ -48,6 +31,19 @@ create table public.profiles (
   expo_push_token text,
   created_at timestamp with time zone default now()
 );
+
+-- =============================================
+-- HELPER: is_admin()
+-- Must be created AFTER profiles table exists.
+-- Returns true if the current user is an admin.
+-- =============================================
+create or replace function public.is_admin()
+returns boolean as $$
+  select coalesce(
+    (select is_admin from public.profiles where id = auth.uid()),
+    false
+  );
+$$ language sql security definer stable;
 
 -- Auto-create a profile row when a new user signs up
 create or replace function public.handle_new_user()
