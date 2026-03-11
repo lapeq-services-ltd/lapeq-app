@@ -62,7 +62,7 @@ export default function LoginScreen() {
                                 style={s.logo}
                                 resizeMode="contain"
                             />
-                            <Text style={s.tagline}>Your world, handled.</Text>
+                            <Text style={s.tagline}>Access without limits.</Text>
                         </View>
 
                         {/* Form card */}
@@ -75,7 +75,7 @@ export default function LoginScreen() {
                                 <TextInput
                                     style={s.input}
                                     placeholder="you@example.com"
-                                    placeholderTextColor="#555"
+                                    placeholderTextColor={GOLD}
                                     keyboardType="email-address"
                                     autoCapitalize="none"
                                     value={email}
@@ -93,7 +93,7 @@ export default function LoginScreen() {
                                     <TextInput
                                         style={[s.input, { flex: 1 }]}
                                         placeholder="••••••••"
-                                        placeholderTextColor="#555"
+                                        placeholderTextColor={GOLD}
                                         secureTextEntry={!showPassword}
                                         value={password}
                                         onChangeText={setPassword}
@@ -153,7 +153,7 @@ const s = StyleSheet.create({
         borderWidth: 1, borderColor: "#242424",
         borderRadius: 20, padding: 24, marginBottom: 24,
     },
-    heading: { fontSize: 22, fontWeight: "300", color: "#fff", letterSpacing: 0.5, marginBottom: 28 },
+    heading: { fontSize: 22, fontWeight: "700", color: "#fff", letterSpacing: 0.5, marginBottom: 28 },
 
     inputWrap: {
         borderBottomWidth: 1, borderBottomColor: "#383838",

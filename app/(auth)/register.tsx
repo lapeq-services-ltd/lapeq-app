@@ -79,7 +79,7 @@ export default function RegisterScreen() {
                                     style={s.logo}
                                     resizeMode="contain"
                                 />
-                                <Text style={s.tagline}>Your world, handled.</Text>
+                                <Text style={s.tagline}>Access without limits.</Text>
                             </View>
 
                             {/* Form card */}
@@ -93,7 +93,7 @@ export default function RegisterScreen() {
                                     <TextInput
                                         style={s.input}
                                         placeholder="e.g. Adaeze Okafor"
-                                        placeholderTextColor="#555"
+                                        placeholderTextColor={GOLD}
                                         autoCapitalize="words"
                                         value={fullName}
                                         onChangeText={setFullName}
@@ -109,7 +109,7 @@ export default function RegisterScreen() {
                                     <TextInput
                                         style={s.input}
                                         placeholder="you@example.com"
-                                        placeholderTextColor="#555"
+                                        placeholderTextColor={GOLD}
                                         keyboardType="email-address"
                                         autoCapitalize="none"
                                         value={email}
@@ -127,7 +127,7 @@ export default function RegisterScreen() {
                                         <TextInput
                                             style={[s.input, { flex: 1 }]}
                                             placeholder="min. 8 characters"
-                                            placeholderTextColor="#555"
+                                            placeholderTextColor={GOLD}
                                             secureTextEntry={!showPassword}
                                             value={password}
                                             onChangeText={setPassword}
