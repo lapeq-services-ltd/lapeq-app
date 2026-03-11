@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import * as SplashScreen from "expo-splash-screen";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { supabase } from "@/lib/supabase";
@@ -7,6 +8,9 @@ import { useState } from "react";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 import { Session } from "@supabase/supabase-js";
 import { View, ActivityIndicator } from "react-native";
+
+// Keep the splash screen visible while we fetch session and route
+SplashScreen.preventAutoHideAsync();
 
 // Protect routes: redirect unauthenticated users to auth
 function useProtectedRoute(session: Session | null, loading: boolean) {
@@ -21,6 +25,11 @@ function useProtectedRoute(session: Session | null, loading: boolean) {
         } else if (session && inAuthGroup) {
             router.replace("/(tabs)");
         }
+
+        // Hide splash screen after navigation is scheduled
+        setTimeout(() => {
+            SplashScreen.hideAsync();
+        }, 100);
     }, [session, loading, segments]);
 }
 
