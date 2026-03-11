@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import {
     View, Text, TextInput, TouchableOpacity, StyleSheet,
-    Alert, KeyboardAvoidingView, Platform, Animated, Image, ImageBackground
+    KeyboardAvoidingView, Platform, Animated, Image, ImageBackground,
+    Modal
 } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -21,6 +22,10 @@ export default function LoginScreen() {
     const [loading, setLoading] = useState(false);
     const [emailFocused, setEmailFocused] = useState(false);
     const [passwordFocused, setPasswordFocused] = useState(false);
+    
+    // Custom alert state
+    const [showAlert, setShowAlert] = useState(false);
+    const alertOpacity = useRef(new Animated.Value(0)).current;
 
     const opacity = useRef(new Animated.Value(0)).current;
     const slideUp = useRef(new Animated.Value(30)).current;
@@ -33,20 +38,24 @@ export default function LoginScreen() {
     }, []);
 
     const handleLogin = async () => {
-        if (!email || !password) return Alert.alert("Please fill in all fields");
+        if (!email || !password) {
+            // we could expand custom alert for this, but standard user error is fine for empty fields
+            return;
+        }
         setLoading(true);
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         setLoading(false);
         if (error) {
-            Alert.alert(
-                "Access Denied",
-                "You do not have a registered membership. Please request access to join Lapeq.",
-                [
-                    { text: "Try Again", style: "cancel" },
-                    { text: "Request Access", onPress: () => router.push("/(auth)/register") }
-                ]
-            );
+            // Show custom lapeq alert
+            setShowAlert(true);
+            Animated.timing(alertOpacity, { toValue: 1, duration: 250, useNativeDriver: true }).start();
         }
+    };
+
+    const hideAlert = () => {
+        Animated.timing(alertOpacity, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
+            setShowAlert(false);
+        });
     };
 
     return (
@@ -142,6 +151,33 @@ export default function LoginScreen() {
                     </Animated.View>
                 </KeyboardAvoidingView>
             </SafeAreaView>
+
+            {/* Custom Lapeq Alert Popup */}
+            <Modal visible={showAlert} transparent animationType="none">
+                <View style={s.modalOverlay}>
+                    <Animated.View style={[s.modalBox, { opacity: alertOpacity }]}>
+                        <View style={s.modalIconWrap}>
+                            <Text style={s.modalIconX}>×</Text>
+                        </View>
+                        <Text style={s.modalTitle}>Access Denied</Text>
+                        <Text style={s.modalBody}>
+                            You do not have a registered membership. Please request access to join Lapeq.
+                        </Text>
+                        
+                        <View style={s.modalActions}>
+                            <TouchableOpacity style={s.modalBtnSecondary} onPress={hideAlert}>
+                                <Text style={s.modalBtnTxSec}>Try Again</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                                style={s.modalBtnPrimary} 
+                                onPress={() => { hideAlert(); router.push("/(auth)/register"); }}
+                            >
+                                <Text style={s.modalBtnTxPri}>Request Access</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </Animated.View>
+                </View>
+            </Modal>
         </ImageBackground>
     );
 }
@@ -188,4 +224,17 @@ const s = StyleSheet.create({
     switchRow: { alignItems: "center" },
     switchText: { fontSize: 13, color: MUTED },
     switchLink: { color: GOLD, fontWeight: "600" },
+
+    // Custom Modal
+    modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.85)", justifyContent: "center", alignItems: "center", padding: 24 },
+    modalBox: { width: "100%", backgroundColor: "#111", borderRadius: 24, padding: 32, borderWidth: 1, borderColor: "#222", alignItems: "center" },
+    modalIconWrap: { width: 48, height: 48, borderRadius: 24, backgroundColor: "rgba(255,50,50,0.1)", justifyContent: "center", alignItems: "center", marginBottom: 20 },
+    modalIconX: { color: "#ff4444", fontSize: 24, fontWeight: "600", marginTop: -2 },
+    modalTitle: { color: "#fff", fontSize: 20, fontWeight: "700", marginBottom: 12 },
+    modalBody: { color: "#888", fontSize: 14, textAlign: "center", lineHeight: 22, marginBottom: 32 },
+    modalActions: { flexDirection: "row", gap: 12, width: "100%" },
+    modalBtnSecondary: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: "#222", alignItems: "center" },
+    modalBtnTxSec: { color: "#fff", fontSize: 14, fontWeight: "600" },
+    modalBtnPrimary: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: GOLD, alignItems: "center" },
+    modalBtnTxPri: { color: "#000", fontSize: 14, fontWeight: "700" },
 });
