@@ -139,11 +139,11 @@ export default function OnboardingScreen() {
 }
 
 const s = StyleSheet.create({
-    container: { flex: 1, backgroundColor: "#F8F4EE" },
+    container: { flex: 1, backgroundColor: "#0A0A0A" },
     topRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 24, paddingTop: 8, paddingBottom: 4 },
-    backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(0,0,0,0.07)", alignItems: "center", justifyContent: "center" },
+    backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.08)", alignItems: "center", justifyContent: "center" },
     topLogo: { width: 36, height: 36 },
-    skip: { fontSize: 13, color: "#888", fontWeight: "500" },
+    skip: { fontSize: 13, color: "#555", fontWeight: "500" },
 
     slide: { width, paddingHorizontal: 24 },
 
@@ -168,18 +168,18 @@ const s = StyleSheet.create({
     },
 
     textBlock: { paddingHorizontal: 4 },
-    title: { fontSize: 34, fontWeight: "800", color: DARK, lineHeight: 40, marginBottom: 14, letterSpacing: -0.5 },
-    body: { fontSize: 14, color: "#888", lineHeight: 22 },
+    title: { fontSize: 34, fontWeight: "800", color: "#FFFFFF", lineHeight: 40, marginBottom: 14, letterSpacing: -0.5 },
+    body: { fontSize: 14, color: "#666", lineHeight: 22 },
 
     bottom: { paddingHorizontal: 24, paddingBottom: 24 },
     dots: { flexDirection: "row", gap: 6, marginBottom: 20 },
-    dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "rgba(6,6,6,0.15)" },
-    dotActive: { width: 22, backgroundColor: DARK },
+    dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.15)" },
+    dotActive: { width: 22, backgroundColor: GOLD },
 
-    btn: { backgroundColor: DARK, borderRadius: 16, paddingVertical: 16, alignItems: "center" },
-    btnText: { color: GOLD, fontSize: 15, fontWeight: "700", letterSpacing: 0.4 },
+    btn: { backgroundColor: GOLD, borderRadius: 16, paddingVertical: 16, alignItems: "center" },
+    btnText: { color: "#0A0A0A", fontSize: 15, fontWeight: "700", letterSpacing: 0.4 },
 
     signupRow: { marginTop: 16, alignItems: "center" },
-    signupText: { fontSize: 13, color: "#888" },
+    signupText: { fontSize: 13, color: "#555" },
     signupLink: { color: GOLD, fontWeight: "600" },
 });

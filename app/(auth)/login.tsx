@@ -10,8 +10,8 @@ import { supabase } from "@/lib/supabase";
 
 const GOLD = "#C9A84C";
 const DARK = "#0A0A0A";
-const MUTED = "#555555";
-const INPUT_LINE = "#282828";
+const MUTED = "#666666";
+const INPUT_LINE = "#383838";
 
 export default function LoginScreen() {
     const router = useRouter();
@@ -75,7 +75,7 @@ export default function LoginScreen() {
                                 <TextInput
                                     style={s.input}
                                     placeholder="you@example.com"
-                                    placeholderTextColor="#333"
+                                    placeholderTextColor="#555"
                                     keyboardType="email-address"
                                     autoCapitalize="none"
                                     value={email}
@@ -93,7 +93,7 @@ export default function LoginScreen() {
                                     <TextInput
                                         style={[s.input, { flex: 1 }]}
                                         placeholder="••••••••"
-                                        placeholderTextColor="#333"
+                                        placeholderTextColor="#555"
                                         secureTextEntry={!showPassword}
                                         value={password}
                                         onChangeText={setPassword}
@@ -149,19 +149,21 @@ const s = StyleSheet.create({
     tagline: { fontSize: 14, fontStyle: "italic", color: MUTED, letterSpacing: 0.5, fontWeight: "300" },
 
     card: {
-        backgroundColor: "rgba(255,255,255,0.03)",
-        borderWidth: 1, borderColor: "#1a1a1a",
+        backgroundColor: "rgba(255,255,255,0.05)",
+        borderWidth: 1, borderColor: "#242424",
         borderRadius: 20, padding: 24, marginBottom: 24,
     },
     heading: { fontSize: 22, fontWeight: "300", color: "#fff", letterSpacing: 0.5, marginBottom: 28 },
 
     inputWrap: {
-        borderBottomWidth: 1, borderBottomColor: INPUT_LINE,
-        marginBottom: 24, paddingBottom: 8,
+        borderBottomWidth: 1, borderBottomColor: "#383838",
+        marginBottom: 24, paddingBottom: 10,
+        backgroundColor: "rgba(255,255,255,0.04)",
+        borderRadius: 8, paddingHorizontal: 12, paddingTop: 10,
     },
-    inputWrapFocused: { borderBottomColor: GOLD },
-    inputLabel: { fontSize: 10, fontWeight: "700", color: MUTED, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 },
-    input: { fontSize: 15, color: "#fff", paddingVertical: 0 },
+    inputWrapFocused: { borderBottomColor: GOLD, backgroundColor: "rgba(201,168,76,0.06)" },
+    inputLabel: { fontSize: 10, fontWeight: "700", color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 },
+    input: { fontSize: 16, color: "#fff", paddingVertical: 2 },
     passwordRow: { flexDirection: "row", alignItems: "center" },
     eyeBtn: { paddingLeft: 12 },
 
