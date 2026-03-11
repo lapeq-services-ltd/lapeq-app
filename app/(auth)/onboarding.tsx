@@ -16,7 +16,7 @@ const slides = [
         id: "1",
         tag: "Premium Access",
         title: "Concierge\nAt Your\nCommand",
-        body: "Request any service — driving, logistics, travel and more — through one elegant interface. Your team handles everything.",
+        body: "Request any service, driving, logistics, travel and more through one elegant interface. Your team handles everything.",
         image: require("@/assets/images/onboarding-driving.png"),
     },
     {
@@ -69,9 +69,11 @@ export default function OnboardingScreen() {
                         <ChevronLeft size={22} color={DARK} />
                     </TouchableOpacity>
                 ) : (
-                    <View style={s.logoMark}>
-                        <Text style={s.logoText}>L</Text>
-                    </View>
+                    <Image
+                        source={require("@/assets/logo/Gemini_Generated_Image_ht0yyyht0yyyht0y-removebg-preview.png")}
+                        style={s.topLogo}
+                        resizeMode="contain"
+                    />
                 )}
                 <TouchableOpacity onPress={skip}>
                     <Text style={s.skip}>Skip</Text>
@@ -86,13 +88,17 @@ export default function OnboardingScreen() {
                 horizontal
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}
-                scrollEnabled={false}
+                scrollEnabled={true}
+                onMomentumScrollEnd={(e) => {
+                    const idx = Math.round(e.nativeEvent.contentOffset.x / width);
+                    setCurrentIndex(idx);
+                }}
                 renderItem={({ item }) => (
                     <View style={s.slide}>
                         {/* Photo */}
                         <View style={s.imageWrap}>
                             <Image source={item.image} style={s.image} resizeMode="cover" />
-                            {/* Overlay gradient effect with views */}
+                            {/* Very subtle gradient at the very bottom for tag legibility */}
                             <View style={s.imageOverlay} />
                             <Text style={s.slideTag}>{item.tag}</Text>
                         </View>
@@ -136,8 +142,7 @@ const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: "#F8F4EE" },
     topRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 24, paddingTop: 8, paddingBottom: 4 },
     backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(0,0,0,0.07)", alignItems: "center", justifyContent: "center" },
-    logoMark: { width: 32, height: 32, borderRadius: 8, backgroundColor: DARK, alignItems: "center", justifyContent: "center" },
-    logoText: { color: GOLD, fontSize: 16, fontWeight: "800" },
+    topLogo: { width: 36, height: 36 },
     skip: { fontSize: 13, color: "#888", fontWeight: "500" },
 
     slide: { width, paddingHorizontal: 24 },
@@ -151,8 +156,8 @@ const s = StyleSheet.create({
     },
     image: { width: "100%", height: "100%", position: "absolute" },
     imageOverlay: {
-        position: "absolute", bottom: 0, left: 0, right: 0, height: "40%",
-        backgroundColor: "rgba(6,6,6,0.45)",
+        position: "absolute", bottom: 0, left: 0, right: 0, height: "15%",
+        backgroundColor: "rgba(6,6,6,0.3)",
     },
     slideTag: {
         position: "absolute", top: 20, left: 20,
