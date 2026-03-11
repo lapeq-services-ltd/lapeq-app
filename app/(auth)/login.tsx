@@ -226,7 +226,7 @@ const s = StyleSheet.create({
     switchLink: { color: GOLD, fontWeight: "600" },
 
     // Custom Modal
-    modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.85)", justifyContent: "center", alignItems: "center", padding: 24 },
+    modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "center", alignItems: "center", padding: 24 },
     modalBox: { width: "100%", backgroundColor: "#0A0A0A", borderRadius: 24, padding: 32, borderWidth: 1, borderColor: GOLD, alignItems: "center" },
     modalIconWrap: { width: 48, height: 48, borderRadius: 24, backgroundColor: "rgba(255,50,50,0.1)", justifyContent: "center", alignItems: "center", marginBottom: 20 },
     modalIconX: { color: "#ff4444", fontSize: 24, fontWeight: "600", marginTop: -2 },
