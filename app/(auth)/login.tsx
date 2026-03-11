@@ -22,7 +22,7 @@ export default function LoginScreen() {
     const [loading, setLoading] = useState(false);
     const [emailFocused, setEmailFocused] = useState(false);
     const [passwordFocused, setPasswordFocused] = useState(false);
-    
+
     // Custom alert state
     const [showAlert, setShowAlert] = useState(false);
     const alertOpacity = useRef(new Animated.Value(0)).current;
@@ -161,15 +161,15 @@ export default function LoginScreen() {
                         </View>
                         <Text style={s.modalTitle}>Access Denied</Text>
                         <Text style={s.modalBody}>
-                            You do not have a registered membership. Please request access to join Lapeq.
+                            You do not have a registered account. Please request access to join Lapeq.
                         </Text>
-                        
+
                         <View style={s.modalActions}>
                             <TouchableOpacity style={s.modalBtnSecondary} onPress={hideAlert}>
                                 <Text style={s.modalBtnTxSec}>Try Again</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity 
-                                style={s.modalBtnPrimary} 
+                            <TouchableOpacity
+                                style={s.modalBtnPrimary}
                                 onPress={() => { hideAlert(); router.push("/(auth)/register"); }}
                             >
                                 <Text style={s.modalBtnTxPri}>Request Access</Text>
@@ -227,7 +227,7 @@ const s = StyleSheet.create({
 
     // Custom Modal
     modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.85)", justifyContent: "center", alignItems: "center", padding: 24 },
-    modalBox: { width: "100%", backgroundColor: "#111", borderRadius: 24, padding: 32, borderWidth: 1, borderColor: "#222", alignItems: "center" },
+    modalBox: { width: "100%", backgroundColor: "#0A0A0A", borderRadius: 24, padding: 32, borderWidth: 1, borderColor: GOLD, alignItems: "center" },
     modalIconWrap: { width: 48, height: 48, borderRadius: 24, backgroundColor: "rgba(255,50,50,0.1)", justifyContent: "center", alignItems: "center", marginBottom: 20 },
     modalIconX: { color: "#ff4444", fontSize: 24, fontWeight: "600", marginTop: -2 },
     modalTitle: { color: "#fff", fontSize: 20, fontWeight: "700", marginBottom: 12 },
