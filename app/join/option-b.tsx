@@ -13,7 +13,7 @@ export default function OptionBScreen() {
     return (
         <SafeAreaView style={s.root}>
             <View style={s.header}>
-                <TouchableOpacity onPress={() => router.push("/")} style={s.closeBtn}>
+                <TouchableOpacity onPress={() => router.replace("/(tabs)")} style={s.closeBtn}>
                     <X size={28} color={C.muted} />
                 </TouchableOpacity>
             </View>
@@ -26,7 +26,7 @@ export default function OptionBScreen() {
                     We have received your details. One of our dedicated membership directors will reach out to you within the next 24 hours to craft a personalized package tailored precisely to your lifestyle and requirements.
                 </Text>
 
-                <TouchableOpacity style={s.doneBtn} onPress={() => router.push("/")}>
+                <TouchableOpacity style={s.doneBtn} onPress={() => router.replace("/(tabs)")}>
                     <Text style={s.doneBtnText}>Return Home</Text>
                 </TouchableOpacity>
             </View>

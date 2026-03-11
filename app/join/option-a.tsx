@@ -12,15 +12,15 @@ export default function OptionAScreen() {
 
     const tiers = [
         {
-            name: "Standard", price: "₦150,000 / year",
+            name: "Silver", price: "₦300,000 / year",
             perks: ["Essential concierge during business hours", "Restaurant & event reservations"],
         },
         {
-            name: "Gold", price: "₦350,000 / year",
+            name: "Gold", price: "₦500,000 / year",
             perks: ["24/7 priority concierge access", "Curated private experiences", "Executive car hire & travel"],
         },
         {
-            name: "Black", price: "₦700,000 / year",
+            name: "Black", price: "₦1,000,000 / year",
             perks: ["Dedicated lifestyle manager", "VIP access & private security", "Unlimited tailored requests"],
         }
     ];
@@ -52,7 +52,7 @@ export default function OptionAScreen() {
                                 </View>
                             ))}
                         </View>
-                        <TouchableOpacity style={[s.selectBtn, tier.name === "Gold" ? s.selectBtnGold : s.selectBtnStandard]} onPress={() => router.push("/")}>
+                        <TouchableOpacity style={[s.selectBtn, tier.name === "Gold" ? s.selectBtnGold : s.selectBtnStandard]} onPress={() => router.replace("/(tabs)")}>
                             <Text style={[s.selectBtnText, tier.name === "Gold" && { color: C.black }]}>Select This Tier</Text>
                         </TouchableOpacity>
                     </View>
