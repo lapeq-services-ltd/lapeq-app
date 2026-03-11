@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
     View, Text, TextInput, TouchableOpacity, StyleSheet,
     Alert, KeyboardAvoidingView, Platform, Animated, Image
@@ -23,9 +23,10 @@ export default function LoginScreen() {
 
     // Subtle fade in
     const opacity = useRef(new Animated.Value(0)).current;
-    useState(() => {
+    // Fade in on mount
+    useEffect(() => {
         Animated.timing(opacity, { toValue: 1, duration: 600, useNativeDriver: true }).start();
-    });
+    }, []);
 
     const handleLogin = async () => {
         if (!email || !password) return Alert.alert("Please fill in all fields");
