@@ -1,14 +1,17 @@
 import { useState, useRef } from "react";
 import {
     View, Text, StyleSheet, Dimensions, TouchableOpacity,
-    FlatList, Animated, Image,
+    FlatList, Image,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ChevronLeft } from "lucide-react-native";
-import { useTheme } from "@/context/ThemeContext";
 
 const { width, height } = Dimensions.get("window");
+
+const GOLD = "#c9a84c";
+const DARK = "#0a0a0a";
+const MUTED = "rgba(255,255,255,0.4)";
 
 const slides = [
     {
@@ -36,7 +39,6 @@ const slides = [
 
 export default function OnboardingScreen() {
     const router = useRouter();
-    const { C, theme } = useTheme();
     const [currentIndex, setCurrentIndex] = useState(0);
     const flatListRef = useRef<FlatList>(null);
 
@@ -61,11 +63,11 @@ export default function OnboardingScreen() {
     const skip = () => router.replace("/(auth)/login");
 
     return (
-        <SafeAreaView style={[s.container, { backgroundColor: C.background }]}>
+        <SafeAreaView style={s.container}>
             <View style={s.topRow}>
                 {currentIndex > 0 ? (
-                    <TouchableOpacity onPress={goBack} style={[s.backBtn, { backgroundColor: theme === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)" }]}>
-                        <ChevronLeft size={22} color={C.text} />
+                    <TouchableOpacity onPress={goBack} style={s.backBtn}>
+                        <ChevronLeft size={22} color="#fff" />
                     </TouchableOpacity>
                 ) : (
                     <Image
@@ -75,7 +77,7 @@ export default function OnboardingScreen() {
                     />
                 )}
                 <TouchableOpacity onPress={skip}>
-                    <Text style={[s.skip, { color: C.muted }]}>Skip</Text>
+                    <Text style={s.skip}>Skip</Text>
                 </TouchableOpacity>
             </View>
 
@@ -95,13 +97,12 @@ export default function OnboardingScreen() {
                     <View style={s.slide}>
                         <View style={s.imageWrap}>
                             <Image source={item.image} style={s.image} resizeMode="cover" />
-                            <View style={[s.imageOverlay, { backgroundColor: theme === "dark" ? "rgba(0,0,0,0.4)" : "rgba(255,255,255,0.5)" }]} />
-                            <Text style={[s.slideTag, { color: C.primary, backgroundColor: theme === "dark" ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)" }]}>{item.tag}</Text>
+                            <Text style={s.slideTag}>{item.tag}</Text>
                         </View>
 
                         <View style={s.textBlock}>
-                            <Text style={[s.title, { color: C.text }]}>{item.title}</Text>
-                            <Text style={[s.body, { color: C.muted }]}>{item.body}</Text>
+                            <Text style={s.title}>{item.title}</Text>
+                            <Text style={s.body}>{item.body}</Text>
                         </View>
                     </View>
                 )}
@@ -112,25 +113,21 @@ export default function OnboardingScreen() {
                     {slides.map((_, i) => (
                         <View
                             key={i}
-                            style={[
-                                s.dot,
-                                { backgroundColor: theme === "dark" ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)" },
-                                i === currentIndex && [s.dotActive, { backgroundColor: C.primary }]
-                            ]}
+                            style={[s.dot, i === currentIndex && s.dotActive]}
                         />
                     ))}
                 </View>
 
-                <TouchableOpacity style={[s.btn, { backgroundColor: C.primary }]} onPress={goNext}>
-                    <Text style={[s.btnText, { color: C.background }]}>
+                <TouchableOpacity style={s.btn} onPress={goNext}>
+                    <Text style={s.btnText}>
                         {currentIndex < slides.length - 1 ? "Continue" : "Get Started →"}
                     </Text>
                 </TouchableOpacity>
 
                 {currentIndex === slides.length - 1 && (
                     <TouchableOpacity onPress={() => router.push("/(auth)/register")} style={s.signupRow}>
-                        <Text style={[s.signupText, { color: C.muted }]}>
-                            New here? <Text style={[s.signupLink, { color: C.primary }]}>Create account</Text>
+                        <Text style={s.signupText}>
+                            New here? <Text style={s.signupLink}>Create account</Text>
                         </Text>
                     </TouchableOpacity>
                 )}
@@ -140,46 +137,42 @@ export default function OnboardingScreen() {
 }
 
 const s = StyleSheet.create({
-    container: { flex: 1 },
+    container: { flex: 1, backgroundColor: DARK },
     topRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 24, paddingTop: 8, paddingBottom: 4 },
-    backBtn: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+    backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.08)", alignItems: "center", justifyContent: "center" },
     topLogo: { width: 36, height: 36 },
-    skip: { fontSize: 13, fontWeight: "500" },
+    skip: { fontSize: 13, fontWeight: "500", color: MUTED },
 
     slide: { width, paddingHorizontal: 24 },
-
     imageWrap: {
-        height: height * 0.4,
+        height: height * 0.42,
         borderRadius: 28,
         marginTop: 8, marginBottom: 32,
         overflow: "hidden",
-        position: "relative",
     },
-    image: { width: "100%", height: "100%", position: "absolute" },
-    imageOverlay: {
-        position: "absolute", bottom: 0, left: 0, right: 0, height: "15%",
-    },
+    image: { width: "100%", height: "100%" },
     slideTag: {
         position: "absolute", top: 20, left: 20,
         fontSize: 9, fontWeight: "800", letterSpacing: 2.5,
         textTransform: "uppercase",
-        backgroundColor: "rgba(6,6,6,0.6)",
+        color: GOLD,
+        backgroundColor: "rgba(0,0,0,0.5)",
         paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4,
     },
 
     textBlock: { paddingHorizontal: 4 },
-    title: { fontSize: 34, fontWeight: "800", lineHeight: 40, marginBottom: 14, letterSpacing: -0.5 },
-    body: { fontSize: 14, lineHeight: 22 },
+    title: { fontSize: 34, fontWeight: "800", lineHeight: 40, marginBottom: 14, letterSpacing: -0.5, color: "#fff" },
+    body: { fontSize: 14, lineHeight: 22, color: MUTED },
 
     bottom: { paddingHorizontal: 24, paddingBottom: 24 },
     dots: { flexDirection: "row", gap: 6, marginBottom: 20 },
-    dot: { width: 6, height: 6, borderRadius: 3 },
-    dotActive: { width: 22 },
+    dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.15)" },
+    dotActive: { width: 22, backgroundColor: GOLD },
 
-    btn: { borderRadius: 16, paddingVertical: 16, alignItems: "center" },
-    btnText: { fontSize: 15, fontWeight: "700", letterSpacing: 0.4 },
+    btn: { borderRadius: 16, paddingVertical: 16, alignItems: "center", backgroundColor: GOLD },
+    btnText: { fontSize: 15, fontWeight: "700", letterSpacing: 0.4, color: DARK },
 
     signupRow: { marginTop: 16, alignItems: "center" },
-    signupText: { fontSize: 13 },
-    signupLink: { fontWeight: "600" },
+    signupText: { fontSize: 13, color: MUTED },
+    signupLink: { fontWeight: "600", color: GOLD },
 });
