@@ -22,6 +22,7 @@ export default function LoginScreen() {
     const [emailFocused, setEmailFocused] = useState(false);
     const [passwordFocused, setPasswordFocused] = useState(false);
     const [showAlert, setShowAlert] = useState(false);
+    const [alertType, setAlertType] = useState<"denied" | "unconfirmed">("denied");
 
     const alertOpacity = useRef(new Animated.Value(0)).current;
     const alertScale = useRef(new Animated.Value(0.95)).current;
@@ -41,6 +42,8 @@ export default function LoginScreen() {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         setLoading(false);
         if (error) {
+            const isUnconfirmed = error.message.toLowerCase().includes("not confirmed") || error.message.toLowerCase().includes("email");
+            setAlertType(isUnconfirmed ? "unconfirmed" : "denied");
             setShowAlert(true);
             Animated.parallel([
                 Animated.timing(alertOpacity, { toValue: 1, duration: 250, useNativeDriver: true }),
@@ -153,20 +156,28 @@ export default function LoginScreen() {
                         <View style={s.modalIconWrap}>
                             <Text style={s.modalIconX}>×</Text>
                         </View>
-                        <Text style={s.modalTitle}>Access Denied</Text>
+                        <Text style={s.modalTitle}>
+                            {alertType === "unconfirmed" ? "Verify Your Email" : "Access Denied"}
+                        </Text>
                         <Text style={s.modalBody}>
-                            Incorrect email or password. Don't have an account yet? Request access to join Lapeq.
+                            {alertType === "unconfirmed"
+                                ? "Please check your inbox and click the confirmation link before signing in."
+                                : "Incorrect email or password. Don't have an account yet? Request access to join Lapeq."}
                         </Text>
                         <View style={s.modalActions}>
                             <TouchableOpacity style={s.modalBtnSecondary} onPress={hideAlert}>
-                                <Text style={s.modalBtnTxSec}>Try Again</Text>
+                                <Text style={s.modalBtnTxSec}>
+                                    {alertType === "unconfirmed" ? "Got it" : "Try Again"}
+                                </Text>
                             </TouchableOpacity>
-                            <TouchableOpacity
-                                style={s.modalBtnPrimary}
-                                onPress={() => { hideAlert(); router.push("/(auth)/register"); }}
-                            >
-                                <Text style={s.modalBtnTxPri}>Request Access</Text>
-                            </TouchableOpacity>
+                            {alertType === "denied" && (
+                                <TouchableOpacity
+                                    style={s.modalBtnPrimary}
+                                    onPress={() => { hideAlert(); router.push("/(auth)/register"); }}
+                                >
+                                    <Text style={s.modalBtnTxPri}>Request Access</Text>
+                                </TouchableOpacity>
+                            )}
                         </View>
                     </Animated.View>
                 </View>
