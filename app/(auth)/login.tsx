@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import {
     View, Text, TextInput, TouchableOpacity, StyleSheet,
     KeyboardAvoidingView, Platform, Animated, Image, ImageBackground,
@@ -8,6 +8,7 @@ import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Eye, EyeOff } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
+import { useTheme } from "@/context/ThemeContext";
 
 const GOLD = "#C9A84C";
 const DARK = "#0A0A0A";
@@ -16,6 +17,8 @@ const INPUT_LINE = "#383838";
 
 export default function LoginScreen() {
     const router = useRouter();
+    const { C, theme } = useTheme();
+    const s = useMemo(() => getStyles(C), [C]);
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
@@ -26,6 +29,7 @@ export default function LoginScreen() {
     // Custom alert state
     const [showAlert, setShowAlert] = useState(false);
     const alertOpacity = useRef(new Animated.Value(0)).current;
+    const alertScale = useRef(new Animated.Value(0.9)).current;
 
     const opacity = useRef(new Animated.Value(0)).current;
     const slideUp = useRef(new Animated.Value(30)).current;
@@ -48,12 +52,18 @@ export default function LoginScreen() {
         if (error) {
             // Show custom lapeq alert
             setShowAlert(true);
-            Animated.timing(alertOpacity, { toValue: 1, duration: 250, useNativeDriver: true }).start();
+            Animated.parallel([
+                Animated.timing(alertOpacity, { toValue: 1, duration: 250, useNativeDriver: true }),
+                Animated.spring(alertScale, { toValue: 1, friction: 8, tension: 40, useNativeDriver: true })
+            ]).start();
         }
     };
 
     const hideAlert = () => {
-        Animated.timing(alertOpacity, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
+        Animated.parallel([
+            Animated.timing(alertOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+            Animated.timing(alertScale, { toValue: 0.9, duration: 200, useNativeDriver: true })
+        ]).start(() => {
             setShowAlert(false);
         });
     };
@@ -93,7 +103,7 @@ export default function LoginScreen() {
                                 <TextInput
                                     style={s.input}
                                     placeholder="you@example.com"
-                                    placeholderTextColor="#444"
+                                    placeholderTextColor={C.muted}
                                     keyboardType="email-address"
                                     autoCapitalize="none"
                                     value={email}
@@ -111,7 +121,7 @@ export default function LoginScreen() {
                                     <TextInput
                                         style={[s.input, { flex: 1 }]}
                                         placeholder="••••••••"
-                                        placeholderTextColor="#444"
+                                        placeholderTextColor={C.muted}
                                         secureTextEntry={!showPassword}
                                         value={password}
                                         onChangeText={setPassword}
@@ -121,7 +131,7 @@ export default function LoginScreen() {
                                         onSubmitEditing={handleLogin}
                                     />
                                     <TouchableOpacity onPress={() => setShowPassword(p => !p)} style={s.eyeBtn}>
-                                        {showPassword ? <EyeOff size={16} color={MUTED} /> : <Eye size={16} color={MUTED} />}
+                                        {showPassword ? <EyeOff size={16} color={C.muted} /> : <Eye size={16} color={C.muted} />}
                                     </TouchableOpacity>
                                 </View>
                             </View>
@@ -155,7 +165,13 @@ export default function LoginScreen() {
             {/* Custom Lapeq Alert Popup */}
             <Modal visible={showAlert} transparent animationType="none">
                 <View style={s.modalOverlay}>
-                    <Animated.View style={[s.modalBox, { opacity: alertOpacity }]}>
+                    <Animated.View style={[
+                        s.modalBox, 
+                        { 
+                            opacity: alertOpacity,
+                            transform: [{ scale: alertScale }]
+                        }
+                    ]}>
                         <View style={s.modalIconWrap}>
                             <Text style={s.modalIconX}>×</Text>
                         </View>
@@ -182,8 +198,8 @@ export default function LoginScreen() {
     );
 }
 
-const s = StyleSheet.create({
-    bg: { flex: 1, backgroundColor: DARK },
+const getStyles = (C: any) => StyleSheet.create({
+    bg: { flex: 1, backgroundColor: C.background },
     overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.82)" },
     safe: { flex: 1 },
     kav: { flex: 1, justifyContent: "center" },
@@ -191,7 +207,7 @@ const s = StyleSheet.create({
 
     logoArea: { alignItems: "center", marginBottom: 48 },
     logo: { width: 72, height: 72, marginBottom: 14 },
-    tagline: { fontSize: 14, fontStyle: "italic", color: MUTED, letterSpacing: 0.5, fontWeight: "300" },
+    tagline: { fontSize: 14, fontStyle: "italic", color: C.muted, letterSpacing: 0.5, fontWeight: "300" },
 
     card: {
         backgroundColor: "rgba(255,255,255,0.05)",
@@ -206,28 +222,28 @@ const s = StyleSheet.create({
         backgroundColor: "rgba(255,255,255,0.04)",
         borderRadius: 8, paddingHorizontal: 12, paddingTop: 10,
     },
-    inputWrapFocused: { borderBottomColor: GOLD, backgroundColor: "rgba(201,168,76,0.06)" },
+    inputWrapFocused: { borderBottomColor: C.primary, backgroundColor: "rgba(201,168,76,0.06)" },
     inputLabel: { fontSize: 10, fontWeight: "700", color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 },
     input: { fontSize: 16, color: "#fff", paddingVertical: 2 },
     passwordRow: { flexDirection: "row", alignItems: "center" },
     eyeBtn: { paddingLeft: 12 },
 
     forgotRow: { alignItems: "flex-end", marginBottom: 28 },
-    forgot: { fontSize: 12, color: MUTED },
+    forgot: { fontSize: 12, color: C.muted },
 
     btn: {
-        backgroundColor: GOLD, borderRadius: 12,
+        backgroundColor: C.primary, borderRadius: 12,
         paddingVertical: 16, alignItems: "center",
     },
-    btnText: { color: DARK, fontSize: 15, fontWeight: "800", letterSpacing: 0.5 },
+    btnText: { color: C.background, fontSize: 15, fontWeight: "800", letterSpacing: 0.5 },
 
     switchRow: { alignItems: "center" },
-    switchText: { fontSize: 13, color: MUTED },
-    switchLink: { color: GOLD, fontWeight: "600" },
+    switchText: { fontSize: 13, color: C.muted },
+    switchLink: { color: C.primary, fontWeight: "600" },
 
     // Custom Modal
     modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "center", alignItems: "center", padding: 24 },
-    modalBox: { width: "100%", backgroundColor: "#0A0A0A", borderRadius: 24, padding: 32, borderWidth: 1, borderColor: GOLD, alignItems: "center" },
+    modalBox: { width: "100%", backgroundColor: C.background, borderRadius: 24, padding: 32, borderWidth: 1, borderColor: C.primary, alignItems: "center" },
     modalIconWrap: { width: 48, height: 48, borderRadius: 24, backgroundColor: "rgba(255,50,50,0.1)", justifyContent: "center", alignItems: "center", marginBottom: 20 },
     modalIconX: { color: "#ff4444", fontSize: 24, fontWeight: "600", marginTop: -2 },
     modalTitle: { color: "#fff", fontSize: 20, fontWeight: "700", marginBottom: 12 },
@@ -235,6 +251,6 @@ const s = StyleSheet.create({
     modalActions: { flexDirection: "row", gap: 12, width: "100%" },
     modalBtnSecondary: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: "#222", alignItems: "center" },
     modalBtnTxSec: { color: "#fff", fontSize: 14, fontWeight: "600" },
-    modalBtnPrimary: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: GOLD, alignItems: "center" },
-    modalBtnTxPri: { color: "#000", fontSize: 14, fontWeight: "700" },
+    modalBtnPrimary: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: C.primary, alignItems: "center" },
+    modalBtnTxPri: { color: C.background, fontSize: 14, fontWeight: "700" },
 });
