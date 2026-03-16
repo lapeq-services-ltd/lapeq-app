@@ -8,6 +8,20 @@ import { useState } from "react";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 import { Session } from "@supabase/supabase-js";
 import { View, ActivityIndicator } from "react-native";
+import { useFonts } from "expo-font";
+import {
+    PlayfairDisplay_400Regular,
+    PlayfairDisplay_400Regular_Italic,
+    PlayfairDisplay_700Bold,
+} from "@expo-google-fonts/playfair-display";
+import {
+    Jost_300Light,
+    Jost_400Regular,
+    Jost_500Medium,
+    Jost_600SemiBold,
+    Jost_700Bold,
+    Jost_800ExtraBold,
+} from "@expo-google-fonts/jost";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -75,6 +89,20 @@ function RootContent() {
 }
 
 export default function RootLayout() {
+    const [fontsLoaded] = useFonts({
+        PlayfairDisplay_400Regular,
+        PlayfairDisplay_400Regular_Italic,
+        PlayfairDisplay_700Bold,
+        Jost_300Light,
+        Jost_400Regular,
+        Jost_500Medium,
+        Jost_600SemiBold,
+        Jost_700Bold,
+        Jost_800ExtraBold,
+    });
+
+    if (!fontsLoaded) return null;
+
     return (
         <ThemeProvider>
             <RootContent />

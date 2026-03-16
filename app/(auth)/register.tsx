@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
     View, Text, TextInput, TouchableOpacity, StyleSheet,
     KeyboardAvoidingView, Platform, Animated, Image,
@@ -6,27 +6,31 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Eye, EyeOff } from "lucide-react-native";
+import { Eye, EyeOff, ChevronLeft } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
-import { useTheme } from "@/context/ThemeContext";
+
+const GOLD = "#c9a84c";
+const DARK = "#0a0a0a";
+const MUTED = "rgba(255,255,255,0.4)";
 
 export default function RegisterScreen() {
     const router = useRouter();
-    const { C, theme } = useTheme();
-    const s = useMemo(() => getStyles(C), [C]);
     const [fullName, setFullName] = useState("");
     const [email, setEmail] = useState("");
+    const [phone, setPhone] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
 
     const [nameFocused, setNameFocused] = useState(false);
     const [emailFocused, setEmailFocused] = useState(false);
+    const [phoneFocused, setPhoneFocused] = useState(false);
     const [passwordFocused, setPasswordFocused] = useState(false);
 
     const [showAlert, setShowAlert] = useState(false);
+    const [errorMsg, setErrorMsg] = useState("");
     const alertOpacity = useRef(new Animated.Value(0)).current;
-    const alertScale = useRef(new Animated.Value(0.9)).current;
+    const alertScale = useRef(new Animated.Value(0.95)).current;
 
     const opacity = useRef(new Animated.Value(0)).current;
     const slideUp = useRef(new Animated.Value(30)).current;
@@ -44,23 +48,24 @@ export default function RegisterScreen() {
         const { error } = await supabase.auth.signUp({
             email,
             password,
-            options: { data: { full_name: fullName } },
+            options: { data: { full_name: fullName, phone } },
         });
         setLoading(false);
         if (error) {
+            setErrorMsg(error.message);
         } else {
             setShowAlert(true);
-            Animated.parallel([
-                Animated.timing(alertOpacity, { toValue: 1, duration: 250, useNativeDriver: true }),
-                Animated.spring(alertScale, { toValue: 1, friction: 8, tension: 40, useNativeDriver: true })
-            ]).start();
         }
+        Animated.parallel([
+            Animated.timing(alertOpacity, { toValue: 1, duration: 250, useNativeDriver: true }),
+            Animated.spring(alertScale, { toValue: 1, friction: 8, tension: 40, useNativeDriver: true })
+        ]).start();
     };
 
     const hideAlertAndGo = () => {
         Animated.parallel([
             Animated.timing(alertOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
-            Animated.timing(alertScale, { toValue: 0.9, duration: 200, useNativeDriver: true })
+            Animated.timing(alertScale, { toValue: 0.95, duration: 200, useNativeDriver: true })
         ]).start(() => {
             setShowAlert(false);
             router.replace("/(auth)/login");
@@ -76,6 +81,10 @@ export default function RegisterScreen() {
             <View style={s.overlay} />
 
             <SafeAreaView style={s.safe}>
+                <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+                    <ChevronLeft size={22} color={MUTED} />
+                </TouchableOpacity>
+
                 <KeyboardAvoidingView
                     behavior={Platform.OS === "ios" ? "padding" : "height"}
                     style={s.kav}
@@ -95,16 +104,19 @@ export default function RegisterScreen() {
                                 <Text style={s.tagline}>Access without limits.</Text>
                             </View>
 
-                            <View style={s.card}>
-                                <Text style={s.heading}>Request Access</Text>
-                                <Text style={s.subheading}>Join a circle of people who expect more.</Text>
+                            <View style={s.dividerRow}>
+                                <View style={s.dividerLine} />
+                                <Text style={s.dividerLabel}>MEMBERSHIP REQUEST</Text>
+                                <View style={s.dividerLine} />
+                            </View>
 
-                                <View style={[s.inputWrap, nameFocused && s.inputWrapFocused]}>
-                                    <Text style={s.inputLabel}>Full Name</Text>
+                            <View style={s.form}>
+                                <View style={[s.inputBlock, nameFocused && s.inputBlockFocused]}>
+                                    <Text style={s.inputLabel}>FULL NAME</Text>
                                     <TextInput
                                         style={s.input}
                                         placeholder="e.g. Adaeze Okafor"
-                                        placeholderTextColor={C.muted}
+                                        placeholderTextColor="rgba(255,255,255,0.2)"
                                         autoCapitalize="words"
                                         value={fullName}
                                         onChangeText={setFullName}
@@ -114,12 +126,12 @@ export default function RegisterScreen() {
                                     />
                                 </View>
 
-                                <View style={[s.inputWrap, emailFocused && s.inputWrapFocused]}>
-                                    <Text style={s.inputLabel}>Email Address</Text>
+                                <View style={[s.inputBlock, emailFocused && s.inputBlockFocused]}>
+                                    <Text style={s.inputLabel}>EMAIL</Text>
                                     <TextInput
                                         style={s.input}
                                         placeholder="you@example.com"
-                                        placeholderTextColor={C.muted}
+                                        placeholderTextColor="rgba(255,255,255,0.2)"
                                         keyboardType="email-address"
                                         autoCapitalize="none"
                                         value={email}
@@ -130,13 +142,28 @@ export default function RegisterScreen() {
                                     />
                                 </View>
 
-                                <View style={[s.inputWrap, passwordFocused && s.inputWrapFocused]}>
-                                    <Text style={s.inputLabel}>Password</Text>
+                                <View style={[s.inputBlock, phoneFocused && s.inputBlockFocused]}>
+                                    <Text style={s.inputLabel}>PHONE</Text>
+                                    <TextInput
+                                        style={s.input}
+                                        placeholder="+234 800 000 0000"
+                                        placeholderTextColor="rgba(255,255,255,0.2)"
+                                        keyboardType="phone-pad"
+                                        value={phone}
+                                        onChangeText={setPhone}
+                                        onFocus={() => setPhoneFocused(true)}
+                                        onBlur={() => setPhoneFocused(false)}
+                                        returnKeyType="next"
+                                    />
+                                </View>
+
+                                <View style={[s.inputBlock, passwordFocused && s.inputBlockFocused]}>
+                                    <Text style={s.inputLabel}>PASSWORD</Text>
                                     <View style={s.passwordRow}>
                                         <TextInput
                                             style={[s.input, { flex: 1 }]}
                                             placeholder="min. 8 characters"
-                                            placeholderTextColor={C.muted}
+                                            placeholderTextColor="rgba(255,255,255,0.2)"
                                             secureTextEntry={!showPassword}
                                             value={password}
                                             onChangeText={setPassword}
@@ -146,19 +173,22 @@ export default function RegisterScreen() {
                                             onSubmitEditing={handleRegister}
                                         />
                                         <TouchableOpacity onPress={() => setShowPassword(p => !p)} style={s.eyeBtn}>
-                                            {showPassword ? <EyeOff size={16} color={C.muted} /> : <Eye size={16} color={C.muted} />}
+                                            {showPassword
+                                                ? <EyeOff size={20} color={MUTED} />
+                                                : <Eye size={20} color={MUTED} />}
                                         </TouchableOpacity>
                                     </View>
                                 </View>
-
-                                <TouchableOpacity
-                                    style={[s.btn, loading && { opacity: 0.6 }]}
-                                    onPress={handleRegister}
-                                    disabled={loading}
-                                >
-                                    <Text style={s.btnText}>{loading ? "Creating account..." : "Create Account"}</Text>
-                                </TouchableOpacity>
                             </View>
+
+                            <TouchableOpacity
+                                style={[s.btn, loading && s.btnLoading]}
+                                onPress={handleRegister}
+                                disabled={loading}
+                                activeOpacity={0.85}
+                            >
+                                <Text style={s.btnText}>{loading ? "Submitting..." : "Request Access"}</Text>
+                            </TouchableOpacity>
 
                             <TouchableOpacity onPress={() => router.push("/(auth)/login")} style={s.switchRow}>
                                 <Text style={s.switchText}>
@@ -171,25 +201,28 @@ export default function RegisterScreen() {
                 </KeyboardAvoidingView>
             </SafeAreaView>
 
-            <Modal visible={showAlert} transparent animationType="none">
+            <Modal visible={showAlert || !!errorMsg} transparent animationType="none">
                 <View style={s.modalOverlay}>
-                    <Animated.View style={[
-                        s.modalBox,
-                        {
-                            opacity: alertOpacity,
-                            transform: [{ scale: alertScale }]
-                        }
-                    ]}>
-                        <View style={s.modalIconWrap}>
-                            <Text style={s.modalIconCheck}>✓</Text>
+                    <Animated.View style={[s.modalBox, { opacity: alertOpacity, transform: [{ scale: alertScale }] }]}>
+                        <View style={[s.modalIconWrap, !!errorMsg && s.modalIconWrapError]}>
+                            <Text style={[s.modalIconCheck, !!errorMsg && s.modalIconX]}>
+                                {errorMsg ? "×" : "✓"}
+                            </Text>
                         </View>
-                        <Text style={s.modalTitle}>Welcome to Lapeq</Text>
+                        <Text style={s.modalTitle}>{errorMsg ? "Something went wrong" : "Request Received"}</Text>
                         <Text style={s.modalBody}>
-                            Your account has been created. Please sign in to access your world.
+                            {errorMsg || "Welcome to Lapeq. Check your email to verify your account and unlock access."}
                         </Text>
-
-                        <TouchableOpacity style={s.modalBtnPrimary} onPress={hideAlertAndGo}>
-                            <Text style={s.modalBtnTxPri}>Continue</Text>
+                        <TouchableOpacity
+                            style={s.modalBtnPrimary}
+                            onPress={errorMsg ? () => {
+                                Animated.parallel([
+                                    Animated.timing(alertOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+                                    Animated.timing(alertScale, { toValue: 0.95, duration: 200, useNativeDriver: true })
+                                ]).start(() => setErrorMsg(""));
+                            } : hideAlertAndGo}
+                        >
+                            <Text style={s.modalBtnTxPri}>{errorMsg ? "Try Again" : "Continue to Sign In"}</Text>
                         </TouchableOpacity>
                     </Animated.View>
                 </View>
@@ -198,49 +231,57 @@ export default function RegisterScreen() {
     );
 }
 
-const getStyles = (C: any) => StyleSheet.create({
-    bg: { flex: 1, backgroundColor: "#0a0a0a" },
-    overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.82)" },
+const s = StyleSheet.create({
+    bg: { flex: 1, backgroundColor: DARK },
+    overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.78)" },
     safe: { flex: 1 },
+    backBtn: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 4 },
     kav: { flex: 1 },
-    scroll: { flexGrow: 1, justifyContent: "center", paddingHorizontal: 28, paddingVertical: 32 },
+    scroll: { flexGrow: 1, paddingHorizontal: 28, paddingBottom: 40 },
 
-    logoArea: { alignItems: "center", marginBottom: 40 },
-    logo: { width: 68, height: 68, marginBottom: 12 },
-    tagline: { fontSize: 14, fontStyle: "italic", color: C.muted, letterSpacing: 0.5, fontWeight: "300" },
+    logoArea: { alignItems: "center", marginTop: 8, marginBottom: 36 },
+    logo: { width: 72, height: 72, marginBottom: 14 },
+    tagline: { fontSize: 16, fontFamily: "PlayfairDisplay_400Regular_Italic", color: MUTED, letterSpacing: 0.3 },
 
-    card: {
-        backgroundColor: "rgba(255,255,255,0.03)",
-        borderWidth: 1, borderColor: "#1a1a1a",
-        borderRadius: 20, padding: 24, marginBottom: 24,
+    dividerRow: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 36 },
+    dividerLine: { flex: 1, height: 1, backgroundColor: "rgba(255,255,255,0.06)" },
+    dividerLabel: { fontSize: 9, fontFamily: "Jost_800ExtraBold", color: GOLD, letterSpacing: 2.5 },
+
+    form: { marginBottom: 32 },
+    inputBlock: {
+        borderBottomWidth: 1,
+        borderBottomColor: "rgba(255,255,255,0.1)",
+        paddingVertical: 16,
+        marginBottom: 8,
     },
-    heading: { fontSize: 22, fontWeight: "300", color: "#fff", letterSpacing: 0.5, marginBottom: 6 },
-    subheading: { fontSize: 13, color: C.muted, marginBottom: 28, fontStyle: "italic" },
-    inputWrap: {
-        borderBottomWidth: 1, borderBottomColor: "#383838",
-        marginBottom: 24, paddingBottom: 10,
-        backgroundColor: "rgba(255,255,255,0.04)",
-        borderRadius: 8, paddingHorizontal: 12, paddingTop: 10,
-    },
-    inputWrapFocused: { borderBottomColor: C.primary, backgroundColor: "rgba(201,168,76,0.06)" },
-    inputLabel: { fontSize: 10, fontWeight: "700", color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 },
-    input: { fontSize: 16, color: "#fff", paddingVertical: 2 },
+    inputBlockFocused: { borderBottomColor: GOLD },
+    inputLabel: { fontSize: 10, fontFamily: "Jost_800ExtraBold", color: GOLD, letterSpacing: 2, marginBottom: 12 },
+    input: { fontSize: 18, fontFamily: "Jost_400Regular", color: "#fff", paddingVertical: 0 },
     passwordRow: { flexDirection: "row", alignItems: "center" },
     eyeBtn: { paddingLeft: 12 },
 
-    btn: { backgroundColor: C.primary, borderRadius: 16, paddingVertical: 18, alignItems: "center", marginTop: 12 },
-    btnText: { color: "#0a0a0a", fontSize: 15, fontWeight: "800", letterSpacing: 0.5 },
+    btn: {
+        backgroundColor: GOLD,
+        borderRadius: 16,
+        paddingVertical: 22,
+        alignItems: "center",
+        marginBottom: 28,
+    },
+    btnLoading: { opacity: 0.6 },
+    btnText: { color: DARK, fontSize: 17, fontFamily: "Jost_800ExtraBold", letterSpacing: 0.8 },
 
     switchRow: { alignItems: "center" },
-    switchText: { fontSize: 13, color: C.muted },
-    switchLink: { color: C.primary, fontWeight: "600" },
+    switchText: { fontSize: 13, fontFamily: "Jost_400Regular", color: MUTED },
+    switchLink: { color: GOLD, fontFamily: "Jost_600SemiBold" },
 
-    modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "center", alignItems: "center", padding: 24 },
-    modalBox: { width: "100%", backgroundColor: "#111", borderRadius: 24, padding: 32, borderWidth: 1, borderColor: C.primary, alignItems: "center" },
-    modalIconWrap: { width: 48, height: 48, borderRadius: 24, backgroundColor: "rgba(201,168,76,0.1)", justifyContent: "center", alignItems: "center", marginBottom: 20 },
-    modalIconCheck: { color: C.primary, fontSize: 24, fontWeight: "600" },
-    modalTitle: { color: "#fff", fontSize: 20, fontWeight: "700", marginBottom: 12 },
-    modalBody: { color: "#888", fontSize: 14, textAlign: "center", lineHeight: 22, marginBottom: 32 },
-    modalBtnPrimary: { width: "100%", paddingVertical: 14, borderRadius: 12, backgroundColor: C.primary, alignItems: "center" },
-    modalBtnTxPri: { color: "#0a0a0a", fontSize: 14, fontWeight: "700" },
+    modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 24 },
+    modalBox: { width: "100%", backgroundColor: "#111", borderRadius: 24, padding: 32, borderWidth: 1, borderColor: "rgba(201,168,76,0.3)", alignItems: "center" },
+    modalIconWrap: { width: 52, height: 52, borderRadius: 26, backgroundColor: "rgba(201,168,76,0.12)", justifyContent: "center", alignItems: "center", marginBottom: 20 },
+    modalIconWrapError: { backgroundColor: "rgba(255,60,60,0.12)" },
+    modalIconCheck: { color: GOLD, fontSize: 24, fontFamily: "Jost_600SemiBold" },
+    modalIconX: { color: "#ff5555", fontSize: 28, fontFamily: "Jost_300Light", lineHeight: 32 },
+    modalTitle: { color: "#fff", fontSize: 20, fontFamily: "Jost_700Bold", marginBottom: 10 },
+    modalBody: { color: "rgba(255,255,255,0.5)", fontSize: 14, fontFamily: "Jost_400Regular", textAlign: "center", lineHeight: 22, marginBottom: 28 },
+    modalBtnPrimary: { width: "100%", paddingVertical: 14, borderRadius: 12, backgroundColor: GOLD, alignItems: "center" },
+    modalBtnTxPri: { color: DARK, fontSize: 14, fontFamily: "Jost_700Bold" },
 });

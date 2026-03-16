@@ -184,7 +184,7 @@ const s = StyleSheet.create({
 
     logoArea: { alignItems: "center", marginBottom: 56 },
     logo: { width: 88, height: 88, marginBottom: 20 },
-    tagline: { fontSize: 16, fontStyle: "italic", color: MUTED, letterSpacing: 0.5 },
+    tagline: { fontSize: 17, fontFamily: "PlayfairDisplay_400Regular_Italic", color: MUTED, letterSpacing: 0.3 },
 
     form: { marginBottom: 40 },
     inputBlock: {
@@ -194,13 +194,13 @@ const s = StyleSheet.create({
         marginBottom: 8,
     },
     inputBlockFocused: { borderBottomColor: GOLD },
-    inputLabel: { fontSize: 10, fontWeight: "800", color: GOLD, letterSpacing: 2.5, marginBottom: 14 },
-    input: { fontSize: 20, color: "#fff", paddingVertical: 0 },
+    inputLabel: { fontSize: 10, fontFamily: "Jost_800ExtraBold", color: GOLD, letterSpacing: 2, marginBottom: 14 },
+    input: { fontSize: 20, fontFamily: "Jost_400Regular", color: "#fff", paddingVertical: 0 },
     passwordRow: { flexDirection: "row", alignItems: "center" },
     eyeBtn: { paddingLeft: 12 },
 
     forgotRow: { alignItems: "flex-end", marginTop: 12, marginBottom: 36 },
-    forgot: { fontSize: 14, color: MUTED },
+    forgot: { fontSize: 14, fontFamily: "Jost_400Regular", color: MUTED },
 
     btn: {
         backgroundColor: GOLD,
@@ -209,12 +209,12 @@ const s = StyleSheet.create({
         alignItems: "center",
     },
     btnLoading: { opacity: 0.6 },
-    btnText: { color: DARK, fontSize: 17, fontWeight: "800", letterSpacing: 1 },
+    btnText: { color: DARK, fontSize: 17, fontFamily: "Jost_800ExtraBold", letterSpacing: 0.8 },
 
     footer: { gap: 20 },
     divider: { flexDirection: "row", alignItems: "center", gap: 12 },
     dividerLine: { flex: 1, height: 1, backgroundColor: "rgba(255,255,255,0.08)" },
-    dividerText: { fontSize: 13, color: MUTED },
+    dividerText: { fontSize: 13, fontFamily: "Jost_400Regular", color: MUTED },
     registerBtn: {
         borderWidth: 1,
         borderColor: "rgba(255,255,255,0.12)",
@@ -222,7 +222,7 @@ const s = StyleSheet.create({
         paddingVertical: 20,
         alignItems: "center",
     },
-    registerBtnText: { color: "rgba(255,255,255,0.7)", fontSize: 16, fontWeight: "600" },
+    registerBtnText: { color: "rgba(255,255,255,0.7)", fontSize: 16, fontFamily: "Jost_500Medium" },
 
     modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 24 },
     modalBox: {
@@ -235,12 +235,12 @@ const s = StyleSheet.create({
         alignItems: "center",
     },
     modalIconWrap: { width: 52, height: 52, borderRadius: 26, backgroundColor: "rgba(255,60,60,0.12)", justifyContent: "center", alignItems: "center", marginBottom: 20 },
-    modalIconX: { color: "#ff5555", fontSize: 28, fontWeight: "300", lineHeight: 32 },
-    modalTitle: { color: "#fff", fontSize: 20, fontWeight: "700", marginBottom: 10 },
-    modalBody: { color: "rgba(255,255,255,0.5)", fontSize: 14, textAlign: "center", lineHeight: 22, marginBottom: 28 },
+    modalIconX: { color: "#ff5555", fontSize: 28, fontFamily: "Jost_300Light", lineHeight: 32 },
+    modalTitle: { color: "#fff", fontSize: 20, fontFamily: "Jost_700Bold", marginBottom: 10 },
+    modalBody: { color: "rgba(255,255,255,0.5)", fontSize: 14, fontFamily: "Jost_400Regular", textAlign: "center", lineHeight: 22, marginBottom: 28 },
     modalActions: { flexDirection: "row", gap: 12, width: "100%" },
     modalBtnSecondary: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.06)", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)", alignItems: "center" },
-    modalBtnTxSec: { color: "rgba(255,255,255,0.7)", fontSize: 14, fontWeight: "600" },
+    modalBtnTxSec: { color: "rgba(255,255,255,0.7)", fontSize: 14, fontFamily: "Jost_600SemiBold" },
     modalBtnPrimary: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: GOLD, alignItems: "center" },
-    modalBtnTxPri: { color: DARK, fontSize: 14, fontWeight: "700" },
+    modalBtnTxPri: { color: DARK, fontSize: 14, fontFamily: "Jost_700Bold" },
 });
