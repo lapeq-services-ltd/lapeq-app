@@ -13,27 +13,50 @@ const GOLD = "#c9a84c";
 const DARK = "#0a0a0a";
 const MUTED = "rgba(255,255,255,0.4)";
 
+function getStrength(pwd: string) {
+    if (pwd.length === 0) return { level: 0, label: "", color: "transparent" };
+    let score = 0;
+    if (pwd.length >= 8) score++;
+    if (pwd.length >= 12) score++;
+    if (/[A-Z]/.test(pwd)) score++;
+    if (/[0-9]/.test(pwd)) score++;
+    if (/[^A-Za-z0-9]/.test(pwd)) score++;
+    if (score <= 1) return { level: 1, label: "Weak", color: "#ff5555" };
+    if (score <= 3) return { level: 2, label: "Fair", color: "#f0a500" };
+    return { level: 3, label: "Strong", color: "#50c878" };
+}
+
 export default function RegisterScreen() {
     const router = useRouter();
     const [fullName, setFullName] = useState("");
+    const [preferredName, setPreferredName] = useState("");
     const [email, setEmail] = useState("");
     const [phone, setPhone] = useState("");
     const [password, setPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
+    const [showConfirm, setShowConfirm] = useState(false);
     const [loading, setLoading] = useState(false);
 
     const [nameFocused, setNameFocused] = useState(false);
+    const [preferredFocused, setPreferredFocused] = useState(false);
     const [emailFocused, setEmailFocused] = useState(false);
     const [phoneFocused, setPhoneFocused] = useState(false);
     const [passwordFocused, setPasswordFocused] = useState(false);
+    const [confirmFocused, setConfirmFocused] = useState(false);
 
     const [showAlert, setShowAlert] = useState(false);
     const [errorMsg, setErrorMsg] = useState("");
     const alertOpacity = useRef(new Animated.Value(0)).current;
     const alertScale = useRef(new Animated.Value(0.95)).current;
-
     const opacity = useRef(new Animated.Value(0)).current;
     const slideUp = useRef(new Animated.Value(30)).current;
+
+    const preferredRef = useRef<TextInput>(null);
+    const emailRef = useRef<TextInput>(null);
+    const phoneRef = useRef<TextInput>(null);
+    const passwordRef = useRef<TextInput>(null);
+    const confirmRef = useRef<TextInput>(null);
 
     useEffect(() => {
         Animated.parallel([
@@ -42,24 +65,50 @@ export default function RegisterScreen() {
         ]).start();
     }, []);
 
-    const handleRegister = async () => {
-        if (!fullName || !email || !password) return;
-        setLoading(true);
-        const { error } = await supabase.auth.signUp({
-            email,
-            password,
-            options: { data: { full_name: fullName, phone } },
-        });
-        setLoading(false);
-        if (error) {
-            setErrorMsg(error.message);
-        } else {
-            setShowAlert(true);
-        }
+    const strength = getStrength(password);
+    const passwordsMismatch = confirmPassword.length > 0 && password !== confirmPassword;
+
+    const triggerModal = (isError: boolean, msg?: string) => {
+        if (isError && msg) setErrorMsg(msg);
+        else setShowAlert(true);
         Animated.parallel([
             Animated.timing(alertOpacity, { toValue: 1, duration: 250, useNativeDriver: true }),
             Animated.spring(alertScale, { toValue: 1, friction: 8, tension: 40, useNativeDriver: true })
         ]).start();
+    };
+
+    const handleRegister = async () => {
+        if (!fullName || !email || !password) return;
+        if (password.length < 8) {
+            triggerModal(true, "Password must be at least 8 characters long.");
+            return;
+        }
+        if (password !== confirmPassword) {
+            triggerModal(true, "Passwords do not match. Please check and try again.");
+            return;
+        }
+        setLoading(true);
+        const { error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+                data: {
+                    full_name: fullName,
+                    preferred_name: preferredName || fullName.split(" ")[0],
+                    phone,
+                },
+            },
+        });
+        setLoading(false);
+        if (error) {
+            const isExisting = error.message.toLowerCase().includes("already registered") || error.message.toLowerCase().includes("already exists");
+            triggerModal(true, isExisting
+                ? "An account with this email already exists. Try signing in instead."
+                : error.message
+            );
+        } else {
+            triggerModal(false);
+        }
     };
 
     const hideAlertAndGo = () => {
@@ -70,6 +119,13 @@ export default function RegisterScreen() {
             setShowAlert(false);
             router.replace("/(auth)/login");
         });
+    };
+
+    const hideError = () => {
+        Animated.parallel([
+            Animated.timing(alertOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+            Animated.timing(alertScale, { toValue: 0.95, duration: 200, useNativeDriver: true })
+        ]).start(() => setErrorMsg(""));
     };
 
     return (
@@ -123,12 +179,31 @@ export default function RegisterScreen() {
                                         onFocus={() => setNameFocused(true)}
                                         onBlur={() => setNameFocused(false)}
                                         returnKeyType="next"
+                                        onSubmitEditing={() => preferredRef.current?.focus()}
+                                    />
+                                </View>
+
+                                <View style={[s.inputBlock, preferredFocused && s.inputBlockFocused]}>
+                                    <Text style={s.inputLabel}>PREFERRED NAME</Text>
+                                    <TextInput
+                                        ref={preferredRef}
+                                        style={s.input}
+                                        placeholder="What should we call you?"
+                                        placeholderTextColor="rgba(255,255,255,0.2)"
+                                        autoCapitalize="words"
+                                        value={preferredName}
+                                        onChangeText={setPreferredName}
+                                        onFocus={() => setPreferredFocused(true)}
+                                        onBlur={() => setPreferredFocused(false)}
+                                        returnKeyType="next"
+                                        onSubmitEditing={() => emailRef.current?.focus()}
                                     />
                                 </View>
 
                                 <View style={[s.inputBlock, emailFocused && s.inputBlockFocused]}>
                                     <Text style={s.inputLabel}>EMAIL</Text>
                                     <TextInput
+                                        ref={emailRef}
                                         style={s.input}
                                         placeholder="you@example.com"
                                         placeholderTextColor="rgba(255,255,255,0.2)"
@@ -139,12 +214,14 @@ export default function RegisterScreen() {
                                         onFocus={() => setEmailFocused(true)}
                                         onBlur={() => setEmailFocused(false)}
                                         returnKeyType="next"
+                                        onSubmitEditing={() => phoneRef.current?.focus()}
                                     />
                                 </View>
 
                                 <View style={[s.inputBlock, phoneFocused && s.inputBlockFocused]}>
                                     <Text style={s.inputLabel}>PHONE</Text>
                                     <TextInput
+                                        ref={phoneRef}
                                         style={s.input}
                                         placeholder="+234 800 000 0000"
                                         placeholderTextColor="rgba(255,255,255,0.2)"
@@ -154,6 +231,7 @@ export default function RegisterScreen() {
                                         onFocus={() => setPhoneFocused(true)}
                                         onBlur={() => setPhoneFocused(false)}
                                         returnKeyType="next"
+                                        onSubmitEditing={() => passwordRef.current?.focus()}
                                     />
                                 </View>
 
@@ -161,6 +239,7 @@ export default function RegisterScreen() {
                                     <Text style={s.inputLabel}>PASSWORD</Text>
                                     <View style={s.passwordRow}>
                                         <TextInput
+                                            ref={passwordRef}
                                             style={[s.input, { flex: 1 }]}
                                             placeholder="min. 8 characters"
                                             placeholderTextColor="rgba(255,255,255,0.2)"
@@ -169,15 +248,49 @@ export default function RegisterScreen() {
                                             onChangeText={setPassword}
                                             onFocus={() => setPasswordFocused(true)}
                                             onBlur={() => setPasswordFocused(false)}
+                                            returnKeyType="next"
+                                            onSubmitEditing={() => confirmRef.current?.focus()}
+                                        />
+                                        <TouchableOpacity onPress={() => setShowPassword(p => !p)} style={s.eyeBtn}>
+                                            {showPassword ? <EyeOff size={20} color={MUTED} /> : <Eye size={20} color={MUTED} />}
+                                        </TouchableOpacity>
+                                    </View>
+                                    {password.length > 0 && (
+                                        <View style={s.strengthWrap}>
+                                            <View style={s.strengthTrack}>
+                                                <View style={[s.strengthFill, {
+                                                    width: `${Math.round((strength.level / 3) * 100)}%` as any,
+                                                    backgroundColor: strength.color,
+                                                }]} />
+                                            </View>
+                                            <Text style={[s.strengthLabel, { color: strength.color }]}>{strength.label}</Text>
+                                        </View>
+                                    )}
+                                </View>
+
+                                <View style={[s.inputBlock, confirmFocused && s.inputBlockFocused, passwordsMismatch && s.inputBlockError]}>
+                                    <Text style={s.inputLabel}>CONFIRM PASSWORD</Text>
+                                    <View style={s.passwordRow}>
+                                        <TextInput
+                                            ref={confirmRef}
+                                            style={[s.input, { flex: 1 }]}
+                                            placeholder="re-enter password"
+                                            placeholderTextColor="rgba(255,255,255,0.2)"
+                                            secureTextEntry={!showConfirm}
+                                            value={confirmPassword}
+                                            onChangeText={setConfirmPassword}
+                                            onFocus={() => setConfirmFocused(true)}
+                                            onBlur={() => setConfirmFocused(false)}
                                             returnKeyType="done"
                                             onSubmitEditing={handleRegister}
                                         />
-                                        <TouchableOpacity onPress={() => setShowPassword(p => !p)} style={s.eyeBtn}>
-                                            {showPassword
-                                                ? <EyeOff size={20} color={MUTED} />
-                                                : <Eye size={20} color={MUTED} />}
+                                        <TouchableOpacity onPress={() => setShowConfirm(p => !p)} style={s.eyeBtn}>
+                                            {showConfirm ? <EyeOff size={20} color={MUTED} /> : <Eye size={20} color={MUTED} />}
                                         </TouchableOpacity>
                                     </View>
+                                    {passwordsMismatch && (
+                                        <Text style={s.mismatchText}>Passwords do not match</Text>
+                                    )}
                                 </View>
                             </View>
 
@@ -215,12 +328,7 @@ export default function RegisterScreen() {
                         </Text>
                         <TouchableOpacity
                             style={s.modalBtnPrimary}
-                            onPress={errorMsg ? () => {
-                                Animated.parallel([
-                                    Animated.timing(alertOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
-                                    Animated.timing(alertScale, { toValue: 0.95, duration: 200, useNativeDriver: true })
-                                ]).start(() => setErrorMsg(""));
-                            } : hideAlertAndGo}
+                            onPress={errorMsg ? hideError : hideAlertAndGo}
                         >
                             <Text style={s.modalBtnTxPri}>{errorMsg ? "Try Again" : "Continue to Sign In"}</Text>
                         </TouchableOpacity>
@@ -255,10 +363,18 @@ const s = StyleSheet.create({
         marginBottom: 8,
     },
     inputBlockFocused: { borderBottomColor: GOLD },
+    inputBlockError: { borderBottomColor: "#ff5555" },
     inputLabel: { fontSize: 10, fontFamily: "Jost_800ExtraBold", color: GOLD, letterSpacing: 2, marginBottom: 12 },
     input: { fontSize: 18, fontFamily: "Jost_400Regular", color: "#fff", paddingVertical: 0 },
     passwordRow: { flexDirection: "row", alignItems: "center" },
     eyeBtn: { paddingLeft: 12 },
+
+    strengthWrap: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 10 },
+    strengthTrack: { flex: 1, height: 2, backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 99, overflow: "hidden" },
+    strengthFill: { height: "100%", borderRadius: 99 },
+    strengthLabel: { fontSize: 10, fontFamily: "Jost_600SemiBold", letterSpacing: 0.5 },
+
+    mismatchText: { fontSize: 11, fontFamily: "Jost_400Regular", color: "#ff5555", marginTop: 6 },
 
     btn: {
         backgroundColor: GOLD,
