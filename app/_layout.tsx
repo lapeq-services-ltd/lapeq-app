@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import * as SplashScreen from "expo-splash-screen";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -14,6 +14,7 @@ SplashScreen.preventAutoHideAsync();
 function useProtectedRoute(session: Session | null, loading: boolean) {
     const segments = useSegments();
     const router = useRouter();
+    const hiddenRef = useRef(false);
 
     useEffect(() => {
         if (loading) return;
@@ -24,9 +25,10 @@ function useProtectedRoute(session: Session | null, loading: boolean) {
             router.replace("/(tabs)");
         }
 
-        setTimeout(() => {
-            SplashScreen.hideAsync();
-        }, 100);
+        if (!hiddenRef.current) {
+            hiddenRef.current = true;
+            setTimeout(() => SplashScreen.hideAsync().catch(() => {}), 100);
+        }
     }, [session, loading, segments]);
 }
 
