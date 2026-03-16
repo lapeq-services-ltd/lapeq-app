@@ -113,8 +113,8 @@ export default function LoginScreen() {
                                     />
                                     <TouchableOpacity onPress={() => setShowPassword(p => !p)} style={s.eyeBtn}>
                                         {showPassword
-                                            ? <EyeOff size={16} color={MUTED} />
-                                            : <Eye size={16} color={MUTED} />}
+                                            ? <EyeOff size={20} color={MUTED} />
+                                            : <Eye size={20} color={MUTED} />}
                                     </TouchableOpacity>
                                 </View>
                             </View>
@@ -180,49 +180,49 @@ const s = StyleSheet.create({
     overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.75)" },
     safe: { flex: 1 },
     kav: { flex: 1, justifyContent: "center" },
-    content: { paddingHorizontal: 32 },
+    content: { paddingHorizontal: 28 },
 
-    logoArea: { alignItems: "center", marginBottom: 52 },
-    logo: { width: 64, height: 64, marginBottom: 16 },
-    tagline: { fontSize: 13, fontStyle: "italic", color: MUTED, letterSpacing: 0.5 },
+    logoArea: { alignItems: "center", marginBottom: 56 },
+    logo: { width: 88, height: 88, marginBottom: 20 },
+    tagline: { fontSize: 16, fontStyle: "italic", color: MUTED, letterSpacing: 0.5 },
 
-    form: { marginBottom: 36 },
+    form: { marginBottom: 40 },
     inputBlock: {
         borderBottomWidth: 1,
         borderBottomColor: "rgba(255,255,255,0.1)",
-        paddingVertical: 14,
+        paddingVertical: 18,
         marginBottom: 8,
     },
     inputBlockFocused: { borderBottomColor: GOLD },
-    inputLabel: { fontSize: 9, fontWeight: "800", color: GOLD, letterSpacing: 2, marginBottom: 10 },
-    input: { fontSize: 16, color: "#fff", paddingVertical: 0 },
+    inputLabel: { fontSize: 10, fontWeight: "800", color: GOLD, letterSpacing: 2.5, marginBottom: 14 },
+    input: { fontSize: 20, color: "#fff", paddingVertical: 0 },
     passwordRow: { flexDirection: "row", alignItems: "center" },
     eyeBtn: { paddingLeft: 12 },
 
-    forgotRow: { alignItems: "flex-end", marginTop: 8, marginBottom: 32 },
-    forgot: { fontSize: 12, color: MUTED },
+    forgotRow: { alignItems: "flex-end", marginTop: 12, marginBottom: 36 },
+    forgot: { fontSize: 14, color: MUTED },
 
     btn: {
         backgroundColor: GOLD,
-        borderRadius: 14,
-        paddingVertical: 18,
+        borderRadius: 16,
+        paddingVertical: 22,
         alignItems: "center",
     },
     btnLoading: { opacity: 0.6 },
-    btnText: { color: DARK, fontSize: 15, fontWeight: "800", letterSpacing: 1 },
+    btnText: { color: DARK, fontSize: 17, fontWeight: "800", letterSpacing: 1 },
 
     footer: { gap: 20 },
     divider: { flexDirection: "row", alignItems: "center", gap: 12 },
     dividerLine: { flex: 1, height: 1, backgroundColor: "rgba(255,255,255,0.08)" },
-    dividerText: { fontSize: 12, color: MUTED },
+    dividerText: { fontSize: 13, color: MUTED },
     registerBtn: {
         borderWidth: 1,
         borderColor: "rgba(255,255,255,0.12)",
-        borderRadius: 14,
-        paddingVertical: 16,
+        borderRadius: 16,
+        paddingVertical: 20,
         alignItems: "center",
     },
-    registerBtnText: { color: "rgba(255,255,255,0.7)", fontSize: 14, fontWeight: "600" },
+    registerBtnText: { color: "rgba(255,255,255,0.7)", fontSize: 16, fontWeight: "600" },
 
     modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 24 },
     modalBox: {
