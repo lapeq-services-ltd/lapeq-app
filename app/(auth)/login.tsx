@@ -10,14 +10,9 @@ import { Eye, EyeOff } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
 
-const GOLD = "#C9A84C";
-const DARK = "#0A0A0A";
-const MUTED = "#666666";
-const INPUT_LINE = "#383838";
-
 export default function LoginScreen() {
     const router = useRouter();
-    const { C, theme } = useTheme();
+    const { C } = useTheme();
     const s = useMemo(() => getStyles(C), [C]);
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -25,12 +20,9 @@ export default function LoginScreen() {
     const [loading, setLoading] = useState(false);
     const [emailFocused, setEmailFocused] = useState(false);
     const [passwordFocused, setPasswordFocused] = useState(false);
-
-    // Custom alert state
     const [showAlert, setShowAlert] = useState(false);
     const alertOpacity = useRef(new Animated.Value(0)).current;
     const alertScale = useRef(new Animated.Value(0.9)).current;
-
     const opacity = useRef(new Animated.Value(0)).current;
     const slideUp = useRef(new Animated.Value(30)).current;
 
@@ -42,15 +34,11 @@ export default function LoginScreen() {
     }, []);
 
     const handleLogin = async () => {
-        if (!email || !password) {
-            // we could expand custom alert for this, but standard user error is fine for empty fields
-            return;
-        }
+        if (!email || !password) return;
         setLoading(true);
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         setLoading(false);
         if (error) {
-            // Show custom lapeq alert
             setShowAlert(true);
             Animated.parallel([
                 Animated.timing(alertOpacity, { toValue: 1, duration: 250, useNativeDriver: true }),
@@ -63,9 +51,7 @@ export default function LoginScreen() {
         Animated.parallel([
             Animated.timing(alertOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
             Animated.timing(alertScale, { toValue: 0.9, duration: 200, useNativeDriver: true })
-        ]).start(() => {
-            setShowAlert(false);
-        });
+        ]).start(() => setShowAlert(false));
     };
 
     return (
@@ -74,7 +60,6 @@ export default function LoginScreen() {
             style={s.bg}
             resizeMode="cover"
         >
-            {/* Dark overlay */}
             <View style={s.overlay} />
 
             <SafeAreaView style={s.safe}>
@@ -83,7 +68,6 @@ export default function LoginScreen() {
                     style={s.kav}
                 >
                     <Animated.View style={[s.content, { opacity, transform: [{ translateY: slideUp }] }]}>
-                        {/* Logo + Tagline */}
                         <View style={s.logoArea}>
                             <Image
                                 source={require("@/assets/logo/Gemini_Generated_Image_ht0yyyht0yyyht0y-removebg-preview.png")}
@@ -93,11 +77,9 @@ export default function LoginScreen() {
                             <Text style={s.tagline}>Access without limits.</Text>
                         </View>
 
-                        {/* Form card */}
                         <View style={s.card}>
                             <Text style={s.heading}>Sign In</Text>
 
-                            {/* Email */}
                             <View style={[s.inputWrap, emailFocused && s.inputWrapFocused]}>
                                 <Text style={s.inputLabel}>Email</Text>
                                 <TextInput
@@ -114,7 +96,6 @@ export default function LoginScreen() {
                                 />
                             </View>
 
-                            {/* Password */}
                             <View style={[s.inputWrap, passwordFocused && s.inputWrapFocused]}>
                                 <Text style={s.inputLabel}>Password</Text>
                                 <View style={s.passwordRow}>
@@ -136,12 +117,10 @@ export default function LoginScreen() {
                                 </View>
                             </View>
 
-                            {/* Forgot */}
                             <TouchableOpacity onPress={() => router.push("/(auth)/forgot-password")} style={s.forgotRow}>
                                 <Text style={s.forgot}>Forgot password?</Text>
                             </TouchableOpacity>
 
-                            {/* CTA */}
                             <TouchableOpacity
                                 style={[s.btn, loading && { opacity: 0.6 }]}
                                 onPress={handleLogin}
@@ -151,7 +130,6 @@ export default function LoginScreen() {
                             </TouchableOpacity>
                         </View>
 
-                        {/* Register link */}
                         <TouchableOpacity onPress={() => router.push("/(auth)/register")} style={s.switchRow}>
                             <Text style={s.switchText}>
                                 Don't have an account?{"  "}
@@ -162,16 +140,9 @@ export default function LoginScreen() {
                 </KeyboardAvoidingView>
             </SafeAreaView>
 
-            {/* Custom Lapeq Alert Popup */}
             <Modal visible={showAlert} transparent animationType="none">
                 <View style={s.modalOverlay}>
-                    <Animated.View style={[
-                        s.modalBox, 
-                        { 
-                            opacity: alertOpacity,
-                            transform: [{ scale: alertScale }]
-                        }
-                    ]}>
+                    <Animated.View style={[s.modalBox, { opacity: alertOpacity, transform: [{ scale: alertScale }] }]}>
                         <View style={s.modalIconWrap}>
                             <Text style={s.modalIconX}>×</Text>
                         </View>
@@ -179,7 +150,6 @@ export default function LoginScreen() {
                         <Text style={s.modalBody}>
                             You do not have a registered account. Please request access to join Lapeq.
                         </Text>
-
                         <View style={s.modalActions}>
                             <TouchableOpacity style={s.modalBtnSecondary} onPress={hideAlert}>
                                 <Text style={s.modalBtnTxSec}>Try Again</Text>
@@ -204,18 +174,15 @@ const getStyles = (C: any) => StyleSheet.create({
     safe: { flex: 1 },
     kav: { flex: 1, justifyContent: "center" },
     content: { paddingHorizontal: 28, paddingBottom: 24 },
-
     logoArea: { alignItems: "center", marginBottom: 48 },
     logo: { width: 72, height: 72, marginBottom: 14 },
     tagline: { fontSize: 14, fontStyle: "italic", color: C.muted, letterSpacing: 0.5, fontWeight: "300" },
-
     card: {
         backgroundColor: "rgba(255,255,255,0.05)",
         borderWidth: 1, borderColor: "#242424",
         borderRadius: 20, padding: 24, marginBottom: 24,
     },
     heading: { fontSize: 22, fontWeight: "700", color: "#fff", letterSpacing: 0.5, marginBottom: 28 },
-
     inputWrap: {
         borderBottomWidth: 1, borderBottomColor: "#383838",
         marginBottom: 24, paddingBottom: 10,
@@ -227,21 +194,13 @@ const getStyles = (C: any) => StyleSheet.create({
     input: { fontSize: 16, color: "#fff", paddingVertical: 2 },
     passwordRow: { flexDirection: "row", alignItems: "center" },
     eyeBtn: { paddingLeft: 12 },
-
     forgotRow: { alignItems: "flex-end", marginBottom: 28 },
     forgot: { fontSize: 12, color: C.muted },
-
-    btn: {
-        backgroundColor: C.primary, borderRadius: 12,
-        paddingVertical: 16, alignItems: "center",
-    },
+    btn: { backgroundColor: C.primary, borderRadius: 12, paddingVertical: 16, alignItems: "center" },
     btnText: { color: C.background, fontSize: 15, fontWeight: "800", letterSpacing: 0.5 },
-
     switchRow: { alignItems: "center" },
     switchText: { fontSize: 13, color: C.muted },
     switchLink: { color: C.primary, fontWeight: "600" },
-
-    // Custom Modal
     modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "center", alignItems: "center", padding: 24 },
     modalBox: { width: "100%", backgroundColor: C.background, borderRadius: 24, padding: 32, borderWidth: 1, borderColor: C.primary, alignItems: "center" },
     modalIconWrap: { width: 48, height: 48, borderRadius: 24, backgroundColor: "rgba(255,50,50,0.1)", justifyContent: "center", alignItems: "center", marginBottom: 20 },
