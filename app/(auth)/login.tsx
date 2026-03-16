@@ -76,7 +76,6 @@ export default function LoginScreen() {
                                 style={s.logo}
                                 resizeMode="contain"
                             />
-                            <Text style={s.brand}>LAPEQ</Text>
                             <Text style={s.tagline}>Access without limits.</Text>
                         </View>
 
@@ -185,7 +184,6 @@ const s = StyleSheet.create({
 
     logoArea: { alignItems: "center", marginBottom: 52 },
     logo: { width: 64, height: 64, marginBottom: 16 },
-    brand: { fontSize: 13, fontWeight: "800", color: GOLD, letterSpacing: 6, marginBottom: 8 },
     tagline: { fontSize: 13, fontStyle: "italic", color: MUTED, letterSpacing: 0.5 },
 
     form: { marginBottom: 36 },
