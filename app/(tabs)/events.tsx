@@ -14,7 +14,6 @@ export default function EventsScreen() {
 
     return (
         <View style={s.root}>
-            {/* Hero */}
             <View style={s.hero}>
                 <Image
                     source={require("@/assets/images/lagos-rooftop.jpg")}
@@ -36,7 +35,6 @@ export default function EventsScreen() {
 
             <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 100 }}>
                 <View style={{ gap: 16 }}>
-                    {/* Date */}
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
                         <View style={s.metaIcon}>
                             <CalendarDays size={20} color={C.text} />
@@ -47,7 +45,6 @@ export default function EventsScreen() {
                         </View>
                     </View>
 
-                    {/* Location */}
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
                         <View style={s.metaIcon}>
                             <MapPin size={20} color={C.text} />
@@ -58,7 +55,6 @@ export default function EventsScreen() {
                         </View>
                     </View>
 
-                    {/* Attending */}
                     <View style={s.attendeeRow}>
                         <View style={{ flexDirection: "row" }}>
                             {["T", "A", "C", "K"].map((initial, i) => (
@@ -73,7 +69,6 @@ export default function EventsScreen() {
                         </View>
                     </View>
 
-                    {/* Concierge Introduction */}
                     <View style={s.introBox}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 }}>
                             <Crown size={22} color={C.primary} />
@@ -87,7 +82,6 @@ export default function EventsScreen() {
                         </TouchableOpacity>
                     </View>
 
-                    {/* About */}
                     <View>
                         <Text style={s.sectionTitle}>About This Experience</Text>
                         <Text style={s.bodyText}>
@@ -95,7 +89,6 @@ export default function EventsScreen() {
                         </Text>
                     </View>
 
-                    {/* Handled For You */}
                     <View>
                         <Text style={s.sectionTitle}>Handled For You</Text>
                         <View style={{ gap: 8 }}>
@@ -115,7 +108,6 @@ export default function EventsScreen() {
                 </View>
             </ScrollView>
 
-            {/* Fixed CTA */}
             <View style={s.ctaBar}>
                 <TouchableOpacity style={s.ctaBtn}>
                     <Text style={s.ctaBtnText}>Request Reservation</Text>

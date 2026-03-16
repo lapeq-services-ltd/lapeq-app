@@ -27,7 +27,6 @@ export default function RequestsScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [userId, setUserId] = useState<string | null>(null);
 
-    // --- Initial fetch ---
     const fetchRequests = async (uid?: string) => {
         const resolvedId = uid ?? userId;
         if (!resolvedId) return;
@@ -43,7 +42,6 @@ export default function RequestsScreen() {
         setRefreshing(false);
     };
 
-    // --- Get user on mount and subscribe to Realtime ---
     useEffect(() => {
         let channel: ReturnType<typeof supabase.channel> | null = null;
 
@@ -53,13 +51,12 @@ export default function RequestsScreen() {
             setUserId(user.id);
             await fetchRequests(user.id);
 
-            // Subscribe to realtime changes on THIS user's requests
             channel = supabase
                 .channel(`requests:${user.id}`)
                 .on(
                     "postgres_changes",
                     {
-                        event: "*", // INSERT, UPDATE, DELETE
+                        event: "*",
                         schema: "public",
                         table: "requests",
                         filter: `user_id=eq.${user.id}`,

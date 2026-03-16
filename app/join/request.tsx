@@ -32,7 +32,6 @@ export default function MembershipRequestScreen() {
                     <ChevronLeft size={32} color={C.cardFg} />
                 </TouchableOpacity>
 
-                {/* Demo Toggle (Discreetly at the top for presentation) */}
                 <View style={s.toggleContainer}>
                     <TouchableOpacity
                         style={[s.toggleBtn, demoMode === "A" && s.toggleBtnActive]}

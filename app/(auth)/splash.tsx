@@ -1,9 +1,11 @@
 import { useEffect, useRef } from "react";
 import { View, Animated, StyleSheet, Image } from "react-native";
 import { useRouter } from "expo-router";
+import { useTheme } from "@/context/ThemeContext";
 
 export default function SplashScreen() {
     const router = useRouter();
+    const { C } = useTheme();
     const opacity = useRef(new Animated.Value(0)).current;
     const barProgress = useRef(new Animated.Value(0)).current;
 
@@ -17,8 +19,7 @@ export default function SplashScreen() {
     }, []);
 
     return (
-        <View style={s.container}>
-            {/* Logo only */}
+        <View style={[s.container, { backgroundColor: C.background }]}>
             <Animated.View style={[s.logoWrap, { opacity }]}>
                 <View style={s.imgWrap}>
                     <Image
@@ -29,7 +30,6 @@ export default function SplashScreen() {
                 </View>
             </Animated.View>
 
-            {/* Loading bar */}
             <View style={s.barTrack}>
                 <Animated.View
                     style={[
@@ -48,7 +48,7 @@ export default function SplashScreen() {
 }
 
 const s = StyleSheet.create({
-    container: { flex: 1, backgroundColor: "#060606", alignItems: "center", justifyContent: "center" },
+    container: { flex: 1, alignItems: "center", justifyContent: "center" },
     logoWrap: { alignItems: "center", zIndex: 10 },
     imgWrap: { width: 128, height: 128, alignItems: "center", justifyContent: "center" },
     logoImg: { width: 128, height: 128 },

@@ -32,7 +32,6 @@ export default function ProfileScreen() {
         }, [])
     );
 
-    // Memoize styles to react to theme changes
     const s = useMemo(() => getStyles(C), [C]);
 
     return (
@@ -45,7 +44,6 @@ export default function ProfileScreen() {
             </View>
 
             <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}>
-                {/* Profile Info */}
                 <View style={s.profileRow}>
                     <View style={s.avatar}>
                         <Image
@@ -64,7 +62,6 @@ export default function ProfileScreen() {
                     </View>
                 </View>
 
-                {/* Membership Card */}
                 <View style={s.card}>
                     <View style={s.cardGlowCircle} />
                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
@@ -76,7 +73,6 @@ export default function ProfileScreen() {
                     </View>
                 </View>
 
-                {/* Theme Toggle */}
                 <View style={s.themeRow}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                         <View style={s.themeIconBox}>
@@ -92,7 +88,6 @@ export default function ProfileScreen() {
                     />
                 </View>
 
-                {/* My Requests Link */}
                 <TouchableOpacity style={s.themeRow} onPress={() => router.push("/requests")}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                         <View style={s.themeIconBox}>
@@ -103,7 +98,6 @@ export default function ProfileScreen() {
                     <ArrowRight size={20} color={C.muted} />
                 </TouchableOpacity>
 
-                {/* Stats */}
                 <View style={s.stats}>
                     {[{ val: "12", label: "Experiences" }, { val: "8", label: "Events" }, { val: "3", label: "Cities" }].map((st) => (
                         <View key={st.label} style={s.statBox}>
@@ -113,7 +107,6 @@ export default function ProfileScreen() {
                     ))}
                 </View>
 
-                {/* Recent Experiences */}
                 <Text style={s.sectionTitle}>Recent Experiences</Text>
                 <View style={{ gap: 10, marginBottom: 20 }}>
                     {[
@@ -148,12 +141,10 @@ export default function ProfileScreen() {
                     ))}
                 </View>
 
-                {/* Contact Concierge */}
                 <TouchableOpacity style={s.conciergeBtn}>
                     <Text style={s.conciergeBtnText}>Contact My Concierge</Text>
                 </TouchableOpacity>
 
-                {/* Sign out */}
                 <TouchableOpacity onPress={() => supabase.auth.signOut()} style={{ marginTop: 24, alignItems: "center" }}>
                     <Text style={{ fontSize: 15, color: C.muted, fontWeight: "500" }}>Sign out</Text>
                 </TouchableOpacity>

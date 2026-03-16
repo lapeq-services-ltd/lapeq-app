@@ -65,7 +65,6 @@ export default function TabsLayout() {
                     ),
                 }}
             />
-            {/* Hidden screens that act as nested routes */}
             <Tabs.Screen name="settings" options={{ href: null }} />
             <Tabs.Screen name="requests" options={{ href: null }} />
         </Tabs>

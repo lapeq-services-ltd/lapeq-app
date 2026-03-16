@@ -35,7 +35,6 @@ export default function TripPlannerScreen() {
             </View>
 
             <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}>
-                {/* Trip Hero */}
                 <View style={s.hero}>
                     <View style={s.heroOverlay} />
                     <View style={s.heroContent}>
@@ -48,7 +47,6 @@ export default function TripPlannerScreen() {
                     </View>
                 </View>
 
-                {/* City Selector */}
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
                     <View style={{ flexDirection: "row", gap: 8 }}>
                         {["Lagos", "Port Harcourt", "Abuja"].map((city, i) => (
@@ -59,7 +57,6 @@ export default function TripPlannerScreen() {
                     </View>
                 </ScrollView>
 
-                {/* Day 1 */}
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                     <View style={s.dayBadge}><Text style={s.dayNum}>1</Text></View>
                     <Text style={s.dayTitle}>Friday — Arrive & Settle</Text>
@@ -92,7 +89,6 @@ export default function TripPlannerScreen() {
                     ))}
                 </View>
 
-                {/* Day 2 */}
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12, marginTop: 20 }}>
                     <View style={s.dayBadge}><Text style={s.dayNum}>2</Text></View>
                     <Text style={s.dayTitle}>Saturday — Explore & Unwind</Text>
@@ -122,7 +118,6 @@ export default function TripPlannerScreen() {
                     ))}
                 </View>
 
-                {/* Concierge Note */}
                 <View style={s.conciergeNote}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 12 }}>
                         <Crown size={20} color={C.primary} />
@@ -133,7 +128,6 @@ export default function TripPlannerScreen() {
                     </Text>
                 </View>
 
-                {/* CTA */}
                 <TouchableOpacity style={s.cta}>
                     <Text style={s.ctaText}>Contact Concierge</Text>
                 </TouchableOpacity>

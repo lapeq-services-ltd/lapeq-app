@@ -9,10 +9,8 @@ import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 import { Session } from "@supabase/supabase-js";
 import { View, ActivityIndicator } from "react-native";
 
-// Keep the splash screen visible while we fetch session and route
 SplashScreen.preventAutoHideAsync();
 
-// Protect routes: redirect unauthenticated users to auth
 function useProtectedRoute(session: Session | null, loading: boolean) {
     const segments = useSegments();
     const router = useRouter();
@@ -26,7 +24,6 @@ function useProtectedRoute(session: Session | null, loading: boolean) {
             router.replace("/(tabs)");
         }
 
-        // Hide splash screen after navigation is scheduled
         setTimeout(() => {
             SplashScreen.hideAsync();
         }, 100);
@@ -67,6 +64,7 @@ function RootContent() {
             <Stack screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="(auth)" />
                 <Stack.Screen name="(tabs)" />
+                <Stack.Screen name="(main)" />
                 <Stack.Screen name="services" />
                 <Stack.Screen name="requests/[id]" />
             </Stack>

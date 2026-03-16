@@ -1,4 +1,3 @@
-// Lapeq Brand Colors
 export const Colors = {
     gold: "#c9a84c",
     black: "#060606",

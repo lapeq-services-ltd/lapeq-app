@@ -84,7 +84,6 @@ export default function PersonalInfoScreen() {
                 name, email, phone, country, state, imageUri
             }));
 
-            // Show custom toast
             setToastVisible(true);
             Animated.timing(toastAnim, { toValue: 20, duration: 300, useNativeDriver: true }).start();
 
@@ -102,7 +101,6 @@ export default function PersonalInfoScreen() {
 
     return (
         <SafeAreaView style={s.root}>
-            {/* Custom Toast Notification */}
             {toastVisible && (
                 <Animated.View style={[s.toastContainer, { transform: [{ translateY: toastAnim }] }]}>
                     <Check size={24} color={C.background} />
@@ -119,7 +117,6 @@ export default function PersonalInfoScreen() {
 
             <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
                 <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
-                    {/* Profile Picture */}
                     <View style={s.pfpContainer}>
                         <TouchableOpacity style={s.pfpWrap} onPress={pickImage}>
                             <Image
@@ -134,7 +131,6 @@ export default function PersonalInfoScreen() {
                         <Text style={s.pfpText} onPress={pickImage}>Change Profile Photo</Text>
                     </View>
 
-                    {/* Form Fields */}
                     <View style={s.formGroup}>
                         <Text style={s.label}>Full Name</Text>
                         <View style={s.inputContainer}>
@@ -208,7 +204,6 @@ export default function PersonalInfoScreen() {
                         </TouchableOpacity>
                     </View>
 
-                    {/* Manage Subscription / Tier */}
                     <TouchableOpacity style={s.tierBtn} onPress={() => router.push("/membership")}>
                         <Crown size={20} color={C.black} />
                         <Text style={s.tierBtnText}>Manage Subscription</Text>
@@ -217,7 +212,6 @@ export default function PersonalInfoScreen() {
                 </ScrollView>
             </KeyboardAvoidingView>
 
-            {/* Save Button */}
             <View style={s.footer}>
                 <TouchableOpacity style={s.saveBtn} onPress={handleSave}>
                     <Text style={s.saveBtnText}>Save Changes</Text>
@@ -258,7 +252,6 @@ export default function PersonalInfoScreen() {
                 </View>
             </Modal>
 
-            {/* Country Picker Modal */}
             <Modal visible={showCountryModal} animationType="slide" transparent={true} onRequestClose={() => setShowCountryModal(false)}>
                 <View style={s.modalOverlay}>
                     <View style={s.modalContent}>

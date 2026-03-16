@@ -27,12 +27,10 @@ export default function HomeScreen() {
         });
     }, []);
 
-    // Helper to determine text color inside the image badges based on theme
     const darkBadgeColor = theme === "dark" ? C.background : C.primary;
 
     return (
         <SafeAreaView style={s.root}>
-            {/* Header */}
             <View style={s.header}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                     <Image
@@ -54,13 +52,11 @@ export default function HomeScreen() {
             </View>
 
             <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 80 }}>
-                {/* Greeting */}
                 <View style={{ marginBottom: 20 }}>
                     <Text style={s.greetSub}>Good evening,</Text>
                     <Text style={s.greetName}>{userName}</Text>
                 </View>
 
-                {/* Quick Actions */}
                 <View style={s.quickActions}>
                     {[
                         { label: "Bookings", Icon: Calendar, route: "/trip-planner" as const },
@@ -77,7 +73,6 @@ export default function HomeScreen() {
                     ))}
                 </View>
 
-                {/* 24/7 Banner */}
                 <TouchableOpacity style={[s.banner, theme === "dark" && { backgroundColor: C.primary }]} onPress={() => router.push("/chat")}>
                     <View style={s.bannerIcon}>
                         <Headphones size={28} color={theme === "dark" ? C.background : C.primary} />
@@ -89,7 +84,6 @@ export default function HomeScreen() {
                     <ChevronRight size={24} color={theme === "dark" ? `${C.background}66` : C.muted} />
                 </TouchableOpacity>
 
-                {/* Curated For You */}
                 <View style={s.sectionRow}>
                     <Text style={s.sectionTitle}>Curated For You</Text>
                     <Text style={s.viewAll}>View all</Text>
@@ -127,7 +121,6 @@ export default function HomeScreen() {
                     ))}
                 </ScrollView>
 
-                {/* Upcoming Events */}
                 <View style={s.sectionRow}>
                     <Text style={s.sectionTitle}>Upcoming Events</Text>
                     <Text style={s.viewAll}>View all</Text>

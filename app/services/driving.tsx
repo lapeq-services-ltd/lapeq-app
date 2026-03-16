@@ -1,7 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import {
     View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
-    Alert, Platform, Keyboard, KeyboardAvoidingView, Image, ActivityIndicator
+    Platform, Keyboard, KeyboardAvoidingView, Image, ActivityIndicator,
+    Modal, Animated, Alert
 } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -20,7 +21,7 @@ const CAR_OPTIONS = [
 
 export default function DrivingServiceScreen() {
     const router = useRouter();
-    const { C } = useTheme();
+    const { C, theme } = useTheme();
     const s = useMemo(() => getStyles(C), [C]);
 
     const [pickup, setPickup] = useState("");
@@ -31,11 +32,13 @@ export default function DrivingServiceScreen() {
     const [loading, setLoading] = useState(false);
     const [locating, setLocating] = useState(false);
 
-    // Date
+    const [showSuccess, setShowSuccess] = useState(false);
+    const alertOpacity = useRef(new Animated.Value(0)).current;
+    const alertScale = useRef(new Animated.Value(0.9)).current;
+
     const [dateObj, setDateObj] = useState(new Date());
     const [showDatePicker, setShowDatePicker] = useState(false);
 
-    // Time
     const [timeObj, setTimeObj] = useState(new Date());
     const [showTimePicker, setShowTimePicker] = useState(false);
 
@@ -99,11 +102,23 @@ export default function DrivingServiceScreen() {
 
         setLoading(false);
         if (error) {
-            Alert.alert("Submission failed", error.message);
         } else {
-            Alert.alert("Request submitted ✓", "Your concierge will confirm shortly.");
-            router.back();
+            setShowSuccess(true);
+            Animated.parallel([
+                Animated.timing(alertOpacity, { toValue: 1, duration: 250, useNativeDriver: true }),
+                Animated.spring(alertScale, { toValue: 1, friction: 8, tension: 40, useNativeDriver: true })
+            ]).start();
         }
+    };
+
+    const hideSuccessAndGo = () => {
+        Animated.parallel([
+            Animated.timing(alertOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+            Animated.timing(alertScale, { toValue: 0.9, duration: 200, useNativeDriver: true })
+        ]).start(() => {
+            setShowSuccess(false);
+            router.back();
+        });
     };
 
     return (
@@ -116,7 +131,6 @@ export default function DrivingServiceScreen() {
                     <Text style={[s.title, { color: C.text }]}>Driving Service</Text>
                     <Text style={[s.subtitle, { color: C.muted }]}>Book a chauffeur or scheduled ride</Text>
 
-                    {/* Vehicle Class */}
                     <Text style={[s.label, { color: C.text }]}>Vehicle Class</Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.carScroller}>
                         {CAR_OPTIONS.map((car) => {
@@ -137,7 +151,6 @@ export default function DrivingServiceScreen() {
                         })}
                     </ScrollView>
 
-                    {/* Pickup Location */}
                     <Text style={[s.label, { color: C.text }]}>Pickup Location *</Text>
                     <View style={[s.inputRow, { backgroundColor: C.surface, borderColor: C.border }]}>
                         <MapPin size={18} color={C.primary} style={{ marginRight: 8 }} />
@@ -158,7 +171,6 @@ export default function DrivingServiceScreen() {
                         </TouchableOpacity>
                     </View>
 
-                    {/* Dropoff Location */}
                     <Text style={[s.label, { color: C.text }]}>Drop-off Location *</Text>
                     <View style={[s.inputRow, { backgroundColor: C.surface, borderColor: C.border }]}>
                         <MapPin size={18} color={C.muted} style={{ marginRight: 8 }} />
@@ -173,7 +185,6 @@ export default function DrivingServiceScreen() {
                         />
                     </View>
 
-                    {/* Date & Time row */}
                     <View style={s.dtRow}>
                         <View style={{ flex: 1 }}>
                             <Text style={[s.label, { color: C.text }]}>Date *</Text>
@@ -199,7 +210,13 @@ export default function DrivingServiceScreen() {
                     </View>
 
                     {showDatePicker && (
-                        <DateTimePicker value={dateObj} mode="date" display="default" onChange={onDateChange} minimumDate={new Date()} />
+                        <DateTimePicker
+                            value={dateObj}
+                            mode="date"
+                            display={Platform.OS === "ios" ? "spinner" : "default"}
+                            onChange={onDateChange}
+                            minimumDate={new Date()}
+                        />
                     )}
                     {Platform.OS === "ios" && showDatePicker && (
                         <TouchableOpacity style={s.iosDoneBtn} onPress={() => setShowDatePicker(false)}>
@@ -208,7 +225,12 @@ export default function DrivingServiceScreen() {
                     )}
 
                     {showTimePicker && (
-                        <DateTimePicker value={timeObj} mode="time" display="default" onChange={onTimeChange} />
+                        <DateTimePicker
+                            value={timeObj}
+                            mode="time"
+                            display={Platform.OS === "ios" ? "spinner" : "default"}
+                            onChange={onTimeChange}
+                        />
                     )}
                     {Platform.OS === "ios" && showTimePicker && (
                         <TouchableOpacity style={s.iosDoneBtn} onPress={() => setShowTimePicker(false)}>
@@ -216,7 +238,6 @@ export default function DrivingServiceScreen() {
                         </TouchableOpacity>
                     )}
 
-                    {/* Passengers */}
                     <Text style={[s.label, { color: C.text }]}>Passengers</Text>
                     <View style={[s.stepperRow, { backgroundColor: C.surface, borderColor: C.border }]}>
                         <Users size={18} color={C.primary} />
@@ -238,7 +259,6 @@ export default function DrivingServiceScreen() {
                         </Text>
                     </View>
 
-                    {/* Special Instructions */}
                     <Text style={[s.label, { color: C.text }]}>Special Instructions</Text>
                     <TextInput
                         style={[s.input, s.textarea, { backgroundColor: C.surface, borderColor: C.border, color: C.text }]}
@@ -263,6 +283,30 @@ export default function DrivingServiceScreen() {
                     <View style={{ height: 40 }} />
                 </ScrollView>
             </KeyboardAvoidingView>
+
+            <Modal visible={showSuccess} transparent animationType="none">
+                <View style={s.modalOverlay}>
+                    <Animated.View style={[
+                        s.modalBox,
+                        {
+                            opacity: alertOpacity,
+                            transform: [{ scale: alertScale }]
+                        }
+                    ]}>
+                        <View style={s.modalIconWrap}>
+                            <Text style={s.modalIconCheck}>✓</Text>
+                        </View>
+                        <Text style={s.modalTitle}>Request Submitted</Text>
+                        <Text style={s.modalBody}>
+                            Your request has been received. Your concierge will confirm all details shortly.
+                        </Text>
+
+                        <TouchableOpacity style={s.modalBtnPrimary} onPress={hideSuccessAndGo}>
+                            <Text style={s.modalBtnTxPri}>Done</Text>
+                        </TouchableOpacity>
+                    </Animated.View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }
@@ -301,4 +345,13 @@ const getStyles = (C: any) => StyleSheet.create({
 
     iosDoneBtn: { alignItems: "flex-end", paddingHorizontal: 16, marginBottom: 12 },
     iosDoneText: { fontWeight: "600", fontSize: 16 },
+
+    modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "center", alignItems: "center", padding: 24 },
+    modalBox: { width: "100%", backgroundColor: C.background, borderRadius: 24, padding: 32, borderWidth: 1, borderColor: C.primary, alignItems: "center" },
+    modalIconWrap: { width: 48, height: 48, borderRadius: 24, backgroundColor: "rgba(201,168,76,0.1)", justifyContent: "center", alignItems: "center", marginBottom: 20 },
+    modalIconCheck: { color: C.primary, fontSize: 24, fontWeight: "600" },
+    modalTitle: { color: C.text, fontSize: 20, fontWeight: "700", marginBottom: 12 },
+    modalBody: { color: C.muted, fontSize: 14, textAlign: "center", lineHeight: 22, marginBottom: 32 },
+    modalBtnPrimary: { width: "100%", paddingVertical: 14, borderRadius: 12, backgroundColor: C.primary, alignItems: "center" },
+    modalBtnTxPri: { color: C.background, fontSize: 14, fontWeight: "700" },
 });

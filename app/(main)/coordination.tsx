@@ -24,7 +24,7 @@ export default function CoordinationScreen() {
     const s = useMemo(() => getStyles(C, theme), [C, theme]);
 
     const [activeTab, setActiveTab] = useState<"current" | "upcoming">("current");
-    const [hasActiveRide, setHasActiveRide] = useState(false); // Default to empty state
+    const [hasActiveRide, setHasActiveRide] = useState(false);
     const progressAnim = useRef(new Animated.Value(35)).current;
 
     useEffect(() => {
@@ -49,7 +49,6 @@ export default function CoordinationScreen() {
                 </TouchableOpacity>
             </View>
 
-            {/* Tabs */}
             <View style={s.tabBar}>
                 {(["current", "upcoming"] as const).map((tab) => (
                     <TouchableOpacity
@@ -68,7 +67,6 @@ export default function CoordinationScreen() {
                 {activeTab === "current" ? (
                     hasActiveRide ? (
                         <>
-                            {/* ETA Card */}
                             <View style={s.etaCard}>
                                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                                     <Text style={s.etaLabel}>Arriving in</Text>
@@ -85,7 +83,6 @@ export default function CoordinationScreen() {
                                 </View>
                             </View>
 
-                            {/* Progress */}
                             <View style={{ marginBottom: 32 }}>
                                 <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 16 }}>
                                     <View>
@@ -146,7 +143,6 @@ export default function CoordinationScreen() {
                                 </View>
                             </View>
 
-                            {/* Updates */}
                             <Text style={s.sectionTitle}>Updates</Text>
                             <View style={{ gap: 12, marginBottom: 20 }}>
                                 <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
@@ -167,7 +163,6 @@ export default function CoordinationScreen() {
                                 </View>
                             </View>
 
-                            {/* Safety */}
                             <View style={s.safetyBox}>
                                 <ShieldCheck size={28} color={C.primary} />
                                 <View style={{ flex: 1 }}>
@@ -297,8 +292,6 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     routeLine: { width: 2, height: 16, backgroundColor: theme === 'dark' ? C.primary : C.border },
     routeDotEmpty: { width: 10, height: 10, borderRadius: 5, borderWidth: 2.5, borderColor: C.primary, backgroundColor: C.background },
     routeStop: { fontSize: 14, fontWeight: "500", color: C.text },
-
-    // Empty State
     emptyStateContainer: { alignItems: "center", paddingTop: 20 },
     emptyImageWrap: { width: "100%", height: 260, borderRadius: 24, overflow: "hidden", marginBottom: 28 },
     emptyStateImage: { width: "100%", height: "100%" },

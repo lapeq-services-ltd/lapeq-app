@@ -23,10 +23,8 @@ export default function MapScreen() {
 
     return (
         <View style={[s.root, { backgroundColor: C.background }]}>
-            {/* Map Background Placeholder */}
             <View style={StyleSheet.absoluteFillObject} />
 
-            {/* Header overlay */}
             <SafeAreaView style={s.headerOverlay}>
                 <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
                     <ChevronLeft size={24} color={C.cardFg} />
@@ -37,18 +35,15 @@ export default function MapScreen() {
                 </View>
             </SafeAreaView>
 
-            {/* Map pins */}
             {pins.map((pin) => (
                 <View
                     key={pin.label}
                     style={[s.pin, { top: pin.top as any, left: pin.left as any }]}
                 >
-                    {/* Tooltip */}
                     <View style={s.tooltip}>
                         <Text style={s.tooltipTitle}>{pin.label}</Text>
                         <Text style={s.tooltipBadge}>{pin.badge}</Text>
                     </View>
-                    {/* Pin circle */}
                     <View style={[s.pinCircle, pin.dark && s.pinCircleDark]}>
                         {pin.icon === "crown"
                             ? <Crown size={28} color={pin.dark ? C.black : C.cardFg} />
@@ -57,7 +52,6 @@ export default function MapScreen() {
                 </View>
             ))}
 
-            {/* Bottom card */}
             <View style={s.bottomCard}>
                 <View style={s.bottomCardInner}>
                     <View style={s.bottomCardRow}>

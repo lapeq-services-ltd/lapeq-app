@@ -8,7 +8,7 @@ type Message = { id: string; text: string; sender: "user" | "concierge"; time: s
 
 export default function ConciergeChatScreen() {
     const router = useRouter();
-    const { C, theme } = useTheme();
+    const { C } = useTheme();
     const s = useMemo(() => getStyles(C), [C]);
 
     const [messages, setMessages] = useState<Message[]>([
@@ -30,7 +30,6 @@ export default function ConciergeChatScreen() {
         setMessages(prev => [...prev, newMessage]);
         setInput("");
 
-        // Auto reply
         setTimeout(() => {
             setMessages(prev => [...prev, {
                 id: (Date.now() + 1).toString(),

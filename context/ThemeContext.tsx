@@ -22,7 +22,6 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
     const [theme, setTheme] = useState<ThemeType>("light");
 
     useEffect(() => {
-        // Load saved theme
         AsyncStorage.getItem("@theme").then((savedTheme: string | null) => {
             if (savedTheme === "light" || savedTheme === "dark") {
                 setTheme(savedTheme);

@@ -47,7 +47,6 @@ export default function MembershipScreen() {
             </View>
 
             <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}>
-                {/* Profile Header */}
                 <View style={s.profileRow}>
                     <View style={s.avatar}>
                         <Image
@@ -65,7 +64,6 @@ export default function MembershipScreen() {
                     </View>
                 </View>
 
-                {/* Active Membership Card */}
                 <View style={s.memberCard}>
                     <View style={s.cardGlow1} />
                     <View style={s.cardGlow2} />
@@ -87,7 +85,6 @@ export default function MembershipScreen() {
                     </View>
                 </View>
 
-                {/* Order Physical Card */}
                 <View style={s.orderBox}>
                     <View style={s.orderGlow} />
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
@@ -99,7 +96,6 @@ export default function MembershipScreen() {
                         <Text style={s.orderTitle}>Order Your LAPEQ Card</Text>
                     </View>
 
-                    {/* Physical card preview */}
                     <View style={s.physCard}>
                         <View style={s.physGlow} />
                         <View>
@@ -114,7 +110,6 @@ export default function MembershipScreen() {
                         />
                     </View>
 
-                    {/* Delivery */}
                     <View style={s.deliveryRow}>
                         <MapPin size={20} color={C.primary} />
                         <View>
@@ -128,7 +123,6 @@ export default function MembershipScreen() {
                     </TouchableOpacity>
                 </View>
 
-                {/* Tiers */}
                 <Text style={s.sectionTitle}>Membership Tiers</Text>
                 <Text style={s.sectionSub}>Membership fees tailored to service scope.</Text>
                 <View style={{ gap: 10, marginBottom: 24 }}>
@@ -171,7 +165,6 @@ export default function MembershipScreen() {
                     ))}
                 </View>
 
-                {/* Corporate */}
                 <View style={s.corpBox}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 12 }}>
                         <Users size={24} color={C.primary} />
@@ -183,7 +176,6 @@ export default function MembershipScreen() {
                     </TouchableOpacity>
                 </View>
 
-                {/* Security note */}
                 <View style={s.securityBox}>
                     <ShieldCheck size={28} color={C.primary} />
                     <View>
@@ -192,7 +184,6 @@ export default function MembershipScreen() {
                     </View>
                 </View>
 
-                {/* Demo Entry Point */}
                 <TouchableOpacity style={[s.corpBtn, { marginTop: 24, backgroundColor: 'transparent', borderWidth: 1, borderColor: C.primary }]} onPress={() => router.push("/join/request")}>
                     <Text style={[s.corpBtnText, { color: C.primary }]}>Demo: Request Flow Simulation</Text>
                 </TouchableOpacity>
