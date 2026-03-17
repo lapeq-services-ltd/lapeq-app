@@ -44,6 +44,7 @@ export default function RequestsScreen() {
             .from("requests")
             .select("*")
             .eq("user_id", resolvedId)
+            .neq("status", "cancelled")
             .order("created_at", { ascending: false });
 
         if (data) setRequests(data as RequestType[]);

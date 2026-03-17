@@ -303,7 +303,8 @@ export default function DrivingServiceScreen() {
 
                         <TouchableOpacity style={s.modalBtnPrimary} onPress={() => {
                             setShowSuccess(false);
-                            router.replace("/requests");
+                            router.dismissAll();
+                            router.push("/requests");
                         }}>
                             <Text style={s.modalBtnTxPri}>View My Requests</Text>
                         </TouchableOpacity>
