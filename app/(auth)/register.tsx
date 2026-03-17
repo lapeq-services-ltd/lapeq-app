@@ -2,12 +2,14 @@ import { useState, useRef, useEffect } from "react";
 import {
     View, Text, TextInput, TouchableOpacity, StyleSheet,
     KeyboardAvoidingView, Platform, Animated, Image,
-    ImageBackground, ScrollView, Modal
+    ImageBackground, ScrollView, Modal, FlatList
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Eye, EyeOff, ChevronLeft } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
+import { COUNTRIES, STATES_BY_COUNTRY } from "@/constants/location";
+import { ChevronDown } from "lucide-react-native";
 
 const GOLD = "#c9a84c";
 const DARK = "#0a0a0a";
@@ -28,10 +30,10 @@ function getStrength(pwd: string) {
 
 export default function RegisterScreen() {
     const router = useRouter();
+    const { email: prefillEmail } = useLocalSearchParams<{ email?: string }>();
     const [fullName, setFullName] = useState("");
     const [preferredName, setPreferredName] = useState("");
-    const [email, setEmail] = useState("");
-    const [phone, setPhone] = useState("");
+    const [email, setEmail] = useState(prefillEmail ?? "");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
@@ -41,9 +43,13 @@ export default function RegisterScreen() {
     const [nameFocused, setNameFocused] = useState(false);
     const [preferredFocused, setPreferredFocused] = useState(false);
     const [emailFocused, setEmailFocused] = useState(false);
-    const [phoneFocused, setPhoneFocused] = useState(false);
     const [passwordFocused, setPasswordFocused] = useState(false);
     const [confirmFocused, setConfirmFocused] = useState(false);
+
+    const [country, setCountry] = useState("");
+    const [region, setRegion] = useState("");
+    const [showCountryModal, setShowCountryModal] = useState(false);
+    const [showRegionModal, setShowRegionModal] = useState(false);
 
     const [showAlert, setShowAlert] = useState(false);
     const [errorMsg, setErrorMsg] = useState("");
@@ -54,7 +60,6 @@ export default function RegisterScreen() {
 
     const preferredRef = useRef<TextInput>(null);
     const emailRef = useRef<TextInput>(null);
-    const phoneRef = useRef<TextInput>(null);
     const passwordRef = useRef<TextInput>(null);
     const confirmRef = useRef<TextInput>(null);
 
@@ -95,16 +100,18 @@ export default function RegisterScreen() {
                 data: {
                     full_name: fullName,
                     preferred_name: preferredName || fullName.split(" ")[0],
-                    phone,
+                    country,
+                    region,
                 },
             },
         });
         setLoading(false);
         if (error) {
-            const isExisting = error.message.toLowerCase().includes("already registered") || error.message.toLowerCase().includes("already exists");
+            const msg = error.message.toLowerCase();
+            const isExisting = msg.includes("already registered") || msg.includes("already exists");
             triggerModal(true, isExisting
                 ? "An account with this email already exists. Try signing in instead."
-                : error.message
+                : "Fix your fucking network!! Something went wrong on our end. Please try again shortly."
             );
         } else {
             triggerModal(false);
@@ -214,26 +221,33 @@ export default function RegisterScreen() {
                                         onFocus={() => setEmailFocused(true)}
                                         onBlur={() => setEmailFocused(false)}
                                         returnKeyType="next"
-                                        onSubmitEditing={() => phoneRef.current?.focus()}
-                                    />
-                                </View>
-
-                                <View style={[s.inputBlock, phoneFocused && s.inputBlockFocused]}>
-                                    <Text style={s.inputLabel}>PHONE</Text>
-                                    <TextInput
-                                        ref={phoneRef}
-                                        style={s.input}
-                                        placeholder="+234 800 000 0000"
-                                        placeholderTextColor="rgba(255,255,255,0.2)"
-                                        keyboardType="phone-pad"
-                                        value={phone}
-                                        onChangeText={setPhone}
-                                        onFocus={() => setPhoneFocused(true)}
-                                        onBlur={() => setPhoneFocused(false)}
-                                        returnKeyType="next"
                                         onSubmitEditing={() => passwordRef.current?.focus()}
                                     />
                                 </View>
+
+                                <TouchableOpacity style={s.inputBlock} onPress={() => setShowCountryModal(true)}>
+                                    <Text style={s.inputLabel}>COUNTRY</Text>
+                                    <View style={s.pickerRow}>
+                                        <Text style={[s.input, { flex: 1, color: country ? "#fff" : "rgba(255,255,255,0.2)" }]}>
+                                            {country ? `${COUNTRIES.find(c => c.name === country)?.flag} ${country}` : "Select your country"}
+                                        </Text>
+                                        <ChevronDown size={18} color="rgba(255,255,255,0.3)" />
+                                    </View>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={s.inputBlock}
+                                    onPress={() => country ? setShowRegionModal(true) : null}
+                                    disabled={!country}
+                                >
+                                    <Text style={s.inputLabel}>STATE / REGION</Text>
+                                    <View style={s.pickerRow}>
+                                        <Text style={[s.input, { flex: 1, color: region ? "#fff" : "rgba(255,255,255,0.2)" }]}>
+                                            {region || (country ? "Select your state or region" : "Select a country first")}
+                                        </Text>
+                                        <ChevronDown size={18} color="rgba(255,255,255,0.3)" />
+                                    </View>
+                                </TouchableOpacity>
 
                                 <View style={[s.inputBlock, passwordFocused && s.inputBlockFocused]}>
                                     <Text style={s.inputLabel}>PASSWORD</Text>
@@ -255,13 +269,11 @@ export default function RegisterScreen() {
                                             {showPassword ? <EyeOff size={20} color={MUTED} /> : <Eye size={20} color={MUTED} />}
                                         </TouchableOpacity>
                                     </View>
-                                    {password.length > 0 && (
+                                    {password.length > 0 && confirmPassword.length === 0 && (
                                         <View style={s.strengthWrap}>
                                             <View style={s.strengthTrack}>
-                                                <View style={[s.strengthFill, {
-                                                    width: `${Math.round((strength.level / 3) * 100)}%` as any,
-                                                    backgroundColor: strength.color,
-                                                }]} />
+                                                <View style={{ flex: strength.level, backgroundColor: strength.color, height: 2, borderRadius: 99 }} />
+                                                <View style={{ flex: 3 - strength.level }} />
                                             </View>
                                             <Text style={[s.strengthLabel, { color: strength.color }]}>{strength.label}</Text>
                                         </View>
@@ -322,7 +334,7 @@ export default function RegisterScreen() {
                                 {errorMsg ? "×" : "✓"}
                             </Text>
                         </View>
-                        <Text style={s.modalTitle}>{errorMsg ? "Something went wrong" : "Request Received"}</Text>
+                        <Text style={s.modalTitle}>{errorMsg ? "Oops, try again" : "Request Received"}</Text>
                         <Text style={s.modalBody}>
                             {errorMsg || "Welcome to Lapeq. Check your email to verify your account and unlock access."}
                         </Text>
@@ -333,6 +345,60 @@ export default function RegisterScreen() {
                             <Text style={s.modalBtnTxPri}>{errorMsg ? "Try Again" : "Continue to Sign In"}</Text>
                         </TouchableOpacity>
                     </Animated.View>
+                </View>
+            </Modal>
+
+            <Modal visible={showCountryModal} animationType="slide" transparent onRequestClose={() => setShowCountryModal(false)}>
+                <View style={s.pickerOverlay}>
+                    <View style={s.pickerSheet}>
+                        <View style={s.pickerHeader}>
+                            <Text style={s.pickerTitle}>Select Country</Text>
+                            <TouchableOpacity onPress={() => setShowCountryModal(false)}>
+                                <Text style={s.pickerClose}>✕</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <FlatList
+                            data={COUNTRIES}
+                            keyExtractor={item => item.name}
+                            showsVerticalScrollIndicator={false}
+                            renderItem={({ item }) => (
+                                <TouchableOpacity
+                                    style={[s.pickerItem, country === item.name && s.pickerItemActive]}
+                                    onPress={() => { setCountry(item.name); setRegion(""); setShowCountryModal(false); }}
+                                >
+                                    <Text style={[s.pickerItemText, country === item.name && s.pickerItemTextActive]}>
+                                        {item.flag}  {item.name}
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
+                        />
+                    </View>
+                </View>
+            </Modal>
+
+            <Modal visible={showRegionModal} animationType="slide" transparent onRequestClose={() => setShowRegionModal(false)}>
+                <View style={s.pickerOverlay}>
+                    <View style={s.pickerSheet}>
+                        <View style={s.pickerHeader}>
+                            <Text style={s.pickerTitle}>Select State / Region</Text>
+                            <TouchableOpacity onPress={() => setShowRegionModal(false)}>
+                                <Text style={s.pickerClose}>✕</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <FlatList
+                            data={STATES_BY_COUNTRY[country] ?? []}
+                            keyExtractor={item => item}
+                            showsVerticalScrollIndicator={false}
+                            renderItem={({ item }) => (
+                                <TouchableOpacity
+                                    style={[s.pickerItem, region === item && s.pickerItemActive]}
+                                    onPress={() => { setRegion(item); setShowRegionModal(false); }}
+                                >
+                                    <Text style={[s.pickerItemText, region === item && s.pickerItemTextActive]}>{item}</Text>
+                                </TouchableOpacity>
+                            )}
+                        />
+                    </View>
                 </View>
             </Modal>
         </ImageBackground>
@@ -367,6 +433,7 @@ const s = StyleSheet.create({
     inputLabel: { fontSize: 10, fontFamily: "Jost_800ExtraBold", color: GOLD, letterSpacing: 2, marginBottom: 12 },
     input: { fontSize: 18, fontFamily: "Jost_400Regular", color: "#fff", paddingVertical: 0 },
     passwordRow: { flexDirection: "row", alignItems: "center" },
+    pickerRow: { flexDirection: "row", alignItems: "center" },
     eyeBtn: { paddingLeft: 12 },
 
     strengthWrap: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 10 },
@@ -400,4 +467,14 @@ const s = StyleSheet.create({
     modalBody: { color: "rgba(255,255,255,0.5)", fontSize: 14, fontFamily: "Jost_400Regular", textAlign: "center", lineHeight: 22, marginBottom: 28 },
     modalBtnPrimary: { width: "100%", paddingVertical: 14, borderRadius: 12, backgroundColor: GOLD, alignItems: "center" },
     modalBtnTxPri: { color: DARK, fontSize: 14, fontFamily: "Jost_700Bold" },
+
+    pickerOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" },
+    pickerSheet: { backgroundColor: "#111", borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: "75%", padding: 24, borderTopWidth: 1, borderColor: "rgba(201,168,76,0.2)" },
+    pickerHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.08)" },
+    pickerTitle: { fontSize: 16, fontFamily: "Jost_700Bold", color: "#fff" },
+    pickerClose: { fontSize: 20, color: MUTED, fontFamily: "Jost_300Light" },
+    pickerItem: { paddingVertical: 14, paddingHorizontal: 8, borderRadius: 10, marginBottom: 2 },
+    pickerItemActive: { backgroundColor: "rgba(201,168,76,0.1)" },
+    pickerItemText: { fontSize: 16, fontFamily: "Jost_400Regular", color: "rgba(255,255,255,0.7)" },
+    pickerItemTextActive: { color: GOLD, fontFamily: "Jost_600SemiBold" },
 });

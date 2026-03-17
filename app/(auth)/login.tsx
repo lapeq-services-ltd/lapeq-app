@@ -173,7 +173,7 @@ export default function LoginScreen() {
                             {alertType === "denied" && (
                                 <TouchableOpacity
                                     style={s.modalBtnPrimary}
-                                    onPress={() => { hideAlert(); router.push("/(auth)/register"); }}
+                                    onPress={() => { hideAlert(); router.push({ pathname: "/(auth)/register", params: { email } }); }}
                                 >
                                     <Text style={s.modalBtnTxPri}>Request Access</Text>
                                 </TouchableOpacity>

@@ -2,39 +2,19 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, Image, Alert, KeyboardAvoidingView, Platform, Keyboard, Modal, FlatList, Animated } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ChevronLeft, Camera, User, Mail, Phone, MapPin, Crown, Check, ChevronDown, X } from "lucide-react-native";
+import { ChevronLeft, Camera, User, Mail, MapPin, Crown, Check, ChevronDown, X } from "lucide-react-native";
 import { useTheme } from "@/context/ThemeContext";
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
-const NIGERIAN_STATES = [
-    "Abia", "Adamawa", "Akwa Ibom", "Anambra", "Bauchi", "Bayelsa", "Benue", "Borno", "Cross River", "Delta",
-    "Ebonyi", "Edo", "Ekiti", "Enugu", "FCT - Abuja", "Gombe", "Imo", "Jigawa", "Kaduna", "Kano", "Katsina",
-    "Kebbi", "Kogi", "Kwara", "Lagos", "Nasarawa", "Niger", "Ogun", "Ondo", "Osun", "Oyo", "Plateau", "Rivers",
-    "Sokoto", "Taraba", "Yobe", "Zamfara"
-];
-
-const COUNTRIES = [
-    { name: "Nigeria", flag: "🇳🇬" },
-    { name: "United Kingdom", flag: "🇬🇧" },
-    { name: "United States", flag: "🇺🇸" },
-    { name: "Canada", flag: "🇨🇦" },
-    { name: "Ghana", flag: "🇬🇭" },
-    { name: "South Africa", flag: "🇿🇦" },
-    { name: "Kenya", flag: "🇰🇪" },
-    { name: "United Arab Emirates", flag: "🇦🇪" },
-    { name: "France", flag: "🇫🇷" },
-    { name: "Germany", flag: "🇩🇪" }
-];
+import { COUNTRIES, STATES_BY_COUNTRY } from "@/constants/location";
 
 export default function PersonalInfoScreen() {
     const router = useRouter();
-    const { C, theme } = useTheme();
+    const { C } = useTheme();
     const s = useMemo(() => getStyles(C), [C]);
 
     const [name, setName] = useState("Nife");
     const [email, setEmail] = useState("nife@example.com");
-    const [phone, setPhone] = useState("+234 800 123 4567");
     const [country, setCountry] = useState("Nigeria");
     const [state, setState] = useState("Lagos");
     const [imageUri, setImageUri] = useState<string | null>(null);
@@ -55,7 +35,6 @@ export default function PersonalInfoScreen() {
                 const parsed = JSON.parse(data);
                 if (parsed.name) setName(parsed.name);
                 if (parsed.email) setEmail(parsed.email);
-                if (parsed.phone) setPhone(parsed.phone);
                 if (parsed.country) setCountry(parsed.country);
                 if (parsed.state) setState(parsed.state);
                 if (parsed.imageUri) setImageUri(parsed.imageUri);
@@ -81,7 +60,7 @@ export default function PersonalInfoScreen() {
     const handleSave = async () => {
         try {
             await AsyncStorage.setItem("personal_info", JSON.stringify({
-                name, email, phone, country, state, imageUri
+                name, email, country, state, imageUri
             }));
 
             setToastVisible(true);
@@ -166,28 +145,11 @@ export default function PersonalInfoScreen() {
                     </View>
 
                     <View style={s.formGroup}>
-                        <Text style={s.label}>Phone Number</Text>
-                        <View style={s.inputContainer}>
-                            <Phone size={20} color={C.muted} style={s.inputIcon} />
-                            <TextInput
-                                style={s.input}
-                                value={phone}
-                                onChangeText={setPhone}
-                                placeholder="Enter your phone number"
-                                placeholderTextColor={C.muted}
-                                keyboardType="phone-pad"
-                                returnKeyType="done"
-                                onSubmitEditing={() => Keyboard.dismiss()}
-                            />
-                        </View>
-                    </View>
-
-                    <View style={s.formGroup}>
                         <Text style={s.label}>Country</Text>
                         <TouchableOpacity style={s.inputContainer} onPress={() => setShowCountryModal(true)}>
                             <MapPin size={20} color={C.muted} style={s.inputIcon} />
                             <Text style={[s.input, { height: 'auto', color: country ? C.text : C.muted }]}>
-                                {country ? `${COUNTRIES.find(c => c.name === country)?.flag || ""} ${country}`.trim() : "Select your Country"}
+                                {country || "Select your Country"}
                             </Text>
                             <ChevronDown size={20} color={C.muted} />
                         </TouchableOpacity>
@@ -228,7 +190,7 @@ export default function PersonalInfoScreen() {
                             </TouchableOpacity>
                         </View>
                         <FlatList
-                            data={NIGERIAN_STATES}
+                            data={STATES_BY_COUNTRY[country] ?? []}
                             keyExtractor={(item) => item}
                             showsVerticalScrollIndicator={false}
                             contentContainerStyle={{ paddingBottom: 40 }}
@@ -271,12 +233,13 @@ export default function PersonalInfoScreen() {
                                     style={[s.stateItem, country === item.name && s.stateItemActive]}
                                     onPress={() => {
                                         setCountry(item.name);
+                                        setState("");
                                         setShowCountryModal(false);
                                     }}
                                 >
                                     <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                                         <MapPin size={18} color={country === item.name ? C.primary : C.muted} />
-                                        <Text style={[s.stateText, country === item.name && s.stateTextActive]}>{item.flag} {item.name}</Text>
+                                        <Text style={[s.stateText, country === item.name && s.stateTextActive]}>{item.name}</Text>
                                     </View>
                                     {country === item.name && <Check size={20} color={C.primary} />}
                                 </TouchableOpacity>
