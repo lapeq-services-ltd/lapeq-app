@@ -1,10 +1,17 @@
 import { useState, useEffect, useMemo } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { ChevronLeft, ArrowRight, Car, Briefcase, Plane, HeartHandshake, FileText, Package, Clock, Calendar, MapPin } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
+
+const CAR_IMAGES: Record<string, any> = {
+    "standard-sedan": require("@/assets/images/standard-sedan.png"),
+    "luxury-sedan": require("@/assets/images/mercedes-sedan.png"),
+    "premium-suv": require("@/assets/images/range-rover-suv.png"),
+    "executive-van": require("@/assets/images/sprinter-van.png"),
+};
 
 type RequestType = {
     id: string;
@@ -15,6 +22,7 @@ type RequestType = {
     pickup_location: string | null;
     dropoff_location: string | null;
     scheduled_time: string | null;
+    details: { carType?: string; passengers?: number } | null;
 };
 
 export default function RequestsScreen() {
@@ -88,7 +96,10 @@ export default function RequestsScreen() {
         fetchRequests();
     };
 
-    const getServiceIcon = (type: string) => {
+    const getServiceIcon = (type: string, details?: RequestType["details"]) => {
+        if (type === "driving-service" && details?.carType && CAR_IMAGES[details.carType]) {
+            return <Image source={CAR_IMAGES[details.carType]} style={{ width: 44, height: 32 }} resizeMode="contain" />;
+        }
         switch (type) {
             case 'driving-service': return <Car size={24} color={C.primary} />;
             case 'logistics': return <Package size={24} color={C.primary} />;
@@ -161,7 +172,7 @@ export default function RequestsScreen() {
                                     >
                                         <View style={s.cardHeader}>
                                             <View style={s.iconWrap}>
-                                                {getServiceIcon(req.service_type)}
+                                                {getServiceIcon(req.service_type, req.details)}
                                             </View>
                                             <View style={{ flex: 1 }}>
                                                 <Text style={s.cardTitle}>{getServiceTitle(req.service_type, req.title)}</Text>

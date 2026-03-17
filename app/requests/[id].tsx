@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ChevronLeft, Car, Briefcase, Plane, HeartHandshake, FileText, Package, MapPin, Clock, Calendar, Users } from "lucide-react-native";
@@ -17,6 +17,13 @@ type Request = {
     scheduled_time: string | null;
     notes: string | null;
     details: { passengers?: number; carType?: string; instructions?: string } | null;
+};
+
+const CAR_IMAGES: Record<string, any> = {
+    "standard-sedan": require("@/assets/images/standard-sedan.png"),
+    "luxury-sedan": require("@/assets/images/mercedes-sedan.png"),
+    "premium-suv": require("@/assets/images/range-rover-suv.png"),
+    "executive-van": require("@/assets/images/sprinter-van.png"),
 };
 
 const SERVICE_LABELS: Record<string, string> = {
@@ -51,7 +58,10 @@ export default function RequestDetailsScreen() {
         fetch();
     }, [id]);
 
-    const getIcon = (type: string) => {
+    const getIcon = (type: string, details?: Request["details"]) => {
+        if (type === "driving-service" && details?.carType && CAR_IMAGES[details.carType]) {
+            return <Image source={CAR_IMAGES[details.carType]} style={{ width: 72, height: 52 }} resizeMode="contain" />;
+        }
         const props = { size: 28, color: C.primary };
         switch (type) {
             case "driving-service": return <Car {...props} />;
@@ -97,7 +107,7 @@ export default function RequestDetailsScreen() {
                 <ScrollView contentContainerStyle={s.scroll}>
                     <View style={s.heroCard}>
                         <View style={s.iconWrap}>
-                            {getIcon(request.service_type)}
+                            {getIcon(request.service_type, request.details)}
                         </View>
                         <Text style={s.serviceLabel}>
                             {SERVICE_LABELS[request.service_type] ?? request.service_type}
