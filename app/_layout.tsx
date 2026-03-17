@@ -82,7 +82,7 @@ function RootContent() {
                 <Stack.Screen name="(tabs)" />
                 <Stack.Screen name="(main)" />
                 <Stack.Screen name="services" />
-                <Stack.Screen name="requests/[id]" />
+                <Stack.Screen name="requests/[id]" options={{ gestureEnabled: true }} />
             </Stack>
         </>
     );

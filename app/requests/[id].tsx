@@ -64,7 +64,7 @@ export default function RequestDetailsScreen() {
     };
 
     const getStatusColor = (status: string) => {
-        switch (status) {
+        switch (status.toLowerCase()) {
             case "pending": return { bg: "rgba(240,165,0,0.15)", text: "#f0a500" };
             case "approved":
             case "arranged": return { bg: `${C.primary}20`, text: C.primary };

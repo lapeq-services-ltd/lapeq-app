@@ -105,7 +105,7 @@ export default function RequestsScreen() {
     };
 
     const getStatusStyle = (status: string) => {
-        switch (status) {
+        switch (status.toLowerCase()) {
             case 'pending': return { bg: "rgba(240,165,0,0.15)", text: "#f0a500" };
             case 'approved': return { bg: `${C.primary}20`, text: C.primary };
             case 'arranged': return { bg: `${C.primary}20`, text: C.primary };
