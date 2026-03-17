@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ChevronLeft, Car, Briefcase, Plane, HeartHandshake, FileText, Package, MapPin, Clock, Calendar, Users } from "lucide-react-native";
@@ -57,6 +57,18 @@ export default function RequestDetailsScreen() {
         };
         fetch();
     }, [id]);
+
+    const handleCancel = () => {
+        Alert.alert("Cancel Request", "Are you sure you want to cancel this request?", [
+            { text: "No", style: "cancel" },
+            {
+                text: "Yes, Cancel", style: "destructive", onPress: async () => {
+                    await supabase.from("requests").update({ status: "cancelled" }).eq("id", id);
+                    setRequest(r => r ? { ...r, status: "cancelled" } : r);
+                }
+            }
+        ]);
+    };
 
     const getIcon = (type: string, details?: Request["details"]) => {
         if (type === "driving-service" && details?.carType && CAR_IMAGES[details.carType]) {
@@ -177,8 +189,8 @@ export default function RequestDetailsScreen() {
                             <View style={s.detailRow}>
                                 <Users size={16} color={C.muted} />
                                 <View style={s.detailText}>
-                                    <Text style={s.detailLabel}>Passengers</Text>
-                                    <Text style={s.detailValue}>{request.details.passengers} {request.details.passengers === 1 ? "passenger" : "passengers"}</Text>
+                                    <Text style={s.detailLabel}>Pax</Text>
+                                    <Text style={s.detailValue}>{request.details.passengers} {request.details.passengers === 1 ? "pax" : "pax"}</Text>
                                 </View>
                             </View>
                         )}
@@ -196,6 +208,12 @@ export default function RequestDetailsScreen() {
                             Our team is handling your request. You'll be notified as the status updates.
                         </Text>
                     </View>
+
+                    {request.status.toLowerCase() === "pending" && (
+                        <TouchableOpacity style={s.cancelBtn} onPress={handleCancel}>
+                            <Text style={s.cancelBtnText}>Cancel Request</Text>
+                        </TouchableOpacity>
+                    )}
                 </ScrollView>
             )}
         </SafeAreaView>
@@ -229,4 +247,6 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
 
     infoBox: { backgroundColor: theme === "dark" ? "rgba(201,168,76,0.08)" : "rgba(201,168,76,0.06)", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "rgba(201,168,76,0.2)" },
     infoText: { fontSize: 13, color: C.muted, textAlign: "center", lineHeight: 20 },
+    cancelBtn: { borderRadius: 16, padding: 18, alignItems: "center" as const, borderWidth: 1, borderColor: "#ef5350" },
+    cancelBtnText: { fontSize: 15, fontWeight: "700" as const, color: "#ef5350" },
 });

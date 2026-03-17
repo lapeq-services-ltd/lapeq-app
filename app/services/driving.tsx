@@ -298,11 +298,17 @@ export default function DrivingServiceScreen() {
                         </View>
                         <Text style={s.modalTitle}>Request Submitted</Text>
                         <Text style={s.modalBody}>
-                            Your request has been received. Your concierge will confirm all details shortly.
+                            Your request has been received. Track its status in My Requests.
                         </Text>
 
-                        <TouchableOpacity style={s.modalBtnPrimary} onPress={hideSuccessAndGo}>
-                            <Text style={s.modalBtnTxPri}>Done</Text>
+                        <TouchableOpacity style={s.modalBtnPrimary} onPress={() => {
+                            setShowSuccess(false);
+                            router.push("/requests");
+                        }}>
+                            <Text style={s.modalBtnTxPri}>View My Requests</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={s.modalBtnSecondary} onPress={hideSuccessAndGo}>
+                            <Text style={s.modalBtnTxSec}>Done</Text>
                         </TouchableOpacity>
                     </Animated.View>
                 </View>
@@ -353,4 +359,6 @@ const getStyles = (C: any) => StyleSheet.create({
     modalBody: { color: C.muted, fontSize: 14, textAlign: "center", lineHeight: 22, marginBottom: 32 },
     modalBtnPrimary: { width: "100%", paddingVertical: 14, borderRadius: 12, backgroundColor: C.primary, alignItems: "center" },
     modalBtnTxPri: { color: C.background, fontSize: 14, fontWeight: "700" },
+    modalBtnSecondary: { width: "100%", paddingVertical: 14, borderRadius: 12, alignItems: "center", marginTop: 8 },
+    modalBtnTxSec: { color: C.muted, fontSize: 14, fontWeight: "600" },
 });
