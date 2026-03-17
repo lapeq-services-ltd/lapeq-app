@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, useFocusEffect } from "expo-router";
-import { ChevronLeft, ArrowRight, Car, Briefcase, Plane, HeartHandshake, FileText, Package, Clock } from "lucide-react-native";
+import { useRouter } from "expo-router";
+import { ChevronLeft, ArrowRight, Car, Briefcase, Plane, HeartHandshake, FileText, Package, Clock, Calendar, MapPin } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
 
@@ -106,7 +106,7 @@ export default function RequestsScreen() {
 
     const getStatusStyle = (status: string) => {
         switch (status) {
-            case 'pending': return { bg: `${C.muted}25`, text: C.muted };
+            case 'pending': return { bg: "rgba(240,165,0,0.15)", text: "#f0a500" };
             case 'approved': return { bg: `${C.primary}20`, text: C.primary };
             case 'arranged': return { bg: `${C.primary}20`, text: C.primary };
             case 'en-route': return { bg: `${C.primary}50`, text: C.primary };
@@ -176,9 +176,24 @@ export default function RequestsScreen() {
 
                                         {(req.pickup_location || req.dropoff_location || req.scheduled_time) && (
                                             <View style={s.detailsBox}>
-                                                {req.scheduled_time && <Text style={s.detailText}>📅 {new Date(req.scheduled_time).toLocaleString()}</Text>}
-                                                {req.pickup_location && <Text style={s.detailText}>📍 From: {req.pickup_location}</Text>}
-                                                {req.dropoff_location && <Text style={s.detailText}>🏁 To: {req.dropoff_location}</Text>}
+                                                {req.scheduled_time && (
+                                                    <View style={s.detailRow}>
+                                                        <Calendar size={13} color={C.muted} />
+                                                        <Text style={s.detailText}>{new Date(req.scheduled_time).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</Text>
+                                                    </View>
+                                                )}
+                                                {req.pickup_location && (
+                                                    <View style={s.detailRow}>
+                                                        <MapPin size={13} color={C.primary} />
+                                                        <Text style={s.detailText}>{req.pickup_location}</Text>
+                                                    </View>
+                                                )}
+                                                {req.dropoff_location && (
+                                                    <View style={s.detailRow}>
+                                                        <MapPin size={13} color={C.muted} />
+                                                        <Text style={s.detailText}>{req.dropoff_location}</Text>
+                                                    </View>
+                                                )}
                                             </View>
                                         )}
 
@@ -215,8 +230,9 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     cardDate: { fontSize: 12, color: C.muted },
     statusBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
     statusText: { fontSize: 10, fontWeight: "800", letterSpacing: 0.5 },
-    detailsBox: { backgroundColor: C.background, padding: 12, borderRadius: 12, marginBottom: 16, gap: 6 },
-    detailText: { fontSize: 13, color: C.muted },
+    detailsBox: { backgroundColor: C.background, padding: 12, borderRadius: 12, marginBottom: 16, gap: 8 },
+    detailRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+    detailText: { fontSize: 13, color: C.muted, flex: 1 },
     cardFooter: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 6, borderTopWidth: 1, borderTopColor: C.border, paddingTop: 16 },
     viewDetails: { fontSize: 13, fontWeight: "600", color: C.primary }
 });

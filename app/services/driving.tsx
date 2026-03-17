@@ -93,7 +93,7 @@ export default function DrivingServiceScreen() {
             user_id: user?.id,
             service_type: "driving-service",
             status: "pending",
-            title: `${CAR_OPTIONS.find(c => c.id === carType)?.name || "Car Hire"} — ${passengers} pax`,
+            title: CAR_OPTIONS.find(c => c.id === carType)?.name || "Car Hire",
             pickup_location: pickup,
             dropoff_location: dropoff,
             scheduled_time: combined.toISOString(),
