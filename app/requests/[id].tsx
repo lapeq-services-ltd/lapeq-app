@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronLeft, Car, Briefcase, Plane, HeartHandshake, FileText, Package, MapPin, Clock, Calendar } from "lucide-react-native";
+import { ChevronLeft, Car, Briefcase, Plane, HeartHandshake, FileText, Package, MapPin, Clock, Calendar, Users } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
 
@@ -16,6 +16,7 @@ type Request = {
     dropoff_location: string | null;
     scheduled_time: string | null;
     notes: string | null;
+    details: { passengers?: number; carType?: string; instructions?: string } | null;
 };
 
 const SERVICE_LABELS: Record<string, string> = {
@@ -158,6 +159,16 @@ export default function RequestDetailsScreen() {
                                 <View style={s.detailText}>
                                     <Text style={s.detailLabel}>Drop-off</Text>
                                     <Text style={s.detailValue}>{request.dropoff_location}</Text>
+                                </View>
+                            </View>
+                        )}
+
+                        {request.details?.passengers && (
+                            <View style={s.detailRow}>
+                                <Users size={16} color={C.muted} />
+                                <View style={s.detailText}>
+                                    <Text style={s.detailLabel}>Passengers</Text>
+                                    <Text style={s.detailValue}>{request.details.passengers} {request.details.passengers === 1 ? "passenger" : "passengers"}</Text>
                                 </View>
                             </View>
                         )}
