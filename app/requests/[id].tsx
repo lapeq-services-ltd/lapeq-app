@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image, Alert } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image, Modal, Animated } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronLeft, Car, Briefcase, Plane, HeartHandshake, FileText, Package, MapPin, Clock, Calendar, Users } from "lucide-react-native";
+import { ChevronLeft, Car, Briefcase, Plane, HeartHandshake, FileText, Package, MapPin, Clock, Calendar, Users, AlertTriangle } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
 
@@ -44,6 +44,8 @@ export default function RequestDetailsScreen() {
 
     const [request, setRequest] = useState<Request | null>(null);
     const [loading, setLoading] = useState(true);
+    const [showCancelModal, setShowCancelModal] = useState(false);
+    const [cancelling, setCancelling] = useState(false);
 
     useEffect(() => {
         const fetch = async () => {
@@ -58,16 +60,12 @@ export default function RequestDetailsScreen() {
         fetch();
     }, [id]);
 
-    const handleCancel = () => {
-        Alert.alert("Cancel Request", "Are you sure you want to cancel this request?", [
-            { text: "No", style: "cancel" },
-            {
-                text: "Yes, Cancel", style: "destructive", onPress: async () => {
-                    await supabase.from("requests").update({ status: "cancelled" }).eq("id", id);
-                    setRequest(r => r ? { ...r, status: "cancelled" } : r);
-                }
-            }
-        ]);
+    const confirmCancel = async () => {
+        setCancelling(true);
+        await supabase.from("requests").update({ status: "cancelled" }).eq("id", id);
+        setCancelling(false);
+        setShowCancelModal(false);
+        router.replace("/requests");
     };
 
     const getIcon = (type: string, details?: Request["details"]) => {
@@ -189,9 +187,16 @@ export default function RequestDetailsScreen() {
                             <View style={s.detailRow}>
                                 <Users size={16} color={C.muted} />
                                 <View style={s.detailText}>
-                                    <Text style={s.detailLabel}>Pax</Text>
-                                    <Text style={s.detailValue}>{request.details.passengers} {request.details.passengers === 1 ? "pax" : "pax"}</Text>
+                                    <Text style={s.detailLabel}>Passengers</Text>
+                                    <Text style={s.detailValue}>{request.details.passengers} pax</Text>
                                 </View>
+                            </View>
+                        )}
+
+                        {request.details?.instructions && (
+                            <View style={s.notesBox}>
+                                <Text style={s.detailLabel}>Special Instructions</Text>
+                                <Text style={s.notesText}>{request.details.instructions}</Text>
                             </View>
                         )}
 
@@ -210,12 +215,30 @@ export default function RequestDetailsScreen() {
                     </View>
 
                     {request.status.toLowerCase() === "pending" && (
-                        <TouchableOpacity style={s.cancelBtn} onPress={handleCancel}>
+                        <TouchableOpacity style={s.cancelBtn} onPress={() => setShowCancelModal(true)}>
                             <Text style={s.cancelBtnText}>Cancel Request</Text>
                         </TouchableOpacity>
                     )}
                 </ScrollView>
             )}
+
+            <Modal visible={showCancelModal} transparent animationType="fade">
+                <View style={s.modalOverlay}>
+                    <View style={s.modalBox}>
+                        <View style={s.modalIconWrap}>
+                            <AlertTriangle size={24} color="#ef5350" />
+                        </View>
+                        <Text style={s.modalTitle}>Cancel Request</Text>
+                        <Text style={s.modalBody}>Are you sure you want to cancel this request? This cannot be undone.</Text>
+                        <TouchableOpacity style={s.modalBtnCancel} onPress={confirmCancel} disabled={cancelling}>
+                            <Text style={s.modalBtnCancelText}>{cancelling ? "Cancelling..." : "Yes, Cancel"}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={s.modalBtnKeep} onPress={() => setShowCancelModal(false)}>
+                            <Text style={s.modalBtnKeepText}>Keep Request</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }
@@ -247,6 +270,16 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
 
     infoBox: { backgroundColor: theme === "dark" ? "rgba(201,168,76,0.08)" : "rgba(201,168,76,0.06)", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "rgba(201,168,76,0.2)" },
     infoText: { fontSize: 13, color: C.muted, textAlign: "center", lineHeight: 20 },
-    cancelBtn: { borderRadius: 16, padding: 18, alignItems: "center" as const, borderWidth: 1, borderColor: "#ef5350" },
-    cancelBtnText: { fontSize: 15, fontWeight: "700" as const, color: "#ef5350" },
+    cancelBtn: { borderRadius: 16, padding: 18, alignItems: "center", borderWidth: 1, borderColor: "#ef5350" },
+    cancelBtnText: { fontSize: 15, fontWeight: "700", color: "#ef5350" },
+
+    modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 24 },
+    modalBox: { width: "100%", backgroundColor: C.surface, borderRadius: 24, padding: 28, alignItems: "center", gap: 8, borderWidth: 1, borderColor: C.border },
+    modalIconWrap: { width: 52, height: 52, borderRadius: 26, backgroundColor: "rgba(239,83,80,0.1)", alignItems: "center", justifyContent: "center", marginBottom: 4 },
+    modalTitle: { fontSize: 18, fontWeight: "700", color: C.text },
+    modalBody: { fontSize: 14, color: C.muted, textAlign: "center", lineHeight: 22, marginBottom: 8 },
+    modalBtnCancel: { width: "100%", paddingVertical: 15, borderRadius: 14, backgroundColor: "#ef5350", alignItems: "center" },
+    modalBtnCancelText: { fontSize: 15, fontWeight: "700", color: "#fff" },
+    modalBtnKeep: { width: "100%", paddingVertical: 15, borderRadius: 14, alignItems: "center" },
+    modalBtnKeepText: { fontSize: 15, fontWeight: "600", color: C.muted },
 });
