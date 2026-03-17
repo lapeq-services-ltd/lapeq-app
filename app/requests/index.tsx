@@ -1,7 +1,8 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 import { ChevronLeft, ArrowRight, Car, Briefcase, Plane, HeartHandshake, FileText, Package, Clock, Calendar, MapPin } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
@@ -90,6 +91,10 @@ export default function RequestsScreen() {
             if (channel) supabase.removeChannel(channel);
         };
     }, []);
+
+    useFocusEffect(useCallback(() => {
+        fetchRequests();
+    }, [userId]));
 
     const onRefresh = () => {
         setRefreshing(true);

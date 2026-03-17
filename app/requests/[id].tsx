@@ -65,7 +65,7 @@ export default function RequestDetailsScreen() {
         await supabase.from("requests").update({ status: "cancelled" }).eq("id", id);
         setCancelling(false);
         setShowCancelModal(false);
-        router.replace("/requests");
+        router.back();
     };
 
     const getIcon = (type: string, details?: Request["details"]) => {
