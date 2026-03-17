@@ -157,11 +157,7 @@ export default function RequestsScreen() {
                                         key={req.id}
                                         style={s.card}
                                         activeOpacity={0.85}
-                                        onPress={() => {
-                                            if (req.service_type === 'driving-service') {
-                                                router.push("/coordination");
-                                            }
-                                        }}
+                                        onPress={() => router.push(`/requests/${req.id}`)}
                                     >
                                         <View style={s.cardHeader}>
                                             <View style={s.iconWrap}>
