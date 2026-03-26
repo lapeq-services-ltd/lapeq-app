@@ -77,13 +77,16 @@ function RootContent() {
     return (
         <>
             <StatusBar style={theme === "dark" ? "light" : "dark"} />
-            <Stack screenOptions={{ headerShown: false }}>
+            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.background }, animation: "fade" }}>
                 <Stack.Screen name="(auth)" />
                 <Stack.Screen name="(tabs)" />
                 <Stack.Screen name="(main)" />
                 <Stack.Screen name="services" />
                 <Stack.Screen name="requests/index" options={{ gestureEnabled: true }} />
                 <Stack.Screen name="requests/[id]" options={{ gestureEnabled: true }} />
+                <Stack.Screen name="explore/venues" options={{ gestureEnabled: true }} />
+                <Stack.Screen name="explore/venue-detail" options={{ gestureEnabled: true }} />
+                <Stack.Screen name="explore/saved-places" options={{ gestureEnabled: true }} />
             </Stack>
         </>
     );

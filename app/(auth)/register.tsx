@@ -111,7 +111,7 @@ export default function RegisterScreen() {
             const isExisting = msg.includes("already registered") || msg.includes("already exists");
             triggerModal(true, isExisting
                 ? "An account with this email already exists. Try signing in instead."
-                : "Fix your fucking network!! Something went wrong on our end. Please try again shortly."
+                : "Something went wrong on our end. Please try again shortly."
             );
         } else {
             triggerModal(false);
@@ -229,7 +229,7 @@ export default function RegisterScreen() {
                                     <Text style={s.inputLabel}>COUNTRY</Text>
                                     <View style={s.pickerRow}>
                                         <Text style={[s.input, { flex: 1, color: country ? "#fff" : "rgba(255,255,255,0.2)" }]}>
-                                            {country ? `${COUNTRIES.find(c => c.name === country)?.flag} ${country}` : "Select your country"}
+                                            {country ? country : "Select your country"}
                                         </Text>
                                         <ChevronDown size={18} color="rgba(255,255,255,0.3)" />
                                     </View>
@@ -367,7 +367,7 @@ export default function RegisterScreen() {
                                     onPress={() => { setCountry(item.name); setRegion(""); setShowCountryModal(false); }}
                                 >
                                     <Text style={[s.pickerItemText, country === item.name && s.pickerItemTextActive]}>
-                                        {item.flag}  {item.name}
+                                        {item.name}
                                     </Text>
                                 </TouchableOpacity>
                             )}

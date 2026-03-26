@@ -1,13 +1,14 @@
 import { useState, useEffect, useMemo } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image, Modal, Animated } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image, Modal } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronLeft, Car, Briefcase, Plane, HeartHandshake, FileText, Package, MapPin, Clock, Calendar, Users, AlertTriangle } from "lucide-react-native";
+import { ChevronLeft, Car, Briefcase, Plane, HeartHandshake, FileText, Package, MapPin, Clock, Calendar, Users, AlertTriangle, Wallet, MessageSquare, Building2, UtensilsCrossed, Ticket, Sparkles, Anchor } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
 
 type Request = {
     id: string;
+    reference: string | null;
     service_type: string;
     status: string;
     title: string | null;
@@ -16,7 +17,12 @@ type Request = {
     dropoff_location: string | null;
     scheduled_time: string | null;
     notes: string | null;
-    details: { passengers?: number; carType?: string; instructions?: string } | null;
+    details: {
+        // driving
+        passengers?: number; carType?: string; instructions?: string; carCount?: number; color?: string | null;
+        // lifestyle & travel
+        serviceType?: string; destination?: string; dateFrom?: string; dateTo?: string; guests?: number; budget?: string; preferences?: string;
+    } | null;
 };
 
 const CAR_IMAGES: Record<string, any> = {
@@ -29,7 +35,7 @@ const CAR_IMAGES: Record<string, any> = {
 const SERVICE_LABELS: Record<string, string> = {
     "driving-service": "Driving Service",
     "logistics": "Logistics",
-    "lifestyle-travel": "Lifestyle & Travel",
+    "lifestyle-travel": "Hospitality & Travel",
     "corporate-pairing": "Corporate Pairing",
     "project-trust": "Project Trust",
     "concierge-request": "Concierge Request",
@@ -73,10 +79,20 @@ export default function RequestDetailsScreen() {
             return <Image source={CAR_IMAGES[details.carType]} style={{ width: 72, height: 52 }} resizeMode="contain" />;
         }
         const props = { size: 28, color: C.primary };
+        if (type === "lifestyle-travel") {
+            switch (details?.serviceType) {
+                case "Hotel & Accommodation": return <Building2 {...props} />;
+                case "Restaurant Reservation": return <UtensilsCrossed {...props} />;
+                case "Event Access": return <Ticket {...props} />;
+                case "Spa & Wellness": return <Sparkles {...props} />;
+                case "Private Jet": return <Plane {...props} />;
+                case "Yacht Charter": return <Anchor {...props} />;
+                default: return <Plane {...props} />;
+            }
+        }
         switch (type) {
             case "driving-service": return <Car {...props} />;
             case "logistics": return <Package {...props} />;
-            case "lifestyle-travel": return <Plane {...props} />;
             case "corporate-pairing": return <Briefcase {...props} />;
             case "project-trust": return <FileText {...props} />;
             default: return <HeartHandshake {...props} />;
@@ -102,7 +118,10 @@ export default function RequestDetailsScreen() {
                 <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
                     <ChevronLeft size={28} color={C.text} />
                 </TouchableOpacity>
-                <Text style={s.headerTitle}>Request Details</Text>
+                <View>
+                    <Text style={s.headerTitle}>Request Details</Text>
+                    {request?.reference && <Text style={{ fontSize: 12, color: C.primary, fontWeight: "600", marginTop: 1 }}>{request.reference}</Text>}
+                </View>
             </View>
 
             {loading ? (
@@ -193,12 +212,80 @@ export default function RequestDetailsScreen() {
                             </View>
                         )}
 
+                        {request.details?.carCount && request.details.carCount > 1 && (
+                            <View style={s.detailRow}>
+                                <Car size={16} color={C.muted} />
+                                <View style={s.detailText}>
+                                    <Text style={s.detailLabel}>Cars</Text>
+                                    <Text style={s.detailValue}>{request.details.carCount} cars</Text>
+                                </View>
+                            </View>
+                        )}
+
+                        {request.details?.color && (
+                            <View style={s.detailRow}>
+                                <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: request.details.color === "black" ? "#1c1c1c" : request.details.color === "white" ? "#f0f0f0" : request.details.color === "silver" ? "#a8a8a8" : request.details.color === "navy" ? "#1a2a4a" : "#c9a84c", borderWidth: 1, borderColor: C.border }} />
+                                <View style={s.detailText}>
+                                    <Text style={s.detailLabel}>Color Preference</Text>
+                                    <Text style={s.detailValue}>{request.details.color.charAt(0).toUpperCase() + request.details.color.slice(1)}</Text>
+                                </View>
+                            </View>
+                        )}
+
                         {request.details?.instructions && (
                             <View style={s.notesBox}>
                                 <Text style={s.detailLabel}>Special Instructions</Text>
                                 <Text style={s.notesText}>{request.details.instructions}</Text>
                             </View>
                         )}
+
+                        {/* Lifestyle & Travel fields */}
+                        {request.service_type === "lifestyle-travel" && (<>
+                            {request.details?.destination && (
+                                <View style={s.detailRow}>
+                                    <MapPin size={16} color={C.primary} />
+                                    <View style={s.detailText}>
+                                        <Text style={s.detailLabel}>Destination / Venue</Text>
+                                        <Text style={s.detailValue}>{request.details.destination}</Text>
+                                    </View>
+                                </View>
+                            )}
+                            {(request.details?.dateFrom || request.details?.dateTo) && (
+                                <View style={s.detailRow}>
+                                    <Calendar size={16} color={C.muted} />
+                                    <View style={s.detailText}>
+                                        <Text style={s.detailLabel}>Dates</Text>
+                                        <Text style={s.detailValue}>
+                                            {[request.details.dateFrom, request.details.dateTo].filter(Boolean).join(" → ")}
+                                        </Text>
+                                    </View>
+                                </View>
+                            )}
+                            {request.details?.guests && (
+                                <View style={s.detailRow}>
+                                    <Users size={16} color={C.muted} />
+                                    <View style={s.detailText}>
+                                        <Text style={s.detailLabel}>Guests</Text>
+                                        <Text style={s.detailValue}>{request.details.guests} {request.details.guests === 1 ? "guest" : "guests"}</Text>
+                                    </View>
+                                </View>
+                            )}
+                            {request.details?.budget && (
+                                <View style={s.detailRow}>
+                                    <Wallet size={16} color={C.muted} />
+                                    <View style={s.detailText}>
+                                        <Text style={s.detailLabel}>Budget Range</Text>
+                                        <Text style={s.detailValue}>{request.details.budget}</Text>
+                                    </View>
+                                </View>
+                            )}
+                            {request.details?.preferences && (
+                                <View style={s.notesBox}>
+                                    <Text style={s.detailLabel}>Preferences & Requirements</Text>
+                                    <Text style={s.notesText}>{request.details.preferences}</Text>
+                                </View>
+                            )}
+                        </>)}
 
                         {request.notes && (
                             <View style={s.notesBox}>

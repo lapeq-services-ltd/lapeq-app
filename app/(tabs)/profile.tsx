@@ -4,7 +4,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useFocusEffect } from "expo-router";
-import { Settings, Crown, Star, MapPin, CalendarDays, Moon, Package, ArrowRight } from "lucide-react-native";
+import { Settings, Crown, Star, MapPin, CalendarDays, Moon, Package, Heart, ArrowRight } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -94,6 +94,16 @@ export default function ProfileScreen() {
                             <Package size={18} color={C.primary} />
                         </View>
                         <Text style={s.themeLabel}>My Requests</Text>
+                    </View>
+                    <ArrowRight size={20} color={C.muted} />
+                </TouchableOpacity>
+
+                <TouchableOpacity style={[s.themeRow, { marginTop: -16 }]} onPress={() => router.push("/explore/saved-places")}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                        <View style={s.themeIconBox}>
+                            <Heart size={18} color={C.primary} />
+                        </View>
+                        <Text style={s.themeLabel}>Saved Places</Text>
                     </View>
                     <ArrowRight size={20} color={C.muted} />
                 </TouchableOpacity>
