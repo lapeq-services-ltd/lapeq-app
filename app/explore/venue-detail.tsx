@@ -104,7 +104,7 @@ export default function VenueDetailScreen() {
                             <ChevronLeft size={22} color="#fff" />
                         </TouchableOpacity>
                         <TouchableOpacity style={s.actionBtn} onPress={toggleFavorite}>
-                            <Heart size={20} color={isFav ? "#ef4444" : "#fff"} fill={isFav ? "#ef4444" : "transparent"} strokeWidth={2} />
+                            <Heart size={20} color={isFav ? "#c9a84c" : "#fff"} fill={isFav ? "#c9a84c" : "transparent"} strokeWidth={2} />
                         </TouchableOpacity>
                     </SafeAreaView>
 

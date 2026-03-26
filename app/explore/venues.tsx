@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Image, Dimensions } from "react-native";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Image, TextInput, Dimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronLeft, MapPin, Building2, UtensilsCrossed, Music2, Hotel, Sparkles, Heart } from "lucide-react-native";
+import { ChevronLeft, MapPin, Building2, UtensilsCrossed, Music2, Hotel, Sparkles, Heart, Search, X } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
 
@@ -17,7 +17,6 @@ type Venue = {
 };
 
 const { width: SW } = Dimensions.get("window");
-const CARD_WIDTH = SW - 40;
 
 const PLACEHOLDER_IMAGES: Record<string, any> = {
     restaurant: require("@/assets/images/lagos-restaurant.jpg"),
@@ -28,7 +27,7 @@ const PLACEHOLDER_IMAGES: Record<string, any> = {
 };
 
 const getCategoryIcon = (category: string, color: string) => {
-    const props = { size: 18, color, strokeWidth: 1.8 };
+    const props = { size: 16, color, strokeWidth: 1.8 };
     switch (category) {
         case "restaurant": return <UtensilsCrossed {...props} />;
         case "lounge": return <Sparkles {...props} />;
@@ -37,6 +36,14 @@ const getCategoryIcon = (category: string, color: string) => {
         case "spa": return <Sparkles {...props} />;
         default: return <Building2 {...props} />;
     }
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+    restaurant: "Restaurant",
+    lounge: "Lounge",
+    club: "Club",
+    hotel: "Hotel & Apartment",
+    spa: "Spa & Wellness",
 };
 
 export default function VenuesScreen() {
@@ -50,6 +57,8 @@ export default function VenuesScreen() {
     const [activeCity, setActiveCity] = useState("All");
     const [favorites, setFavorites] = useState<Set<string>>(new Set());
     const [userId, setUserId] = useState<string | null>(null);
+    const [search, setSearch] = useState("");
+    const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
         init();
@@ -82,12 +91,25 @@ export default function VenuesScreen() {
         setFavorites(next);
     };
 
-    const filtered = activeCity === "All" ? venues : venues.filter(v => v.city === activeCity);
+    const onSearch = (text: string) => {
+        setSearch(text);
+        if (searchTimer.current) clearTimeout(searchTimer.current);
+    };
+
+    const searchLower = search.toLowerCase().trim();
+    const cityFiltered = activeCity === "All" ? venues : venues.filter(v => v.city === activeCity);
+    const filtered = searchLower.length < 1
+        ? cityFiltered
+        : cityFiltered.filter(v =>
+            v.name.toLowerCase().includes(searchLower) ||
+            (v.address ?? "").toLowerCase().includes(searchLower)
+        );
+
     const cities = ["All", ...Array.from(new Set(venues.map(v => v.city)))];
 
     const renderItem = useCallback(({ item, index }: { item: Venue; index: number }) => {
         const isFav = favorites.has(item.id);
-        const isFeature = index === 0;
+        const isFeature = index === 0 && !searchLower;
         const imgSrc = item.image_url ? { uri: item.image_url } : PLACEHOLDER_IMAGES[item.category] ?? PLACEHOLDER_IMAGES.restaurant;
 
         return (
@@ -96,46 +118,53 @@ export default function VenuesScreen() {
                 activeOpacity={0.92}
                 onPress={() => router.push({ pathname: "/explore/venue-detail", params: { id: item.id } })}
             >
-                <Image source={imgSrc} style={[s.cardImg, isFeature ? s.cardImgFeatured : s.cardImgRegular]} resizeMode="cover" />
-                <View style={s.cardOverlay} />
+                {/* Image section */}
+                <View style={[s.imgWrap, isFeature ? s.imgWrapFeatured : s.imgWrapRegular]}>
+                    <Image source={imgSrc} style={StyleSheet.absoluteFillObject as any} resizeMode="cover" />
 
-                {/* Favorite button */}
-                <TouchableOpacity
-                    style={s.favBtn}
-                    onPress={() => toggleFavorite(item.id)}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                    <Heart
-                        size={18}
-                        color={isFav ? "#ef4444" : "#ffffff"}
-                        fill={isFav ? "#ef4444" : "transparent"}
-                        strokeWidth={2}
-                    />
-                </TouchableOpacity>
+                    {/* City badge */}
+                    <View style={[s.cityBadge, { backgroundColor: item.city === "Lagos" ? "rgba(201,168,76,0.9)" : "rgba(100,149,237,0.9)" }]}>
+                        <Text style={s.cityBadgeText}>{item.city}</Text>
+                    </View>
 
-                {/* City badge */}
-                <View style={[s.cityBadge, { backgroundColor: item.city === "Lagos" ? "rgba(201,168,76,0.85)" : "rgba(100,149,237,0.85)" }]}>
-                    <Text style={s.cityBadgeText}>{item.city}</Text>
+                    {/* Favorite button */}
+                    <TouchableOpacity
+                        style={s.favBtn}
+                        onPress={() => toggleFavorite(item.id)}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                        <Heart
+                            size={16}
+                            color={isFav ? C.primary : "#ffffff"}
+                            fill={isFav ? C.primary : "transparent"}
+                            strokeWidth={2}
+                        />
+                    </TouchableOpacity>
                 </View>
 
-                {/* Bottom content */}
-                <View style={s.cardBottom}>
-                    <View style={s.categoryTag}>
-                        {getCategoryIcon(item.category, C.primary)}
+                {/* Info section */}
+                <View style={s.infoWrap}>
+                    <View style={s.infoLeft}>
+                        <View style={s.categoryTag}>
+                            {getCategoryIcon(item.category, C.primary)}
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={s.cardName} numberOfLines={1}>{item.name}</Text>
+                            {item.address ? (
+                                <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 3 }}>
+                                    <MapPin size={10} color={C.muted} />
+                                    <Text style={s.cardAddress} numberOfLines={1}>{item.address}</Text>
+                                </View>
+                            ) : (
+                                <Text style={s.cardAddress}>{CATEGORY_LABELS[item.category] ?? item.category}</Text>
+                            )}
+                        </View>
                     </View>
-                    <View style={{ flex: 1, marginLeft: 10 }}>
-                        <Text style={s.cardName}>{item.name}</Text>
-                        {item.address && (
-                            <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 3 }}>
-                                <MapPin size={10} color="rgba(255,255,255,0.6)" />
-                                <Text style={s.cardAddress} numberOfLines={1}>{item.address}</Text>
-                            </View>
-                        )}
-                    </View>
+                    <ChevronLeft size={16} color={C.muted} style={{ transform: [{ rotate: "180deg" }] }} />
                 </View>
             </TouchableOpacity>
         );
-    }, [favorites, s, C]);
+    }, [favorites, s, C, searchLower]);
 
     return (
         <SafeAreaView style={s.root}>
@@ -149,6 +178,23 @@ export default function VenuesScreen() {
                     <Text style={s.title}>{title}</Text>
                 </View>
                 <Text style={s.countText}>{filtered.length} places</Text>
+            </View>
+
+            {/* Search bar */}
+            <View style={s.searchWrap}>
+                <Search size={16} color={C.muted} />
+                <TextInput
+                    style={s.searchInput}
+                    placeholder={`Search ${title?.toLowerCase()}...`}
+                    placeholderTextColor={C.muted}
+                    value={search}
+                    onChangeText={onSearch}
+                />
+                {search.length > 0 && (
+                    <TouchableOpacity onPress={() => setSearch("")}>
+                        <X size={16} color={C.muted} />
+                    </TouchableOpacity>
+                )}
             </View>
 
             {/* City filter */}
@@ -185,11 +231,15 @@ export default function VenuesScreen() {
 
 const getStyles = (C: any, theme: string) => StyleSheet.create({
     root: { flex: 1, backgroundColor: C.background },
-    header: { flexDirection: "row", alignItems: "center", gap: 14, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 20 },
+    header: { flexDirection: "row", alignItems: "center", gap: 14, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16 },
     backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" },
     eyebrow: { fontSize: 10, fontWeight: "800", color: C.primary, letterSpacing: 2 },
     title: { fontSize: 24, fontWeight: "700", color: C.text },
     countText: { fontSize: 12, color: C.muted, fontWeight: "600" },
+
+    searchWrap: { flexDirection: "row", alignItems: "center", gap: 10, marginHorizontal: 20, marginBottom: 14, backgroundColor: C.surface, borderRadius: 14, paddingHorizontal: 14, height: 46, borderWidth: 1, borderColor: C.border },
+    searchInput: { flex: 1, fontSize: 14, color: C.text },
+
     cityRow: { flexDirection: "row", gap: 8, paddingHorizontal: 20, marginBottom: 16 },
     cityChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 10, borderWidth: 1.5, borderColor: C.border, backgroundColor: C.surface },
     cityChipActive: { borderColor: C.primary, backgroundColor: theme === "dark" ? "rgba(201,168,76,0.1)" : "rgba(201,168,76,0.08)" },
@@ -198,20 +248,21 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     center: { flex: 1, justifyContent: "center", alignItems: "center" },
     list: { paddingHorizontal: 20, paddingBottom: 40, gap: 12 },
 
-    card: { borderRadius: 20, overflow: "hidden", position: "relative" },
-    cardFeatured: { height: 280 },
-    cardRegular: { height: 180 },
-    cardImg: { width: "100%", position: "absolute" },
-    cardImgFeatured: { height: 280 },
-    cardImgRegular: { height: 180 },
-    cardOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.35)" },
+    card: { borderRadius: 20, overflow: "hidden", backgroundColor: C.surface, borderWidth: 1, borderColor: C.border },
+    cardFeatured: {},
+    cardRegular: {},
 
-    favBtn: { position: "absolute", top: 14, right: 14, width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(0,0,0,0.35)", alignItems: "center", justifyContent: "center" },
-    cityBadge: { position: "absolute", top: 14, left: 14, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+    imgWrap: { position: "relative", overflow: "hidden" },
+    imgWrapFeatured: { height: 220 },
+    imgWrapRegular: { height: 140 },
+
+    cityBadge: { position: "absolute", top: 12, left: 12, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
     cityBadgeText: { fontSize: 10, fontWeight: "800", color: "#fff" },
+    favBtn: { position: "absolute", top: 12, right: 12, width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(0,0,0,0.3)", alignItems: "center", justifyContent: "center" },
 
-    cardBottom: { position: "absolute", bottom: 0, left: 0, right: 0, padding: 16, flexDirection: "row", alignItems: "center" },
-    categoryTag: { width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(0,0,0,0.4)", alignItems: "center", justifyContent: "center" },
-    cardName: { fontSize: 18, fontWeight: "700", color: "#ffffff" },
-    cardAddress: { fontSize: 11, color: "rgba(255,255,255,0.65)", flex: 1 },
+    infoWrap: { flexDirection: "row", alignItems: "center", padding: 14, gap: 10 },
+    infoLeft: { flex: 1, flexDirection: "row", alignItems: "center", gap: 12 },
+    categoryTag: { width: 36, height: 36, borderRadius: 10, backgroundColor: theme === "dark" ? "rgba(201,168,76,0.12)" : "rgba(201,168,76,0.08)", alignItems: "center", justifyContent: "center" },
+    cardName: { fontSize: 15, fontWeight: "700", color: C.text },
+    cardAddress: { fontSize: 12, color: C.muted },
 });

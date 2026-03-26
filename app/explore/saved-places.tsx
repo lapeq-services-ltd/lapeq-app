@@ -93,7 +93,7 @@ export default function SavedPlacesScreen() {
                     onPress={() => removeFavorite(item.id)}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
-                    <Heart size={18} color="#ef4444" fill="#ef4444" strokeWidth={2} />
+                    <Heart size={18} color="#c9a84c" fill="#c9a84c" strokeWidth={2} />
                 </TouchableOpacity>
 
                 <View style={[s.cityBadge, { backgroundColor: item.city === "Lagos" ? "rgba(201,168,76,0.85)" : "rgba(100,149,237,0.85)" }]}>
