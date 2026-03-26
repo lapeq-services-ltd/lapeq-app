@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef } from "react";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, View, Platform, KeyboardAvoidingView, Keyboard, Modal, Animated, ActivityIndicator } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
@@ -23,9 +23,12 @@ export default function LifestyleTravelScreen() {
     const router = useRouter();
     const { C, theme } = useTheme();
     const s = useMemo(() => getStyles(C, theme), [C, theme]);
+    const { prefillType, prefillVenue, prefillCity } = useLocalSearchParams<{ prefillType?: string; prefillVenue?: string; prefillCity?: string }>();
 
-    const [serviceType, setServiceType] = useState("");
-    const [destination, setDestination] = useState("");
+    const prefillDest = prefillVenue ? `${prefillVenue}${prefillCity ? `, ${prefillCity}` : ""}` : "";
+
+    const [serviceType, setServiceType] = useState(prefillType ?? "");
+    const [destination, setDestination] = useState(prefillDest);
     const [dateFromObj, setDateFromObj] = useState<Date | null>(null);
     const [dateToObj, setDateToObj] = useState<Date | null>(null);
     const [showDateFrom, setShowDateFrom] = useState(false);
@@ -105,6 +108,14 @@ export default function LifestyleTravelScreen() {
                             <Plane size={22} color={C.primary} />
                         </View>
                     </View>
+
+                    {/* Venue context banner */}
+                    {!!prefillVenue && (
+                        <View style={s.venueBanner}>
+                            <MapPin size={13} color={C.primary} />
+                            <Text style={s.venueBannerText}>Requesting for <Text style={{ color: C.primary, fontWeight: "700" }}>{prefillVenue}</Text></Text>
+                        </View>
+                    )}
 
                     {/* Service type cards */}
                     <Text style={s.sectionLabel}>What can we arrange? *</Text>
@@ -290,6 +301,8 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     headerSub: { fontSize: 13, color: C.muted, lineHeight: 18 },
     headerIconWrap: { width: 44, height: 44, borderRadius: 22, backgroundColor: theme === "dark" ? "rgba(201,168,76,0.12)" : "rgba(201,168,76,0.1)", alignItems: "center", justifyContent: "center", marginTop: 4 },
 
+    venueBanner: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: theme === "dark" ? "rgba(201,168,76,0.08)" : "rgba(201,168,76,0.06)", borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10, marginHorizontal: 20, marginBottom: 20, borderWidth: 1, borderColor: theme === "dark" ? "rgba(201,168,76,0.2)" : "rgba(201,168,76,0.15)" },
+    venueBannerText: { fontSize: 13, color: C.text, flex: 1 },
     sectionLabel: { fontSize: 11, fontWeight: "800", color: C.primary, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 12, paddingHorizontal: 20 },
 
     cardGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, paddingHorizontal: 20, marginBottom: 8 },

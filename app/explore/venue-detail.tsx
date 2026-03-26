@@ -26,12 +26,12 @@ const PLACEHOLDER_IMAGES: Record<string, any> = {
     spa: require("@/assets/images/lagos-restaurant.jpg"),
 };
 
-const SERVICE_ROUTES: Record<string, string> = {
-    restaurant: "/services/lifestyle-travel",
-    lounge: "/services/lifestyle-travel",
-    club: "/services/lifestyle-travel",
-    hotel: "/services/lifestyle-travel",
-    spa: "/services/lifestyle-travel",
+const VENUE_SERVICE_TYPE: Record<string, string> = {
+    restaurant: "Restaurant Reservation",
+    lounge: "Restaurant Reservation",
+    club: "Event Access",
+    hotel: "Hotel & Accommodation",
+    spa: "Spa & Wellness",
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -149,7 +149,14 @@ export default function VenueDetailScreen() {
             <View style={s.cta}>
                 <TouchableOpacity
                     style={s.ctaBtn}
-                    onPress={() => router.push(SERVICE_ROUTES[venue.category] as any)}
+                    onPress={() => router.push({
+                        pathname: "/services/lifestyle-travel" as any,
+                        params: {
+                            prefillType: VENUE_SERVICE_TYPE[venue.category] ?? "",
+                            prefillVenue: venue.name,
+                            prefillCity: venue.address ?? venue.city,
+                        }
+                    })}
                     activeOpacity={0.85}
                 >
                     <Text style={s.ctaBtnText}>Request via Lapeq</Text>
