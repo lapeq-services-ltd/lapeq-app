@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image, Dimensions } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image, Dimensions, Linking } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronLeft, MapPin, Heart, UtensilsCrossed, Music2, Hotel, Sparkles, Building2, ArrowRight } from "lucide-react-native";
+import { ChevronLeft, MapPin, Heart, ArrowRight, ExternalLink } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
 
@@ -14,9 +14,14 @@ type Venue = {
     address: string | null;
     description: string | null;
     image_url: string | null;
+    lat: number | null;
+    lng: number | null;
 };
 
 const { width: SW } = Dimensions.get("window");
+const MAP_W = SW - 48;
+const MAP_H = 180;
+const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN;
 
 const PLACEHOLDER_IMAGES: Record<string, any> = {
     restaurant: require("@/assets/images/lagos-restaurant.jpg"),
@@ -42,6 +47,26 @@ const CATEGORY_LABELS: Record<string, string> = {
     spa: "Spa & Wellness",
 };
 
+async function geocodeAddress(query: string): Promise<{ lat: number; lng: number } | null> {
+    if (!MAPBOX_TOKEN) return null;
+    try {
+        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&limit=1&country=NG`;
+        const res = await fetch(url);
+        const json = await res.json();
+        if (json.features?.length > 0) {
+            const [lng, lat] = json.features[0].center;
+            return { lat, lng };
+        }
+    } catch {}
+    return null;
+}
+
+function staticMapUrl(lat: number, lng: number) {
+    const w = Math.round(MAP_W);
+    const h = Math.round(MAP_H);
+    return `https://api.mapbox.com/styles/v1/mapbox/dark-v11/static/pin-s+c9a84c(${lng},${lat})/${lng},${lat},14,0/${w}x${h}@2x?access_token=${MAPBOX_TOKEN}`;
+}
+
 export default function VenueDetailScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const router = useRouter();
@@ -52,10 +77,10 @@ export default function VenueDetailScreen() {
     const [loading, setLoading] = useState(true);
     const [isFav, setIsFav] = useState(false);
     const [userId, setUserId] = useState<string | null>(null);
+    const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+    const [mapLoading, setMapLoading] = useState(false);
 
-    useEffect(() => {
-        init();
-    }, [id]);
+    useEffect(() => { init(); }, [id]);
 
     const init = async () => {
         setLoading(true);
@@ -66,7 +91,20 @@ export default function VenueDetailScreen() {
             setIsFav(!!fav);
         }
         const { data } = await supabase.from("venues").select("*").eq("id", id).single();
-        if (data) setVenue(data);
+        if (data) {
+            setVenue(data);
+            // Use stored coords or geocode
+            if (data.lat && data.lng) {
+                setCoords({ lat: data.lat, lng: data.lng });
+            } else {
+                const query = data.address ? `${data.address}, ${data.city}, Nigeria` : `${data.name}, ${data.city}, Nigeria`;
+                setMapLoading(true);
+                geocodeAddress(query).then(c => {
+                    if (c) setCoords(c);
+                    setMapLoading(false);
+                });
+            }
+        }
         setLoading(false);
     };
 
@@ -80,6 +118,12 @@ export default function VenueDetailScreen() {
         setIsFav(!isFav);
     };
 
+    const openMaps = () => {
+        if (!venue) return;
+        const query = encodeURIComponent(`${venue.name}, ${venue.address ?? venue.city}`);
+        Linking.openURL(`https://maps.google.com/?q=${query}`);
+    };
+
     if (loading) return (
         <View style={{ flex: 1, backgroundColor: C.background, justifyContent: "center", alignItems: "center" }}>
             <ActivityIndicator color={C.primary} />
@@ -89,6 +133,7 @@ export default function VenueDetailScreen() {
     if (!venue) return null;
 
     const imgSrc = venue.image_url ? { uri: venue.image_url } : PLACEHOLDER_IMAGES[venue.category] ?? PLACEHOLDER_IMAGES.restaurant;
+    const mapUrl = coords ? staticMapUrl(coords.lat, coords.lng) : null;
 
     return (
         <View style={{ flex: 1, backgroundColor: C.background }}>
@@ -98,7 +143,6 @@ export default function VenueDetailScreen() {
                     <Image source={imgSrc} style={s.heroImg} resizeMode="cover" />
                     <View style={s.heroOverlay} />
 
-                    {/* Back + Favorite */}
                     <SafeAreaView style={s.heroActions}>
                         <TouchableOpacity style={s.actionBtn} onPress={() => router.back()}>
                             <ChevronLeft size={22} color="#fff" />
@@ -108,7 +152,6 @@ export default function VenueDetailScreen() {
                         </TouchableOpacity>
                     </SafeAreaView>
 
-                    {/* Venue name over image */}
                     <View style={s.heroContent}>
                         <View style={[s.categoryPill, { backgroundColor: "rgba(201,168,76,0.85)" }]}>
                             <Text style={s.categoryPillText}>{CATEGORY_LABELS[venue.category] ?? venue.category}</Text>
@@ -121,31 +164,62 @@ export default function VenueDetailScreen() {
                     </View>
                 </View>
 
-                {/* Details */}
                 <View style={s.body}>
-                    {venue.description ? (
-                        <View style={s.section}>
-                            <Text style={s.sectionLabel}>ABOUT</Text>
-                            <Text style={s.description}>{venue.description}</Text>
-                        </View>
-                    ) : (
-                        <View style={s.section}>
-                            <Text style={s.sectionLabel}>ABOUT</Text>
-                            <Text style={s.description}>One of Lapeq's curated partner venues, selected for quality, exclusivity, and experience. Book through Lapeq for priority reservations and member benefits.</Text>
-                        </View>
-                    )}
+                    {/* About */}
+                    <View style={s.section}>
+                        <Text style={s.sectionLabel}>ABOUT</Text>
+                        <Text style={s.description}>
+                            {venue.description ?? "One of Lapeq's curated partner venues, selected for quality, exclusivity, and experience. Book through Lapeq for priority reservations and member benefits."}
+                        </Text>
+                    </View>
 
+                    {/* Location */}
                     <View style={s.section}>
                         <Text style={s.sectionLabel}>LOCATION</Text>
-                        <View style={s.locationBox}>
+
+                        {/* Address row */}
+                        <TouchableOpacity style={s.addressRow} onPress={openMaps} activeOpacity={0.75}>
                             <MapPin size={16} color={C.primary} />
                             <Text style={s.locationText}>{venue.address ?? venue.city}</Text>
-                        </View>
+                            <ExternalLink size={14} color={C.muted} />
+                        </TouchableOpacity>
+
+                        {/* Map */}
+                        <TouchableOpacity
+                            style={s.mapWrap}
+                            onPress={openMaps}
+                            activeOpacity={0.9}
+                        >
+                            {mapLoading && (
+                                <View style={[s.mapWrap, s.mapPlaceholder]}>
+                                    <ActivityIndicator color={C.primary} />
+                                </View>
+                            )}
+                            {mapUrl && !mapLoading && (
+                                <>
+                                    <Image
+                                        source={{ uri: mapUrl }}
+                                        style={s.mapImg}
+                                        resizeMode="cover"
+                                    />
+                                    <View style={s.mapOpenHint}>
+                                        <ExternalLink size={12} color="#fff" />
+                                        <Text style={s.mapOpenText}>Open in Maps</Text>
+                                    </View>
+                                </>
+                            )}
+                            {!mapUrl && !mapLoading && (
+                                <View style={[s.mapWrap, s.mapPlaceholder]}>
+                                    <MapPin size={24} color={C.border} />
+                                    <Text style={{ color: C.muted, fontSize: 13, marginTop: 8 }}>Map unavailable</Text>
+                                </View>
+                            )}
+                        </TouchableOpacity>
                     </View>
                 </View>
             </ScrollView>
 
-            {/* Book CTA */}
+            {/* CTA */}
             <View style={s.cta}>
                 <TouchableOpacity
                     style={s.ctaBtn}
@@ -183,8 +257,15 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     section: { gap: 12 },
     sectionLabel: { fontSize: 10, fontWeight: "800", color: C.primary, letterSpacing: 2 },
     description: { fontSize: 15, color: C.muted, lineHeight: 24 },
-    locationBox: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: C.surface, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: C.border },
+
+    addressRow: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: C.surface, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: C.border },
     locationText: { fontSize: 14, color: C.text, flex: 1 },
+
+    mapWrap: { borderRadius: 16, overflow: "hidden", height: MAP_H, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border },
+    mapImg: { width: "100%", height: "100%" },
+    mapPlaceholder: { justifyContent: "center", alignItems: "center" },
+    mapOpenHint: { position: "absolute", bottom: 10, right: 10, flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "rgba(0,0,0,0.55)", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
+    mapOpenText: { fontSize: 11, color: "#fff", fontWeight: "600" },
 
     cta: { padding: 20, paddingBottom: 36, backgroundColor: C.background, borderTopWidth: 1, borderTopColor: C.border },
     ctaBtn: { backgroundColor: C.primary, borderRadius: 14, padding: 16, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
