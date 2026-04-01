@@ -72,10 +72,12 @@ export default function LifestyleTravelScreen() {
         if (!serviceType || !destination) { setShowError(true); return; }
         setLoading(true);
         const { data: { user } } = await supabase.auth.getUser();
+        const ref = "LPQ-" + Date.now().toString(36).toUpperCase().slice(-5);
         const { error } = await supabase.from("requests").insert({
             user_id: user?.id,
             service_type: "lifestyle-travel",
             status: "pending",
+            reference: ref,
             title: serviceType,
             details: { serviceType, destination, dateFrom: fmtDate(dateFromObj), dateTo: fmtDate(dateToObj), guests, budget, preferences },
         });

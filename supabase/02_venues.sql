@@ -27,8 +27,9 @@ INSERT INTO venues (name, category, city, address, lat, lng) VALUES
 
 -- RESTAURANTS (Lagos)
 ('Gusto', 'restaurant', 'Lagos', '256 Etim Iyang Crescent, Victoria Island', 6.4281, 3.4219),
-('Cilantro', 'restaurant', 'Lagos', '7 Musa Yaradua Street, Victoria Island', 6.4310, 3.4185),
-('Kapadoccia', 'restaurant', 'Lagos', '16-22 Idowu Taylor Street, Victoria Island', 6.4295, 3.4172),
+('Cilantro', 'restaurant', 'Lagos', 'Victoria Island, Lagos', 6.4310, 3.4185),
+('Cilantro', 'restaurant', 'Lagos', 'Ikeja, Lagos', 6.5800, 3.3500),
+('Kapadoccia', 'restaurant', 'Lagos', '22 Idowu Taylor Street, Victoria Island', 6.4295, 3.4172),
 ('Breeze', 'restaurant', 'Lagos', 'Eko Hotel & Suites, Victoria Island', 6.4350, 3.4230),
 ('Nola', 'restaurant', 'Lagos', 'Victoria Island, Lagos', 6.4300, 3.4200),
 ('IIV Bistro', 'restaurant', 'Lagos', 'Victoria Island, Lagos', 6.4315, 3.4190),
@@ -39,6 +40,9 @@ INSERT INTO venues (name, category, city, address, lat, lng) VALUES
 ('Blue Cubana', 'restaurant', 'Lagos', '17 Adeola Odeku Street, Victoria Island', 6.4320, 3.4205),
 
 -- RESTAURANTS (Abuja)
+('Gusto', 'restaurant', 'Abuja', 'Abuja', 9.0600, 7.4900),
+('Cilantro', 'restaurant', 'Abuja', 'Abuja', 9.0720, 7.4880),
+('Kapadoccia', 'restaurant', 'Abuja', 'Wuse 2, Abuja', 9.0730, 7.4905),
 ('Charcoal Grill', 'restaurant', 'Abuja', 'Wuse 2, Abuja', 9.0740, 7.4900),
 ('OSO Restaurant', 'restaurant', 'Abuja', 'Wuse, Abuja', 9.0720, 7.4880),
 ('Zuma Grill', 'restaurant', 'Abuja', 'Transcorp Hilton, Abuja', 9.0550, 7.4890),
@@ -47,7 +51,7 @@ INSERT INTO venues (name, category, city, address, lat, lng) VALUES
 ('Rhapsody''s', 'lounge', 'Lagos', '38 Isaac John Street, GRA Ikeja', 6.5800, 3.3600),
 ('Barracuda', 'lounge', 'Lagos', 'Okun Ajah Road, Ajah', 6.4680, 3.5800),
 ('Vanilla Lounge', 'lounge', 'Lagos', '2a Saka Jojo Street, Victoria Island', 6.4285, 3.4180),
-('11:11', 'lounge', 'Lagos', 'Lekki, Lagos', 6.4470, 3.4750),
+('11:11', 'lounge', 'Port Harcourt', 'Port Harcourt', 4.8156, 7.0498),
 ('Baryucca Lounge', 'lounge', 'Lagos', 'Victoria Island, Lagos', 6.4300, 3.4210),
 ('Lupita Lounge', 'lounge', 'Lagos', 'Lekki Phase 1, Lagos', 6.4455, 3.4710),
 ('Boom Boom Lounge', 'lounge', 'Lagos', 'Victoria Island, Lagos', 6.4330, 3.4225),

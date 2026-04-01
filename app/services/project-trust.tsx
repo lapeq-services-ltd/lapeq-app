@@ -34,10 +34,12 @@ export default function ProjectTrustScreen() {
         if (!projectName || !address) { setShowError(true); return; }
         setLoading(true);
         const { data: { user } } = await supabase.auth.getUser();
+        const ref = "LPQ-" + Date.now().toString(36).toUpperCase().slice(-5);
         const { error } = await supabase.from("requests").insert({
             user_id: user?.id,
             service_type: "project-trust",
             status: "pending",
+            reference: ref,
             details: { projectName, address, contractorName, inspectionFrequency, notes },
         });
         setLoading(false);

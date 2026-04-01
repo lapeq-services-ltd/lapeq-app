@@ -7,6 +7,7 @@ import { useRouter, useSegments } from "expo-router";
 import { useState } from "react";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 import { Session } from "@supabase/supabase-js";
+import { usePushToken } from "@/lib/usePushToken";
 import { View, ActivityIndicator } from "react-native";
 import { useFonts } from "expo-font";
 import {
@@ -50,6 +51,8 @@ function RootContent() {
     const [session, setSession] = useState<Session | null>(null);
     const [loading, setLoading] = useState(true);
     const { theme, C } = useTheme();
+
+    usePushToken(session?.user?.id ?? null);
 
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {

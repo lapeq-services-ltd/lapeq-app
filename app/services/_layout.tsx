@@ -9,6 +9,7 @@ export default function ServicesLayout() {
             <Stack.Screen name="corporate-pairing" />
             <Stack.Screen name="diaspora-support" />
             <Stack.Screen name="project-trust" />
+            <Stack.Screen name="tier-purchase" />
         </Stack>
     );
 }

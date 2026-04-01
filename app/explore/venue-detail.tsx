@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image, Dimensions, Linking } from "react-native";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image, Dimensions, Linking, NativeSyntheticEvent, NativeScrollEvent } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ChevronLeft, MapPin, Heart, ArrowRight, ExternalLink } from "lucide-react-native";
@@ -17,6 +17,8 @@ type Venue = {
     lat: number | null;
     lng: number | null;
 };
+
+type VenueImage = { id: string; url: string; sort_order: number };
 
 const { width: SW } = Dimensions.get("window");
 const MAP_W = SW - 48;
@@ -79,6 +81,9 @@ export default function VenueDetailScreen() {
     const [userId, setUserId] = useState<string | null>(null);
     const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
     const [mapLoading, setMapLoading] = useState(false);
+    const [venueImages, setVenueImages] = useState<VenueImage[]>([]);
+    const [activeSlide, setActiveSlide] = useState(0);
+    const carouselRef = useRef<ScrollView>(null);
 
     useEffect(() => { init(); }, [id]);
 
@@ -93,6 +98,12 @@ export default function VenueDetailScreen() {
         const { data } = await supabase.from("venues").select("*").eq("id", id).single();
         if (data) {
             setVenue(data);
+            const { data: imgs } = await supabase
+                .from("venue_images")
+                .select("id, url, sort_order")
+                .eq("venue_id", id)
+                .order("sort_order");
+            setVenueImages((imgs as VenueImage[]) ?? []);
             // Use stored coords or geocode
             if (data.lat && data.lng) {
                 setCoords({ lat: data.lat, lng: data.lng });
@@ -132,16 +143,50 @@ export default function VenueDetailScreen() {
 
     if (!venue) return null;
 
-    const imgSrc = venue.image_url ? { uri: venue.image_url } : PLACEHOLDER_IMAGES[venue.category] ?? PLACEHOLDER_IMAGES.restaurant;
+    const fallbackSrc = venue.image_url ? { uri: venue.image_url } : PLACEHOLDER_IMAGES[venue.category] ?? PLACEHOLDER_IMAGES.restaurant;
+    const slides = venueImages.length > 0
+        ? venueImages.map(img => ({ uri: img.url }))
+        : [fallbackSrc];
     const mapUrl = coords ? staticMapUrl(coords.lat, coords.lng) : null;
+
+    const handleCarouselScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+        const slide = Math.round(e.nativeEvent.contentOffset.x / SW);
+        setActiveSlide(slide);
+    };
 
     return (
         <View style={{ flex: 1, backgroundColor: C.background }}>
             <ScrollView showsVerticalScrollIndicator={false}>
-                {/* Hero image */}
+                {/* Hero carousel */}
                 <View style={s.hero}>
-                    <Image source={imgSrc} style={s.heroImg} resizeMode="cover" />
-                    <View style={s.heroOverlay} />
+                    <ScrollView
+                        ref={carouselRef}
+                        horizontal
+                        pagingEnabled
+                        showsHorizontalScrollIndicator={false}
+                        onMomentumScrollEnd={handleCarouselScroll}
+                        scrollEventThrottle={16}
+                        style={{ width: SW, height: 380 }}
+                    >
+                        {slides.map((src, i) => (
+                            <View key={i} style={{ width: SW, height: 380 }}>
+                                <Image source={src} style={s.heroImg} resizeMode="cover" />
+                                <View style={s.heroOverlay} />
+                            </View>
+                        ))}
+                    </ScrollView>
+
+                    {/* Dot indicators */}
+                    {slides.length > 1 && (
+                        <View style={s.dots}>
+                            {slides.map((_, i) => (
+                                <View
+                                    key={i}
+                                    style={[s.dot, { backgroundColor: i === activeSlide ? "#c9a84c" : "rgba(255,255,255,0.35)", width: i === activeSlide ? 16 : 6 }]}
+                                />
+                            ))}
+                        </View>
+                    )}
 
                     <SafeAreaView style={s.heroActions}>
                         <TouchableOpacity style={s.actionBtn} onPress={() => router.back()}>
@@ -243,9 +288,11 @@ export default function VenueDetailScreen() {
 
 const getStyles = (C: any, theme: string) => StyleSheet.create({
     hero: { height: 380, position: "relative" },
-    heroImg: { width: SW, height: 380, position: "absolute" },
+    heroImg: { width: SW, height: 380 },
     heroOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.45)" },
-    heroActions: { flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 20 },
+    heroActions: { position: "absolute", top: 0, left: 0, right: 0, flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 20 },
+    dots: { position: "absolute", bottom: 72, left: 0, right: 0, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 5 },
+    dot: { height: 6, borderRadius: 3, transition: "width 0.2s" } as any,
     actionBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(0,0,0,0.35)", alignItems: "center", justifyContent: "center" },
     heroContent: { position: "absolute", bottom: 28, left: 20, right: 20 },
     categoryPill: { alignSelf: "flex-start", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginBottom: 10 },

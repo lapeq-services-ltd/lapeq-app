@@ -67,12 +67,13 @@ export default function DrivingServiceScreen() {
             field === "pickup" ? setPickupSuggestions([]) : setDropoffSuggestions([]);
             return;
         }
+        if (!MAPBOX_TOKEN) return;
         setSearchingField(field);
         searchTimer.current = setTimeout(async () => {
             const controller = new AbortController();
             abortRef.current = controller;
             try {
-                const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(text)}.json?access_token=${MAPBOX_TOKEN}&autocomplete=true&limit=5&language=en&country=NG`;
+                const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(text)}.json?access_token=${MAPBOX_TOKEN}&autocomplete=true&limit=6&language=en&country=NG&types=poi,address,place,locality,neighborhood`;
                 const res = await fetch(url, { signal: controller.signal });
                 const json = await res.json();
                 const places = (json.features ?? []).map((f: any) => f.place_name as string);
@@ -135,32 +136,46 @@ export default function DrivingServiceScreen() {
     };
 
     const handleSubmit = async () => {
-        if (!pickup || !dropoff) return Alert.alert("Fill in all required fields");
+        if (!pickup || !dropoff) return Alert.alert("Missing Fields", "Please enter both pickup and drop-off locations.");
         setLoading(true);
-        const { data: { user } } = await supabase.auth.getUser();
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                Alert.alert("Not signed in", "Please sign in to submit a request.");
+                setLoading(false);
+                return;
+            }
 
-        const combined = new Date(dateObj);
-        combined.setHours(timeObj.getHours(), timeObj.getMinutes());
+            const combined = new Date(dateObj);
+            combined.setHours(timeObj.getHours(), timeObj.getMinutes());
 
-        const { error } = await supabase.from("requests").insert({
-            user_id: user?.id,
-            service_type: "driving-service",
-            status: "pending",
-            title: CAR_OPTIONS.find(c => c.id === carType)?.name || "Car Hire",
-            pickup_location: pickup,
-            dropoff_location: dropoff,
-            scheduled_time: combined.toISOString(),
-            details: { instructions, carType, passengers, carCount, color: carColor === "no-preference" ? null : carColor },
-        });
+            const ref = "LPQ-" + Date.now().toString(36).toUpperCase().slice(-5);
+            const { error } = await supabase.from("requests").insert({
+                user_id: user.id,
+                service_type: "driving-service",
+                status: "pending",
+                reference: ref,
+                title: CAR_OPTIONS.find(c => c.id === carType)?.name || "Car Hire",
+                pickup_location: pickup,
+                dropoff_location: dropoff,
+                scheduled_time: combined.toISOString(),
+                details: { instructions, carType, passengers, carCount, color: carColor === "no-preference" ? null : carColor },
+            });
 
-        setLoading(false);
-        if (error) {
-        } else {
-            setShowSuccess(true);
-            Animated.parallel([
-                Animated.timing(alertOpacity, { toValue: 1, duration: 250, useNativeDriver: true }),
-                Animated.spring(alertScale, { toValue: 1, friction: 8, tension: 40, useNativeDriver: true })
-            ]).start();
+            setLoading(false);
+            if (error) {
+                Alert.alert("Submission Failed", error.message);
+                console.error("[Request insert error]", JSON.stringify(error));
+            } else {
+                setShowSuccess(true);
+                Animated.parallel([
+                    Animated.timing(alertOpacity, { toValue: 1, duration: 250, useNativeDriver: true }),
+                    Animated.spring(alertScale, { toValue: 1, friction: 8, tension: 40, useNativeDriver: true })
+                ]).start();
+            }
+        } catch (e: any) {
+            setLoading(false);
+            Alert.alert("Error", e?.message || "Something went wrong. Please try again.");
         }
     };
 
@@ -220,7 +235,7 @@ export default function DrivingServiceScreen() {
                             value={pickup}
                             onChangeText={t => { setPickup(t); if (!t) setPickupSuggestions([]); else searchLocation(t, "pickup"); }}
                             onFocus={() => setActiveField("pickup")}
-                            onBlur={() => setTimeout(() => { setActiveField(null); setPickupSuggestions([]); }, 300)}
+                            onBlur={() => setTimeout(() => { setActiveField(null); setPickupSuggestions([]); }, 500)}
                             returnKeyType="done"
                             onSubmitEditing={() => Keyboard.dismiss()}
                         />
@@ -262,7 +277,7 @@ export default function DrivingServiceScreen() {
                             value={dropoff}
                             onChangeText={t => { setDropoff(t); if (!t) setDropoffSuggestions([]); else searchLocation(t, "dropoff"); }}
                             onFocus={() => setActiveField("dropoff")}
-                            onBlur={() => setTimeout(() => { setActiveField(null); setDropoffSuggestions([]); }, 300)}
+                            onBlur={() => setTimeout(() => { setActiveField(null); setDropoffSuggestions([]); }, 500)}
                             returnKeyType="done"
                             onSubmitEditing={() => Keyboard.dismiss()}
                         />

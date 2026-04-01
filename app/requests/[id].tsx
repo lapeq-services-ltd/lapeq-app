@@ -2,9 +2,19 @@ import { useState, useEffect, useMemo } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image, Modal } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronLeft, Car, Briefcase, Plane, HeartHandshake, FileText, Package, MapPin, Clock, Calendar, Users, AlertTriangle, Wallet, MessageSquare, Building2, UtensilsCrossed, Ticket, Sparkles, Anchor } from "lucide-react-native";
+import { ChevronLeft, Car, Briefcase, Plane, HeartHandshake, FileText, Package, MapPin, Clock, Calendar, Users, AlertTriangle, Wallet, Building2, UtensilsCrossed, Ticket, Sparkles, Anchor, Receipt } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
+
+type Receipt = {
+    id: string;
+    items: { description: string; amount: number }[];
+    total: number;
+    currency: string;
+    notes: string | null;
+    issued_at: string;
+    created_at: string;
+};
 
 type Request = {
     id: string;
@@ -49,18 +59,19 @@ export default function RequestDetailsScreen() {
     const s = useMemo(() => getStyles(C, theme), [C, theme]);
 
     const [request, setRequest] = useState<Request | null>(null);
+    const [receipt, setReceipt] = useState<Receipt | null>(null);
     const [loading, setLoading] = useState(true);
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [cancelling, setCancelling] = useState(false);
 
     useEffect(() => {
         const fetch = async () => {
-            const { data } = await supabase
-                .from("requests")
-                .select("*")
-                .eq("id", id)
-                .single();
-            if (data) setRequest(data as Request);
+            const [{ data: reqData }, { data: recData }] = await Promise.all([
+                supabase.from("requests").select("*").eq("id", id).single(),
+                supabase.from("receipts").select("*").eq("request_id", id).order("created_at", { ascending: false }).limit(1).single(),
+            ]);
+            if (reqData) setRequest(reqData as Request);
+            if (recData) setReceipt(recData as Receipt);
             setLoading(false);
         };
         fetch();
@@ -301,6 +312,46 @@ export default function RequestDetailsScreen() {
                         </Text>
                     </View>
 
+                    {receipt && (
+                        <View style={s.receiptCard}>
+                            <View style={s.receiptHeader}>
+                                <View style={s.receiptIconWrap}>
+                                    <Receipt size={16} color={C.primary} />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={s.receiptTitle}>Invoice</Text>
+                                    <Text style={s.receiptDate}>
+                                        {new Date(receipt.issued_at ?? receipt.created_at).toLocaleDateString([], { day: "numeric", month: "long", year: "numeric" })}
+                                    </Text>
+                                </View>
+                            </View>
+
+                            <View style={s.receiptDivider} />
+
+                            {receipt.items.map((item, i) => (
+                                <View key={i} style={s.receiptRow}>
+                                    <Text style={[s.receiptItemDesc, { flex: 1 }]}>{item.description || "Service"}</Text>
+                                    <Text style={s.receiptItemAmount}>
+                                        {new Intl.NumberFormat("en-NG", { style: "currency", currency: receipt.currency ?? "NGN", minimumFractionDigits: 0 }).format(item.amount)}
+                                    </Text>
+                                </View>
+                            ))}
+
+                            <View style={s.receiptTotalRow}>
+                                <Text style={s.receiptTotalLabel}>Total</Text>
+                                <Text style={s.receiptTotalAmount}>
+                                    {new Intl.NumberFormat("en-NG", { style: "currency", currency: receipt.currency ?? "NGN", minimumFractionDigits: 0 }).format(receipt.total)}
+                                </Text>
+                            </View>
+
+                            {receipt.notes && (
+                                <View style={s.receiptNotes}>
+                                    <Text style={s.receiptNotesText}>{receipt.notes}</Text>
+                                </View>
+                            )}
+                        </View>
+                    )}
+
                     {request.status.toLowerCase() === "pending" && (
                         <TouchableOpacity style={s.cancelBtn} onPress={() => setShowCancelModal(true)}>
                             <Text style={s.cancelBtnText}>Cancel Request</Text>
@@ -359,6 +410,22 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     infoText: { fontSize: 13, color: C.muted, textAlign: "center", lineHeight: 20 },
     cancelBtn: { borderRadius: 16, padding: 18, alignItems: "center", borderWidth: 1, borderColor: "#ef5350" },
     cancelBtnText: { fontSize: 15, fontWeight: "700", color: "#ef5350" },
+
+    receiptCard: { backgroundColor: C.surface, borderRadius: 20, padding: 20, gap: 12, borderWidth: 1, borderColor: "rgba(201,168,76,0.25)" },
+    receiptHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
+    receiptIconWrap: { width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(201,168,76,0.12)", alignItems: "center", justifyContent: "center" },
+    receiptTitle: { fontSize: 14, fontWeight: "700", color: C.text },
+    receiptDate: { fontSize: 11, color: C.muted, marginTop: 1 },
+    receiptDivider: { height: 1, backgroundColor: "rgba(201,168,76,0.15)" },
+    receiptRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
+    receiptItemDesc: { fontSize: 13, color: C.text, fontWeight: "500" },
+    receiptItemQty: { fontSize: 11, color: C.muted, marginTop: 2 },
+    receiptItemAmount: { fontSize: 13, color: C.text, fontWeight: "600" },
+    receiptTotalRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingTop: 12, borderTopWidth: 1, borderTopColor: "rgba(201,168,76,0.2)" },
+    receiptTotalLabel: { fontSize: 12, fontWeight: "700", color: C.muted, letterSpacing: 1, textTransform: "uppercase" },
+    receiptTotalAmount: { fontSize: 22, fontWeight: "700", color: C.primary },
+    receiptNotes: { backgroundColor: C.background, borderRadius: 10, padding: 12 },
+    receiptNotesText: { fontSize: 12, color: C.muted, lineHeight: 18 },
 
     modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 24 },
     modalBox: { width: "100%", backgroundColor: C.surface, borderRadius: 24, padding: 28, alignItems: "center", gap: 8, borderWidth: 1, borderColor: C.border },

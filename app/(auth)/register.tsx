@@ -93,7 +93,7 @@ export default function RegisterScreen() {
             return;
         }
         setLoading(true);
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
             email,
             password,
             options: {
@@ -105,17 +105,26 @@ export default function RegisterScreen() {
                 },
             },
         });
-        setLoading(false);
         if (error) {
+            setLoading(false);
+            console.error("[Register error]", error.message, error.status);
             const msg = error.message.toLowerCase();
             const isExisting = msg.includes("already registered") || msg.includes("already exists");
             triggerModal(true, isExisting
                 ? "An account with this email already exists. Try signing in instead."
-                : "Something went wrong on our end. Please try again shortly."
+                : error.message
             );
-        } else {
-            triggerModal(false);
+            return;
         }
+        // Create profile manually (in case trigger is disabled)
+        if (data.user) {
+            await supabase.from("profiles").upsert({
+                id: data.user.id,
+                full_name: fullName,
+            }, { onConflict: "id" });
+        }
+        setLoading(false);
+        triggerModal(false);
     };
 
     const hideAlertAndGo = () => {

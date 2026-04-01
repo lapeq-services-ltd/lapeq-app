@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import {
     View,
     Text,
@@ -7,6 +7,7 @@ import {
     StyleSheet,
     Image,
     Dimensions,
+    Animated,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -14,17 +15,85 @@ import { Bell, Crown, ChevronRight, Bookmark, Calendar, Plane, Car, Headphones }
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
 
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const CARD_WIDTH = SCREEN_WIDTH * 0.72;
+const CARD_GAP = 12;
+
+const ADS = [
+    {
+        img: require("@/assets/images/lagos-rooftop.jpg"),
+        tag: "Rooftop Dining",
+        title: "Zuma Restaurant",
+        sub: "Abuja & Lagos",
+        desc: "Japanese robata grill and sushi. Exclusive member reservations available.",
+    },
+    {
+        img: require("@/assets/images/lagos-hotel.jpg"),
+        tag: "Fine Dining",
+        title: "Cilantro Restaurant",
+        sub: "Abuja",
+        desc: "Award-winning Mediterranean cuisine in the heart of Abuja. Members get priority seating.",
+    },
+    {
+        img: require("@/assets/images/lagos-beach.jpg"),
+        tag: "Trending Now",
+        title: "Breeze Restaurant",
+        sub: "Wuse 2, Abuja",
+        desc: "Waterfront dining experience. Reserve your private cabana through Lapeq.",
+    },
+    {
+        img: require("@/assets/images/lagos-restaurant.jpg"),
+        tag: "Members Only",
+        title: "Nola Restaurant",
+        sub: "Wuse 2, Abuja",
+        desc: "Upscale dining with an intimate atmosphere. Priority seating for Lapeq members.",
+    },
+];
+
+// Duplicate for seamless loop
+const LOOPED = [...ADS, ...ADS, ...ADS];
+
 export default function HomeScreen() {
     const router = useRouter();
     const { C, theme } = useTheme();
     const s = useMemo(() => getStyles(C), [C]);
     const [userName, setUserName] = useState("Nife");
+    const [hasUnread, setHasUnread] = useState(false);
+    const translateX = useRef(new Animated.Value(0)).current;
+    const offsetRef = useRef(0);
 
     useEffect(() => {
-        supabase.auth.getUser().then(({ data: { user } }) => {
+        supabase.auth.getUser().then(async ({ data: { user } }) => {
             const name = user?.user_metadata?.full_name?.split(" ")[0];
             if (name) setUserName(name);
+            if (user) {
+                const { count } = await supabase
+                    .from("notifications")
+                    .select("*", { count: "exact", head: true })
+                    .eq("user_id", user.id)
+                    .eq("read", false);
+                setHasUnread((count ?? 0) > 0);
+            }
         });
+    }, []);
+
+    useEffect(() => {
+        const TOTAL = ADS.length * (CARD_WIDTH + CARD_GAP);
+        const loop = () => {
+            Animated.timing(translateX, {
+                toValue: -(offsetRef.current + TOTAL),
+                duration: TOTAL * 18,
+                useNativeDriver: true,
+            }).start(({ finished }) => {
+                if (finished) {
+                    offsetRef.current = 0;
+                    translateX.setValue(0);
+                    loop();
+                }
+            });
+        };
+        loop();
+        return () => translateX.stopAnimation();
     }, []);
 
     const darkBadgeColor = theme === "dark" ? C.background : C.primary;
@@ -43,7 +112,7 @@ export default function HomeScreen() {
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                     <TouchableOpacity style={s.iconBtn} onPress={() => router.push("/notifications")}>
                         <Bell size={24} color={C.text} />
-                        <View style={s.notifDot} />
+                        {hasUnread && <View style={s.notifDot} />}
                     </TouchableOpacity>
                     <TouchableOpacity style={s.crownBtn} onPress={() => router.push("/membership")}>
                         <Crown size={24} color={C.primary} />
@@ -84,42 +153,25 @@ export default function HomeScreen() {
                     <ChevronRight size={24} color={theme === "dark" ? `${C.background}66` : C.muted} />
                 </TouchableOpacity>
 
-                <View style={s.sectionRow}>
-                    <Text style={s.sectionTitle}>Curated For You</Text>
-                    <Text style={s.viewAll}>View all</Text>
-                </View>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 24 }}>
-                    {[
-                        {
-                            img: require("@/assets/images/lagos-restaurant.jpg"),
-                            badge: "Exclusive Access",
-                            title: "Private Dining at Nok by Alara",
-                            sub: "Victoria Island, Lagos",
-                            desc: "Curated modern Nigerian cuisine experience with personal sommelier.",
-                        },
-                        {
-                            img: require("@/assets/images/lagos-hotel.jpg"),
-                            badge: "Member Rate",
-                            title: "Weekend at Eko Hotel & Suites",
-                            sub: "Victoria Island, Lagos",
-                            desc: "Ocean-view suite with spa access and priority reservations.",
-                        },
-                    ].map((card) => (
-                        <TouchableOpacity key={card.title} style={s.expCard}>
-                            <View style={s.expImgWrap}>
-                                <Image source={card.img} style={s.expImg} resizeMode="cover" />
-                                <View style={s.expBadge}>
-                                    <Text style={[s.expBadgeText, { color: darkBadgeColor }]}>{card.badge}</Text>
+                <Text style={[s.sectionTitle, { marginBottom: 16 }]}>Curated For You</Text>
+                <View style={{ height: 220, overflow: "hidden", marginBottom: 24, marginHorizontal: -20 }}>
+                    <Animated.View style={{ flexDirection: "row", transform: [{ translateX }], paddingLeft: 20 }}>
+                        {LOOPED.map((card, i) => (
+                            <TouchableOpacity key={i} style={[s.expCard, { width: CARD_WIDTH, marginRight: CARD_GAP }]} activeOpacity={0.9}>
+                                <View style={s.expImgWrap}>
+                                    <Image source={card.img} style={s.expImg} resizeMode="cover" />
+                                    <View style={s.expBadge}>
+                                        <Text style={[s.expBadgeText, { color: darkBadgeColor }]}>{card.tag}</Text>
+                                    </View>
                                 </View>
-                            </View>
-                            <View style={{ padding: 12 }}>
-                                <Text style={s.expTitle}>{card.title}</Text>
-                                <Text style={s.expLoc}>{card.sub}</Text>
-                                <Text style={s.expDesc}>{card.desc}</Text>
-                            </View>
-                        </TouchableOpacity>
-                    ))}
-                </ScrollView>
+                                <View style={{ padding: 10 }}>
+                                    <Text style={s.expTitle}>{card.title}</Text>
+                                    <Text style={s.expLoc}>{card.sub}</Text>
+                                </View>
+                            </TouchableOpacity>
+                        ))}
+                    </Animated.View>
+                </View>
 
                 <View style={s.sectionRow}>
                     <Text style={s.sectionTitle}>Upcoming Events</Text>
@@ -172,7 +224,7 @@ const getStyles = (C: any) => StyleSheet.create({
     sectionRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
     sectionTitle: { fontSize: 18, fontWeight: "600", color: C.text },
     viewAll: { fontSize: 14, color: C.primary, fontWeight: "500" },
-    expCard: { width: 280, borderRadius: 16, overflow: "hidden", borderWidth: 1, borderColor: C.border, backgroundColor: C.surface, marginRight: 16 },
+    expCard: { borderRadius: 16, overflow: "hidden", borderWidth: 1, borderColor: C.border, backgroundColor: C.surface },
     expImgWrap: { height: 140, position: "relative" },
     expImg: { width: "100%", height: "100%" },
     expBadge: { position: "absolute", top: 12, right: 12, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99, backgroundColor: `${C.text}ee` },

@@ -179,6 +179,16 @@ export default function ProfileScreen() {
                     <ArrowRight size={20} color={C.muted} />
                 </TouchableOpacity>
 
+                <TouchableOpacity style={[s.themeRow, { marginTop: -16 }]} onPress={() => router.push("/services/tier-purchase")}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                        <View style={s.themeIconBox}>
+                            <Crown size={18} color={C.primary} />
+                        </View>
+                        <Text style={s.themeLabel}>Upgrade Membership</Text>
+                    </View>
+                    <ArrowRight size={20} color={C.muted} />
+                </TouchableOpacity>
+
                 {/* Recent Requests */}
                 {!loadingStats && recentRequests.length > 0 && (
                     <>

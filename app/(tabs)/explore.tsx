@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabase";
 type Venue = { id: string; name: string; category: string; city: string; address: string | null };
 
 export default function ExploreScreen() {
+    
     const { C, theme } = useTheme();
     const s = useMemo(() => getStyles(C, theme), [C, theme]);
     const router = useRouter();
