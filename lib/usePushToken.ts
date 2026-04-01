@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import * as Notifications from 'expo-notifications'
 import * as Device from 'expo-device'
+import Constants from 'expo-constants'
 import { Platform } from 'react-native'
 import { supabase } from './supabase'
 
@@ -40,8 +41,13 @@ export function usePushToken(userId: string | null) {
         })
       }
 
-      // Get the Expo push token
-      const tokenData = await Notifications.getExpoPushTokenAsync()
+      // Get the Expo push token — projectId is required for SDK 50+
+      const projectId =
+        Constants.expoConfig?.extra?.eas?.projectId ??
+        Constants.easConfig?.projectId
+      const tokenData = await Notifications.getExpoPushTokenAsync(
+        projectId ? { projectId } : undefined
+      )
       const token = tokenData.data
 
       // Upsert to Supabase — one row per user+token combo

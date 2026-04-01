@@ -35,8 +35,11 @@ export default function NotificationsScreen() {
 
     useEffect(() => {
         const load = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) { setLoading(false); return; }
+            // Use getSession() — reads from local SecureStore cache reliably
+            // getUser() can return null if SecureStore hasn't hydrated yet
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.user) { setLoading(false); return; }
+            const user = session.user;
 
             const { data } = await supabase
                 .from("notifications")
