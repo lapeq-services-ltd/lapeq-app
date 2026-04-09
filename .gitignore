@@ -43,3 +43,7 @@ yarn-error.*
 # Claude Code
 .claude/
 TODO.md
+
+ROADMAP.md
+nin.md
+review.md
