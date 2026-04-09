@@ -57,15 +57,27 @@ export default function HomeScreen() {
     const router = useRouter();
     const { C, theme } = useTheme();
     const s = useMemo(() => getStyles(C), [C]);
-    const [userName, setUserName] = useState("Nife");
+    const [userName, setUserName] = useState("");
     const [hasUnread, setHasUnread] = useState(false);
     const translateX = useRef(new Animated.Value(0)).current;
     const offsetRef = useRef(0);
 
     useEffect(() => {
         supabase.auth.getUser().then(async ({ data: { user } }) => {
-            const name = user?.user_metadata?.full_name?.split(" ")[0];
-            if (name) setUserName(name);
+            if (!user) return;
+            // Try metadata first, then profiles table, then email prefix
+            const metaName = user?.user_metadata?.full_name?.split(" ")[0];
+            if (metaName) {
+                setUserName(metaName);
+            } else {
+                const { data: profile } = await supabase
+                    .from("profiles")
+                    .select("full_name")
+                    .eq("id", user.id)
+                    .single();
+                const name = profile?.full_name?.split(" ")[0] ?? user.email?.split("@")[0] ?? "there";
+                setUserName(name);
+            }
             if (user) {
                 const { count } = await supabase
                     .from("notifications")
@@ -123,14 +135,14 @@ export default function HomeScreen() {
             <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 80 }}>
                 <View style={{ marginBottom: 20 }}>
                     <Text style={s.greetSub}>Good evening,</Text>
-                    <Text style={s.greetName}>{userName}</Text>
+                    <Text style={s.greetName}>{userName || " "}</Text>
                 </View>
 
                 <View style={s.quickActions}>
                     {[
                         { label: "Experiences", Icon: Calendar, route: "/trip-planner" as const },
                         { label: "Travel", Icon: Plane, route: "/services/lifestyle-travel" as const },
-                        { label: "Car Hire", Icon: Car, route: "/coordination" as const },
+                        { label: "Chauffeur", Icon: Car, route: "/services/driving" as const },
                         { label: "Concierge", Icon: Headphones, route: "/services/concierge-request" as const },
                     ].map(({ label, Icon, route }) => (
                         <TouchableOpacity key={label} style={s.quickBtn} onPress={() => router.push(route)}>

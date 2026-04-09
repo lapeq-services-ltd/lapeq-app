@@ -11,6 +11,7 @@ type Notif = {
     title: string;
     body: string;
     type: string;
+    target_id: string | null;
     read: boolean;
     created_at: string;
 };
@@ -94,7 +95,20 @@ export default function NotificationsScreen() {
                     keyExtractor={(item) => item.id}
                     contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 10, paddingBottom: 40 }}
                     renderItem={({ item }) => (
-                        <TouchableOpacity style={[s.notifCard, !item.read && s.unreadCard]}>
+                        <TouchableOpacity 
+                           style={[s.notifCard, !item.read && s.unreadCard]}
+                           activeOpacity={0.7}
+                           onPress={() => {
+                               if (item.type === "request" || item.type === "receipt") {
+                                   if (item.target_id) router.push(`/requests/${item.target_id}`);
+                                   else router.push("/requests");
+                               } else if (item.type === "welcome") {
+                                   router.push("/explore");
+                               } else {
+                                   router.push("/");
+                               }
+                           }}
+                        >
                             <View style={[s.iconBox, { backgroundColor: `${C.primary}18` }]}>
                                 {getIcon(item.type)}
                             </View>

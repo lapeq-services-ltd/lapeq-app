@@ -27,6 +27,7 @@ type Request = {
     dropoff_location: string | null;
     scheduled_time: string | null;
     notes: string | null;
+    driver_status: string | null;
     details: {
         // driving
         passengers?: number; carType?: string; instructions?: string; carCount?: number; color?: string | null;
@@ -43,7 +44,7 @@ const CAR_IMAGES: Record<string, any> = {
 };
 
 const SERVICE_LABELS: Record<string, string> = {
-    "driving-service": "Driving Service",
+    "driving-service": "Chauffeur Service",
     "logistics": "Logistics",
     "lifestyle-travel": "Hospitality & Travel",
     "corporate-pairing": "Corporate Pairing",
@@ -75,6 +76,15 @@ export default function RequestDetailsScreen() {
             setLoading(false);
         };
         fetch();
+
+        // Realtime updates for driver status
+        const channel = supabase.channel(`request-${id}`)
+            .on("postgres_changes", { event: "UPDATE", schema: "public", table: "requests", filter: `id=eq.${id}` }, (payload) => {
+                setRequest(prev => prev ? { ...prev, ...payload.new } : prev);
+            })
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel); };
     }, [id]);
 
     const confirmCancel = async () => {
@@ -145,6 +155,18 @@ export default function RequestDetailsScreen() {
                 </View>
             ) : (
                 <ScrollView contentContainerStyle={s.scroll}>
+                    {request.service_type === "driving-service" && request.driver_status && (
+                        <View style={s.driverBanner}>
+                            <Text style={s.driverBannerText}>
+                                {request.driver_status === "assigned" && "🚗  Your driver has been assigned"}
+                                {request.driver_status === "en_route" && "🚗  Your driver is on the way"}
+                                {request.driver_status === "arrived" && "📍  Your driver has arrived"}
+                                {request.driver_status === "in_progress" && "🛣️  Trip in progress"}
+                                {request.driver_status === "completed" && "✅  Trip completed"}
+                            </Text>
+                        </View>
+                    )}
+
                     <View style={s.heroCard}>
                         <View style={s.iconWrap}>
                             {getIcon(request.service_type, request.details)}
@@ -406,6 +428,8 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     notesBox: { backgroundColor: C.background, borderRadius: 12, padding: 14, gap: 6 },
     notesText: { fontSize: 14, color: C.text, lineHeight: 22 },
 
+    driverBanner: { backgroundColor: "rgba(201,168,76,0.12)", borderRadius: 14, padding: 14, borderWidth: 1, borderColor: "rgba(201,168,76,0.3)" },
+    driverBannerText: { fontSize: 14, fontWeight: "600", color: C.primary, textAlign: "center" },
     infoBox: { backgroundColor: theme === "dark" ? "rgba(201,168,76,0.08)" : "rgba(201,168,76,0.06)", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "rgba(201,168,76,0.2)" },
     infoText: { fontSize: 13, color: C.muted, textAlign: "center", lineHeight: 20 },
     cancelBtn: { borderRadius: 16, padding: 18, alignItems: "center", borderWidth: 1, borderColor: "#ef5350" },

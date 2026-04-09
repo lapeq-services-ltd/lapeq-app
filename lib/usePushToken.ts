@@ -11,6 +11,8 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
   }),
 })
 
@@ -41,13 +43,19 @@ export function usePushToken(userId: string | null) {
         })
       }
 
-      // Get the Expo push token — projectId is required for SDK 50+
-      const projectId =
-        Constants.expoConfig?.extra?.eas?.projectId ??
-        Constants.easConfig?.projectId
-      const tokenData = await Notifications.getExpoPushTokenAsync(
-        projectId ? { projectId } : undefined
-      )
+      let tokenData;
+      try {
+        const projectId =
+          Constants.expoConfig?.extra?.eas?.projectId ??
+          Constants.easConfig?.projectId
+        tokenData = await Notifications.getExpoPushTokenAsync(
+          projectId ? { projectId } : undefined
+        )
+      } catch (err) {
+        console.warn('Network timeout or issue fetching Expo push token locally:', err)
+        return
+      }
+
       const token = tokenData.data
 
       // Upsert to Supabase — one row per user+token combo
@@ -57,6 +65,6 @@ export function usePushToken(userId: string | null) {
       )
     }
 
-    register().catch(console.warn)
+    register()
   }, [userId])
 }

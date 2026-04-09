@@ -155,7 +155,7 @@ export default function DrivingServiceScreen() {
                 service_type: "driving-service",
                 status: "pending",
                 reference: ref,
-                title: CAR_OPTIONS.find(c => c.id === carType)?.name || "Car Hire",
+                title: CAR_OPTIONS.find(c => c.id === carType)?.name || "Chauffeur Service",
                 pickup_location: pickup,
                 dropoff_location: dropoff,
                 scheduled_time: combined.toISOString(),
@@ -196,8 +196,8 @@ export default function DrivingServiceScreen() {
                     <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
                         <Text style={[s.backText, { color: C.primary }]}>← Back</Text>
                     </TouchableOpacity>
-                    <Text style={[s.title, { color: C.text }]}>Driving Service</Text>
-                    <Text style={[s.subtitle, { color: C.muted }]}>Book a chauffeur or scheduled ride</Text>
+                    <Text style={[s.title, { color: C.text }]}>Chauffeur Service</Text>
+                    <Text style={[s.subtitle, { color: C.muted }]}>Book a private chauffeur or scheduled ride</Text>
 
                     <Text style={[s.label, { color: C.text }]}>Vehicle Class</Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.carScroller}>
@@ -443,7 +443,7 @@ export default function DrivingServiceScreen() {
             </Modal>
 
             {/* Date Picker Modal */}
-            <Modal visible={showDatePicker} transparent animationType="slide">
+            <Modal visible={showDatePicker} transparent animationType="slide" onRequestClose={() => setShowDatePicker(false)}>
                 <TouchableOpacity style={s.pickerOverlay} activeOpacity={1} onPress={() => setShowDatePicker(false)} />
                 <View style={[s.pickerSheet, { backgroundColor: C.surface }]}>
                     <View style={s.pickerHeader}>
@@ -468,7 +468,7 @@ export default function DrivingServiceScreen() {
             </Modal>
 
             {/* Time Picker Modal */}
-            <Modal visible={showTimePicker} transparent animationType="slide">
+            <Modal visible={showTimePicker} transparent animationType="slide" onRequestClose={() => setShowTimePicker(false)}>
                 <TouchableOpacity style={s.pickerOverlay} activeOpacity={1} onPress={() => setShowTimePicker(false)} />
                 <View style={[s.pickerSheet, { backgroundColor: C.surface }]}>
                     <View style={s.pickerHeader}>
