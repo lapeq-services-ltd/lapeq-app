@@ -242,7 +242,7 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
 
     cityRow: { flexDirection: "row", gap: 8, paddingHorizontal: 20, marginBottom: 16 },
     cityChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 10, borderWidth: 1.5, borderColor: C.border, backgroundColor: C.surface },
-    cityChipActive: { borderColor: C.primary, backgroundColor: theme === "dark" ? "rgba(201,168,76,0.1)" : "rgba(201,168,76,0.08)" },
+    cityChipActive: { borderColor: C.primary, backgroundColor: C.surface },
     cityChipText: { fontSize: 12, fontWeight: "600", color: C.muted },
     cityChipTextActive: { color: C.primary },
     center: { flex: 1, justifyContent: "center", alignItems: "center" },
@@ -262,7 +262,7 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
 
     infoWrap: { flexDirection: "row", alignItems: "center", padding: 14, gap: 10 },
     infoLeft: { flex: 1, flexDirection: "row", alignItems: "center", gap: 12 },
-    categoryTag: { width: 36, height: 36, borderRadius: 10, backgroundColor: theme === "dark" ? "rgba(201,168,76,0.12)" : "rgba(201,168,76,0.08)", alignItems: "center", justifyContent: "center" },
+    categoryTag: { width: 36, height: 36, borderRadius: 10, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" },
     cardName: { fontSize: 15, fontWeight: "700", color: C.text },
     cardAddress: { fontSize: 12, color: C.muted },
 });

@@ -254,7 +254,7 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     verifiedText: { fontSize: 12, color: theme === 'dark' ? "rgba(0,0,0,0.8)" : C.green, fontWeight: "600" },
     etaTime: { fontSize: 48, fontWeight: "700", color: theme === 'dark' ? "#000000" : C.background, marginBottom: 8 },
     etaCar: { fontSize: 14, color: theme === 'dark' ? "rgba(0,0,0,0.5)" : "rgba(240,236,228,0.5)", marginBottom: 16 },
-    membershipTag: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: theme === 'dark' ? "rgba(0,0,0,0.1)" : "rgba(240,236,228,0.1)", alignSelf: "flex-start" },
+    membershipTag: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: C.surface, alignSelf: "flex-start" },
     membershipTagText: { fontSize: 12, fontWeight: "600", color: theme === 'dark' ? C.black : C.primary },
     stopLabel: { fontSize: 12, color: C.muted },
     stopName: { fontSize: 15, fontWeight: "600", color: C.text, marginTop: 4 },
@@ -286,7 +286,7 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     memberBannerBold: { fontWeight: "700", color: theme === 'dark' ? "#000000" : C.background },
     tripCard: { borderRadius: 20, borderWidth: 1, borderColor: theme === 'dark' ? C.primary : C.border, backgroundColor: C.background, padding: 20, marginBottom: 12 },
     tripTitle: { fontSize: 16, fontWeight: "600", color: C.text },
-    arrangedBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99, backgroundColor: "rgba(201,168,76,0.15)", fontSize: 11, fontWeight: "600", color: C.primary },
+    arrangedBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99, backgroundColor: C.surface, fontSize: 11, fontWeight: "600", color: C.primary },
     tripMeta: { fontSize: 13, color: C.muted, fontWeight: "500" },
     routeDotFilled: { width: 10, height: 10, borderRadius: 5, backgroundColor: C.primary },
     routeLine: { width: 2, height: 16, backgroundColor: theme === 'dark' ? C.primary : C.border },
@@ -301,6 +301,6 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     bookRideBtn: { width: "100%", backgroundColor: C.black, borderRadius: 16, paddingVertical: 18, alignItems: "center", marginBottom: 32 },
     bookRideBtnText: { color: C.cream, fontSize: 16, fontWeight: "700" },
     notificationHint: { flexDirection: "row", alignItems: "center", backgroundColor: C.surface, borderRadius: 16, padding: 16, gap: 14, borderWidth: 1, borderColor: C.border },
-    notificationIconWrap: { width: 40, height: 40, borderRadius: 20, backgroundColor: theme === 'dark' ? "rgba(201,168,76,0.15)" : C.background, alignItems: "center", justifyContent: "center" },
+    notificationIconWrap: { width: 40, height: 40, borderRadius: 20, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" },
     notificationHintText: { flex: 1, fontSize: 13, color: C.muted, lineHeight: 18 }
 });

@@ -122,7 +122,7 @@ export default function RequestDetailsScreen() {
 
     const getStatusColor = (status: string) => {
         switch (status.toLowerCase()) {
-            case "pending": return { bg: "rgba(240,165,0,0.15)", text: "#f0a500" };
+            case "pending": return { bg: "#2a1f00", text: "#f0a500" };
             case "approved":
             case "arranged": return { bg: `${C.primary}20`, text: C.primary };
             case "en-route":
@@ -413,7 +413,7 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     scroll: { padding: 20, gap: 20 },
 
     heroCard: { backgroundColor: C.surface, borderRadius: 24, padding: 28, alignItems: "center", gap: 10, borderWidth: 1, borderColor: C.border },
-    iconWrap: { width: 64, height: 64, borderRadius: 32, backgroundColor: theme === "dark" ? "rgba(201,168,76,0.12)" : C.background, alignItems: "center", justifyContent: "center", marginBottom: 4 },
+    iconWrap: { width: 64, height: 64, borderRadius: 32, backgroundColor: C.surface, alignItems: "center", justifyContent: "center", marginBottom: 4 },
     serviceLabel: { fontSize: 13, color: C.muted, fontWeight: "600", letterSpacing: 1, textTransform: "uppercase" },
     title: { fontSize: 20, fontWeight: "700", color: C.text, textAlign: "center" },
     statusBadge: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 10, marginTop: 4 },
@@ -428,19 +428,19 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     notesBox: { backgroundColor: C.background, borderRadius: 12, padding: 14, gap: 6 },
     notesText: { fontSize: 14, color: C.text, lineHeight: 22 },
 
-    driverBanner: { backgroundColor: "rgba(201,168,76,0.12)", borderRadius: 14, padding: 14, borderWidth: 1, borderColor: "rgba(201,168,76,0.3)" },
+    driverBanner: { backgroundColor: C.surface, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: C.border },
     driverBannerText: { fontSize: 14, fontWeight: "600", color: C.primary, textAlign: "center" },
-    infoBox: { backgroundColor: theme === "dark" ? "rgba(201,168,76,0.08)" : "rgba(201,168,76,0.06)", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "rgba(201,168,76,0.2)" },
+    infoBox: { backgroundColor: C.surface, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: C.border },
     infoText: { fontSize: 13, color: C.muted, textAlign: "center", lineHeight: 20 },
     cancelBtn: { borderRadius: 16, padding: 18, alignItems: "center", borderWidth: 1, borderColor: "#ef5350" },
     cancelBtnText: { fontSize: 15, fontWeight: "700", color: "#ef5350" },
 
-    receiptCard: { backgroundColor: C.surface, borderRadius: 20, padding: 20, gap: 12, borderWidth: 1, borderColor: "rgba(201,168,76,0.25)" },
+    receiptCard: { backgroundColor: C.surface, borderRadius: 20, padding: 20, gap: 12, borderWidth: 1, borderColor: C.border },
     receiptHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
-    receiptIconWrap: { width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(201,168,76,0.12)", alignItems: "center", justifyContent: "center" },
+    receiptIconWrap: { width: 36, height: 36, borderRadius: 18, backgroundColor: C.card, alignItems: "center", justifyContent: "center" },
     receiptTitle: { fontSize: 14, fontWeight: "700", color: C.text },
     receiptDate: { fontSize: 11, color: C.muted, marginTop: 1 },
-    receiptDivider: { height: 1, backgroundColor: "rgba(201,168,76,0.15)" },
+    receiptDivider: { height: 1, backgroundColor: C.border },
     receiptRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
     receiptItemDesc: { fontSize: 13, color: C.text, fontWeight: "500" },
     receiptItemQty: { fontSize: 11, color: C.muted, marginTop: 2 },

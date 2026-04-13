@@ -121,6 +121,9 @@ export default function RegisterScreen() {
             await supabase.from("profiles").upsert({
                 id: data.user.id,
                 full_name: fullName,
+                preferred_name: preferredName || fullName.split(" ")[0],
+                country,
+                region,
             }, { onConflict: "id" });
         }
         setLoading(false);
@@ -468,8 +471,8 @@ const s = StyleSheet.create({
 
     modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 24 },
     modalBox: { width: "100%", backgroundColor: "#111", borderRadius: 24, padding: 32, borderWidth: 1, borderColor: "rgba(201,168,76,0.3)", alignItems: "center" },
-    modalIconWrap: { width: 52, height: 52, borderRadius: 26, backgroundColor: "rgba(201,168,76,0.12)", justifyContent: "center", alignItems: "center", marginBottom: 20 },
-    modalIconWrapError: { backgroundColor: "rgba(255,60,60,0.12)" },
+    modalIconWrap: { width: 52, height: 52, borderRadius: 26, backgroundColor: "#1e1e1e", justifyContent: "center", alignItems: "center", marginBottom: 20 },
+    modalIconWrapError: { backgroundColor: "#1e1e1e" },
     modalIconCheck: { color: GOLD, fontSize: 24, fontFamily: "Jost_600SemiBold" },
     modalIconX: { color: "#ff5555", fontSize: 28, fontFamily: "Jost_300Light", lineHeight: 32 },
     modalTitle: { color: "#fff", fontSize: 20, fontFamily: "Jost_700Bold", marginBottom: 10 },
@@ -483,7 +486,7 @@ const s = StyleSheet.create({
     pickerTitle: { fontSize: 16, fontFamily: "Jost_700Bold", color: "#fff" },
     pickerClose: { fontSize: 20, color: MUTED, fontFamily: "Jost_300Light" },
     pickerItem: { paddingVertical: 14, paddingHorizontal: 8, borderRadius: 10, marginBottom: 2 },
-    pickerItemActive: { backgroundColor: "rgba(201,168,76,0.1)" },
+    pickerItemActive: { backgroundColor: "#1e1e1e" },
     pickerItemText: { fontSize: 16, fontFamily: "Jost_400Regular", color: "rgba(255,255,255,0.7)" },
     pickerItemTextActive: { color: GOLD, fontFamily: "Jost_600SemiBold" },
 });

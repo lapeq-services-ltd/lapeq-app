@@ -127,7 +127,7 @@ export default function RequestsScreen() {
 
     const getStatusStyle = (status: string) => {
         switch (status.toLowerCase()) {
-            case 'pending': return { bg: "rgba(240,165,0,0.15)", text: "#f0a500" };
+            case 'pending': return { bg: "#2a1f00", text: "#f0a500" };
             case 'approved': return { bg: `${C.primary}20`, text: C.primary };
             case 'arranged': return { bg: `${C.primary}20`, text: C.primary };
             case 'en-route': return { bg: `${C.primary}50`, text: C.primary };
@@ -343,7 +343,7 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     emptySub: { fontSize: 14, color: C.muted, textAlign: "center", lineHeight: 22 },
     card: { backgroundColor: C.surface, borderRadius: 20, padding: 20, borderWidth: 1, borderColor: C.border },
     cardHeader: { flexDirection: "row", alignItems: "flex-start", gap: 14, marginBottom: 16 },
-    iconWrap: { width: 50, height: 50, borderRadius: 25, backgroundColor: theme === "dark" ? "rgba(201,168,76,0.12)" : C.background, alignItems: "center", justifyContent: "center" },
+    iconWrap: { width: 50, height: 50, borderRadius: 25, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" },
     cardTitle: { fontSize: 16, fontWeight: "700", color: C.text, marginBottom: 4 },
     cardDate: { fontSize: 12, color: C.muted },
     statusBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },

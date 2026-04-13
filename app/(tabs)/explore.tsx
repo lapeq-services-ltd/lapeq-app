@@ -102,18 +102,19 @@ export default function ExploreScreen() {
                             </View>
                         </TouchableOpacity>
                     ))}
+
                 </ScrollView>
             )}
         </SafeAreaView>
     );
 }
 
-const getStyles = (C: any, theme: string) => StyleSheet.create({
+const getStyles = (C: any, _theme: string) => StyleSheet.create({
     container: { flex: 1, backgroundColor: C.background },
     header: { padding: 20 },
     headerTitle: { fontSize: 32, fontWeight: "700", color: C.text, marginBottom: 8 },
     headerSub: { fontSize: 16, color: C.muted },
-    searchContainer: { flexDirection: "row", alignItems: "center", backgroundColor: C.surface, marginHorizontal: 20, borderRadius: 16, paddingHorizontal: 16, height: 56, marginBottom: 20, borderWidth: 1, borderColor: C.border },
+    searchContainer: { flexDirection: "row", alignItems: "center", backgroundColor: C.surface, marginHorizontal: 20, borderRadius: 16, paddingHorizontal: 16, height: 56, marginBottom: 20, borderWidth: 1, borderColor: _theme === "dark" ? "#2a2a2a" : "#d8d3ca" },
     searchIcon: { marginRight: 12 },
     searchInput: { flex: 1, fontSize: 16, color: C.text, height: "100%" },
     scrollContent: { paddingHorizontal: 20, paddingBottom: 40, gap: 16 },
@@ -125,8 +126,8 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     cardTitle: { fontSize: 22, fontWeight: "700", color: "#ffffff", marginBottom: 4 },
     cardDesc: { fontSize: 14, color: "rgba(255,255,255,0.8)" },
     resultsList: { paddingHorizontal: 20, paddingBottom: 40, gap: 8 },
-    resultRow: { flexDirection: "row", alignItems: "center", gap: 14, padding: 14, backgroundColor: C.surface, borderRadius: 14, borderWidth: 1, borderColor: C.border },
-    resultIcon: { width: 38, height: 38, borderRadius: 19, backgroundColor: theme === "dark" ? "rgba(201,168,76,0.12)" : "rgba(201,168,76,0.08)", alignItems: "center", justifyContent: "center" },
+    resultRow: { flexDirection: "row", alignItems: "center", gap: 14, padding: 14, backgroundColor: C.surface, borderRadius: 14, borderWidth: 1, borderColor: _theme === "dark" ? "#2a2a2a" : "#d8d3ca" },
+    resultIcon: { width: 38, height: 38, borderRadius: 19, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" },
     resultName: { fontSize: 15, fontWeight: "600", color: C.text },
     resultSub: { fontSize: 12, color: C.muted, marginTop: 2 },
 });

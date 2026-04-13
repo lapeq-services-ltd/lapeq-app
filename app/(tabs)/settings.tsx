@@ -1,15 +1,16 @@
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ChevronLeft, User, Bell, Shield, CreditCard, LifeBuoy, Info, ChevronRight } from "lucide-react-native";
+import { ChevronLeft, User, Bell, Shield, CreditCard, LifeBuoy, Info, HelpCircle, ChevronRight } from "lucide-react-native";
 
 import { useTheme } from "@/context/ThemeContext";
 import { useMemo } from "react";
+import { supabase } from "@/lib/supabase";
 
 export default function SettingsScreen() {
     const router = useRouter();
-    const { C } = useTheme();
-    const s = useMemo(() => getStyles(C), [C]);
+    const { C, theme } = useTheme();
+    const s = useMemo(() => getStyles(C, theme), [C, theme]);
 
     const sections = [
         {
@@ -29,6 +30,7 @@ export default function SettingsScreen() {
         {
             title: "Support",
             items: [
+                { icon: HelpCircle, label: "FAQ", route: "/faq" },
                 { icon: LifeBuoy, label: "Help Center", route: "/settings/help" },
                 { icon: Info, label: "About Lapeq", route: "/settings/about" },
             ]
@@ -69,12 +71,15 @@ export default function SettingsScreen() {
                         </View>
                     </View>
                 ))}
+                <TouchableOpacity onPress={() => supabase.auth.signOut()} style={s.signOut}>
+                    <Text style={s.signOutText}>Sign out</Text>
+                </TouchableOpacity>
             </ScrollView>
         </SafeAreaView>
     );
 }
 
-const getStyles = (C: any) => StyleSheet.create({
+const getStyles = (C: any, theme: string) => StyleSheet.create({
     root: { flex: 1, backgroundColor: C.background },
     header: { flexDirection: "row", alignItems: "center", gap: 16, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16 },
     backBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" },
@@ -83,7 +88,9 @@ const getStyles = (C: any) => StyleSheet.create({
     sectionTitle: { fontSize: 13, fontWeight: "700", color: C.muted, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 12, marginLeft: 4 },
     card: { borderRadius: 20, backgroundColor: C.surface, overflow: "hidden" },
     row: { flexDirection: "row", alignItems: "center", padding: 16, gap: 16 },
-    rowBorder: { borderBottomWidth: 1, borderBottomColor: C.border },
-    iconBox: { width: 44, height: 44, borderRadius: 14, backgroundColor: C.card, alignItems: "center", justifyContent: "center" },
+    rowBorder: { borderBottomWidth: 1, borderBottomColor: theme === "dark" ? "#2a2a2a" : "#d8d3ca" },
+    iconBox: { width: 44, height: 44, borderRadius: 14, backgroundColor: theme === "dark" ? "#222" : "#e8e4dc", alignItems: "center", justifyContent: "center" },
     rowLabel: { flex: 1, fontSize: 16, fontWeight: "600", color: C.text },
+    signOut: { marginTop: 8, marginBottom: 16, alignItems: "center", padding: 16 },
+    signOutText: { fontSize: 15, color: C.muted, fontWeight: "500" },
 });

@@ -180,7 +180,7 @@ function RootContent() {
         <>
             <StatusBar style={theme === "dark" ? "light" : "dark"} />
             <NotificationBanner />
-            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.background }, animation: "fade" }}>
+            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.background }, animation: "none" }}>
                 <Stack.Screen name="(auth)" />
                 <Stack.Screen name="(tabs)" />
                 <Stack.Screen name="(main)" />

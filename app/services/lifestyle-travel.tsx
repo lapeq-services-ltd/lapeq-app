@@ -106,7 +106,6 @@ export default function LifestyleTravelScreen() {
                             <ChevronLeft size={24} color={C.text} />
                         </TouchableOpacity>
                         <View style={{ flex: 1 }}>
-                            <Text style={s.headerEyebrow}>CONCIERGE</Text>
                             <Text style={s.headerTitle}>Bespoke Travel</Text>
                             <Text style={s.headerSub}>Curated travel, stays, and exclusive access tailored to your exact tastes.</Text>
                         </View>
@@ -265,7 +264,7 @@ export default function LifestyleTravelScreen() {
 const getStyles = (C: any, theme: string) => StyleSheet.create({
     root: { flex: 1, backgroundColor: C.background },
     header: { paddingHorizontal: 28, paddingTop: 16, paddingBottom: 24 },
-    backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: theme === "dark" ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)", alignItems: "center", justifyContent: "center", marginBottom: 20 },
+    backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: C.surface, alignItems: "center", justifyContent: "center", marginBottom: 20 },
     headerEyebrow: { fontSize: 11, fontFamily: "Jost_700Bold", color: C.primary, letterSpacing: 3, marginBottom: 8 },
     headerTitle: { fontSize: 36, fontFamily: "PlayfairDisplay_700Bold", color: C.text, marginBottom: 8, lineHeight: 42 },
     headerSub: { fontSize: 15, fontFamily: "Jost_400Regular", color: theme === "dark" ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)", lineHeight: 22 },
@@ -293,7 +292,7 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     dateBtn: { flex: 1, flexDirection: "row", alignItems: "center", paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: theme === "dark" ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)" },
 
     budgetChip: { paddingHorizontal: 18, paddingVertical: 12, borderRadius: 100, borderWidth: 1, borderColor: theme === "dark" ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)" },
-    budgetChipActive: { borderColor: C.primary, backgroundColor: theme === "dark" ? "rgba(201,168,76,0.1)" : "rgba(201,168,76,0.06)" },
+    budgetChipActive: { borderColor: C.primary, backgroundColor: C.surface },
     budgetChipText: { fontSize: 13, fontFamily: "Jost_500Medium", color: theme === "dark" ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)" },
     budgetChipTextActive: { color: C.primary },
 
@@ -302,8 +301,8 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
 
     experienceHeader: { fontSize: 24, fontFamily: "PlayfairDisplay_700Bold", color: C.text, marginBottom: 8 },
     experienceSub: { fontSize: 14, fontFamily: "Jost_400Regular", color: theme === "dark" ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)", lineHeight: 22 },
-    textarea: { 
-        backgroundColor: theme === "dark" ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)", 
+    textarea: {
+        backgroundColor: C.surface,
         borderRadius: 16, 
         padding: 20, 
         fontSize: 16, 
@@ -321,7 +320,7 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
 
     overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 24 },
     modalBox: { width: "100%", backgroundColor: C.surface, borderRadius: 24, padding: 32, alignItems: "center" },
-    modalIcon: { width: 64, height: 64, borderRadius: 32, backgroundColor: "rgba(201,168,76,0.1)", justifyContent: "center", alignItems: "center", marginBottom: 24 },
+    modalIcon: { width: 64, height: 64, borderRadius: 32, backgroundColor: C.surface, justifyContent: "center", alignItems: "center", marginBottom: 24 },
     modalTitle: { color: C.text, fontSize: 24, fontFamily: "PlayfairDisplay_700Bold", marginBottom: 12 },
     modalBody: { color: theme === "dark" ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.6)", fontSize: 15, fontFamily: "Jost_400Regular", textAlign: "center", lineHeight: 24, marginBottom: 32 },
     modalBtnPri: { width: "100%", paddingVertical: 16, borderRadius: 100, backgroundColor: C.text, alignItems: "center", marginBottom: 12 },

@@ -3,15 +3,15 @@ import { Home, Search, Calendar, Map, User, Bell } from "lucide-react-native";
 import { useTheme } from "@/context/ThemeContext";
 
 export default function TabsLayout() {
-    const { C } = useTheme();
+    const { C, theme } = useTheme();
 
     return (
         <Tabs
             screenOptions={{
                 headerShown: false,
                 tabBarStyle: {
-                    backgroundColor: C.card,
-                    borderTopColor: C.border,
+                    backgroundColor: C.surface,
+                    borderTopColor: theme === "dark" ? "#2a2a2a" : "#d8d3ca",
                     borderTopWidth: 1,
                     height: 90,
                     paddingBottom: 25,

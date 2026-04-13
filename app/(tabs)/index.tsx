@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Bell, Crown, ChevronRight, Bookmark, Calendar, Plane, Car, Headphones } from "lucide-react-native";
+import { Bell, Crown, ChevronRight, Calendar, Plane, Car, Headphones, ClipboardList } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
 
@@ -56,7 +56,7 @@ const LOOPED = [...ADS, ...ADS, ...ADS];
 export default function HomeScreen() {
     const router = useRouter();
     const { C, theme } = useTheme();
-    const s = useMemo(() => getStyles(C), [C]);
+    const s = useMemo(() => getStyles(C, theme), [C, theme]);
     const [userName, setUserName] = useState("");
     const [hasUnread, setHasUnread] = useState(false);
     const translateX = useRef(new Animated.Value(0)).current;
@@ -65,27 +65,25 @@ export default function HomeScreen() {
     useEffect(() => {
         supabase.auth.getUser().then(async ({ data: { user } }) => {
             if (!user) return;
-            // Try metadata first, then profiles table, then email prefix
-            const metaName = user?.user_metadata?.full_name?.split(" ")[0];
-            if (metaName) {
-                setUserName(metaName);
-            } else {
-                const { data: profile } = await supabase
-                    .from("profiles")
-                    .select("full_name")
-                    .eq("id", user.id)
-                    .single();
-                const name = profile?.full_name?.split(" ")[0] ?? user.email?.split("@")[0] ?? "there";
-                setUserName(name);
-            }
-            if (user) {
-                const { count } = await supabase
-                    .from("notifications")
-                    .select("*", { count: "exact", head: true })
-                    .eq("user_id", user.id)
-                    .eq("read", false);
-                setHasUnread((count ?? 0) > 0);
-            }
+            // Always pull from the profiles table so preferred_name is respected
+            const { data: profile } = await supabase
+                .from("profiles")
+                .select("preferred_name, full_name")
+                .eq("id", user.id)
+                .single();
+            const name =
+                profile?.preferred_name ||
+                profile?.full_name?.split(" ")[0] ||
+                user.email?.split("@")[0] ||
+                "there";
+            setUserName(name);
+
+            const { count } = await supabase
+                .from("notifications")
+                .select("*", { count: "exact", head: true })
+                .eq("user_id", user.id)
+                .eq("read", false);
+            setHasUnread((count ?? 0) > 0);
         });
     }, []);
 
@@ -134,22 +132,23 @@ export default function HomeScreen() {
 
             <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 80 }}>
                 <View style={{ marginBottom: 20 }}>
-                    <Text style={s.greetSub}>Good evening,</Text>
+                    <Text style={s.greetSub}>{(() => { const h = new Date().getHours(); return h < 12 ? "Good morning," : h < 17 ? "Good afternoon," : "Good evening,"; })()}</Text>
                     <Text style={s.greetName}>{userName || " "}</Text>
                 </View>
 
-                <View style={s.quickActions}>
+                <View style={s.quickGrid}>
                     {[
-                        { label: "Experiences", Icon: Calendar, route: "/trip-planner" as const },
-                        { label: "Travel", Icon: Plane, route: "/services/lifestyle-travel" as const },
-                        { label: "Chauffeur", Icon: Car, route: "/services/driving" as const },
-                        { label: "Concierge", Icon: Headphones, route: "/services/concierge-request" as const },
-                    ].map(({ label, Icon, route }) => (
-                        <TouchableOpacity key={label} style={s.quickBtn} onPress={() => router.push(route)}>
-                            <View style={s.quickIcon}>
-                                <Icon size={24} color={C.primary} />
+                        { label: "Experiences", sub: "Curated itineraries", Icon: Calendar, route: "/experiences" as const },
+                        { label: "Travel", sub: "Flights & stays", Icon: Plane, route: "/services/lifestyle-travel" as const },
+                        { label: "Chauffeur", sub: "Private driving", Icon: Car, route: "/services/driving" as const },
+                        { label: "My Requests", sub: "Track & manage", Icon: ClipboardList, route: "/requests" as const },
+                    ].map(({ label, sub, Icon, route }) => (
+                        <TouchableOpacity key={label} style={s.quickCard} onPress={() => router.push(route)} activeOpacity={0.8}>
+                            <View style={s.quickCardIcon}>
+                                <Icon size={22} color={C.primary} />
                             </View>
-                            <Text style={s.quickLabel}>{label}</Text>
+                            <Text style={s.quickCardLabel}>{label}</Text>
+                            <Text style={s.quickCardSub}>{sub}</Text>
                         </TouchableOpacity>
                     ))}
                 </View>
@@ -165,7 +164,35 @@ export default function HomeScreen() {
                     <ChevronRight size={24} color={theme === "dark" ? `${C.background}66` : C.muted} />
                 </TouchableOpacity>
 
-                <Text style={[s.sectionTitle, { marginBottom: 16 }]}>Curated For You</Text>
+                {/* Featured swipe row */}
+                <View style={s.sectionRow}>
+                    <Text style={s.sectionTitle}>Featured</Text>
+                </View>
+                <View style={{ marginHorizontal: -20, marginBottom: 28 }}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
+                        {[
+                            { label: "FOR HER", title: "Ladies\nConcierge", img: require("@/assets/images/onboarding-lifestyle.png"), route: "/services/ladies-concierge" },
+                            { label: "FOR HIM", title: "Gentlemen's\nConcierge", img: require("@/assets/images/onboarding-driving.png"), route: "/services/gentlemens-concierge" },
+                            { label: "EDITORIAL", title: "The LAPEQ\nJournal", img: require("@/assets/images/lagos-rooftop.jpg"), route: "/journal" },
+                        ].map((item) => (
+                            <TouchableOpacity key={item.label} style={s.featCard} onPress={() => router.push(item.route as any)} activeOpacity={0.88}>
+                                <Image source={item.img} style={s.featImg} resizeMode="cover" />
+                                <View style={s.featOverlay} />
+                                <View style={s.featContent}>
+                                    <Text style={s.featLabel}>{item.label}</Text>
+                                    <Text style={s.featTitle}>{item.title}</Text>
+                                </View>
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+                </View>
+
+                <View style={s.sectionRow}>
+                    <Text style={s.sectionTitle}>Monthly Picks</Text>
+                    <TouchableOpacity onPress={() => router.push("/monthly-picks")}>
+                        <Text style={s.viewAll}>View All →</Text>
+                    </TouchableOpacity>
+                </View>
                 <View style={{ height: 220, overflow: "hidden", marginBottom: 24, marginHorizontal: -20 }}>
                     <Animated.View style={{ flexDirection: "row", transform: [{ translateX }], paddingLeft: 20 }}>
                         {LOOPED.map((card, i) => (
@@ -187,48 +214,47 @@ export default function HomeScreen() {
 
                 <View style={s.sectionRow}>
                     <Text style={s.sectionTitle}>Upcoming Events</Text>
-                    <Text style={s.viewAll}>View all</Text>
+                    <TouchableOpacity onPress={() => router.push("/(tabs)/events")}>
+                        <Text style={s.viewAll}>View all</Text>
+                    </TouchableOpacity>
                 </View>
-                <View style={{ gap: 10 }}>
-                    {[
-                        { img: require("@/assets/images/lagos-rooftop.jpg"), title: "An Elevated Evening", sub: "Mar 15 – Victoria Island", badge: "Members Only", count: "42 confirmed" },
-                        { img: require("@/assets/images/lagos-beach.jpg"), title: "Curated Beach Gathering", sub: "Mar 22 – Elegushi, Lekki", badge: "Gold & Black", count: "28 confirmed" },
-                    ].map((ev) => (
-                        <TouchableOpacity key={ev.title} style={s.eventRow} onPress={() => router.push("/event-details")}>
-                            <Image source={ev.img} style={s.eventThumb} resizeMode="cover" />
-                            <View style={{ flex: 1 }}>
-                                <Text style={s.eventTitle}>{ev.title}</Text>
-                                <Text style={s.eventSub}>{ev.sub}</Text>
-                                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 }}>
-                                    <View style={s.eventBadge}>
-                                        <Text style={s.eventBadgeText}>{ev.badge}</Text>
-                                    </View>
-                                    <Text style={s.eventCount}>{ev.count}</Text>
-                                </View>
-                            </View>
-                            <Bookmark size={24} color={C.muted} />
-                        </TouchableOpacity>
-                    ))}
+                <View style={s.emptyEvents}>
+                    <Text style={s.emptyEventsText}>Events will appear here when announced. Check back soon.</Text>
                 </View>
+
             </ScrollView>
         </SafeAreaView>
     );
 }
 
-const getStyles = (C: any) => StyleSheet.create({
+const getStyles = (C: any, theme: string) => StyleSheet.create({
     root: { flex: 1, backgroundColor: C.background },
     header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12 },
     logoImg: { width: 36, height: 36 },
     headerTitle: { fontSize: 24, fontWeight: "700", color: C.text, letterSpacing: -0.3 },
     iconBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" },
-    notifDot: { position: "absolute", top: 4, right: 4, width: 12, height: 12, borderRadius: 6, backgroundColor: C.primary, borderWidth: 2, borderColor: C.card },
+    notifDot: { position: "absolute", top: 4, right: 4, width: 12, height: 12, borderRadius: 6, backgroundColor: C.primary, borderWidth: 2, borderColor: C.background },
     crownBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: `${C.primary}18`, borderWidth: 1, borderColor: C.primary, alignItems: "center", justifyContent: "center" },
     greetSub: { fontSize: 18, color: C.muted },
     greetName: { fontSize: 28, fontWeight: "700", color: C.text },
-    quickActions: { flexDirection: "row", gap: 12, marginBottom: 28 },
-    quickBtn: { flex: 1, alignItems: "center", gap: 8, padding: 16, borderRadius: 16, backgroundColor: C.surface },
-    quickIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: C.card, alignItems: "center", justifyContent: "center" },
-    quickLabel: { fontSize: 11, fontWeight: "600", color: C.text, textAlign: "center" },
+    quickGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 28 },
+    quickCard: {
+        width: (SCREEN_WIDTH - 40 - 12) / 2,
+        backgroundColor: C.surface,
+        borderRadius: 16,
+        padding: 14,
+        gap: 8,
+    },
+    quickCardIcon: {
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        backgroundColor: `${C.primary}15`,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    quickCardLabel: { fontSize: 15, fontWeight: "700", color: C.text, letterSpacing: -0.2 },
+    quickCardSub: { fontSize: 12, color: C.muted },
     banner: { borderRadius: 16, backgroundColor: C.surface, padding: 20, marginBottom: 28, flexDirection: "row", alignItems: "center", gap: 16 },
     bannerIcon: { width: 52, height: 52, borderRadius: 26, backgroundColor: `${C.primary}33`, alignItems: "center", justifyContent: "center" },
     bannerTitle: { fontSize: 16, fontWeight: "600", color: C.text },
@@ -236,19 +262,20 @@ const getStyles = (C: any) => StyleSheet.create({
     sectionRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
     sectionTitle: { fontSize: 18, fontWeight: "600", color: C.text },
     viewAll: { fontSize: 14, color: C.primary, fontWeight: "500" },
-    expCard: { borderRadius: 16, overflow: "hidden", borderWidth: 1, borderColor: C.border, backgroundColor: C.surface },
+    expCard: { borderRadius: 16, overflow: "hidden", borderWidth: 1, borderColor: theme === "dark" ? "#2a2a2a" : "#d8d3ca", backgroundColor: C.surface },
     expImgWrap: { height: 140, position: "relative" },
     expImg: { width: "100%", height: "100%" },
-    expBadge: { position: "absolute", top: 12, right: 12, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99, backgroundColor: `${C.text}ee` },
+    expBadge: { position: "absolute", top: 12, right: 12, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99, backgroundColor: C.text },
     expBadgeText: { fontSize: 12, fontWeight: "600" },
     expTitle: { fontSize: 16, fontWeight: "600", color: C.text },
     expLoc: { fontSize: 13, color: C.muted, marginTop: 4 },
     expDesc: { fontSize: 13, color: C.muted, marginTop: 6, lineHeight: 18 },
-    eventRow: { flexDirection: "row", alignItems: "center", gap: 16, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface },
-    eventThumb: { width: 72, height: 72, borderRadius: 12 },
-    eventTitle: { fontSize: 16, fontWeight: "600", color: C.text },
-    eventSub: { fontSize: 13, color: C.muted, marginTop: 4 },
-    eventBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: `${C.primary}18` },
-    eventBadgeText: { fontSize: 11, fontWeight: "600", color: C.primary },
-    eventCount: { fontSize: 12, color: C.muted },
+    emptyEvents: { padding: 24, borderRadius: 16, backgroundColor: C.surface, alignItems: "center" },
+    emptyEventsText: { fontSize: 14, color: C.muted, textAlign: "center", lineHeight: 22 },
+    featCard: { width: 160, height: 130, borderRadius: 16, overflow: "hidden", position: "relative" },
+    featImg: { width: "100%", height: "100%", position: "absolute" },
+    featOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.48)" },
+    featContent: { position: "absolute", bottom: 0, left: 0, right: 0, padding: 14 },
+    featLabel: { fontSize: 9, fontWeight: "800", color: C.primary, letterSpacing: 2, marginBottom: 4 },
+    featTitle: { fontSize: 15, fontWeight: "700", color: "#fff", lineHeight: 20 },
 });

@@ -161,10 +161,10 @@ const getStyles = (C: any) => StyleSheet.create({
     bottomCard: { backgroundColor: "rgba(12,12,12,0.98)", borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 40, borderTopWidth: 1, borderTopColor: "rgba(201,168,76,0.2)" },
     bottomHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: "rgba(201,168,76,0.3)", alignSelf: "center", marginBottom: 16 },
     bottomTitle: { fontSize: 16, fontWeight: "700", color: "#fff", marginBottom: 16 },
-    placeCard: { width: 140, backgroundColor: "rgba(201,168,76,0.05)", borderRadius: 16, padding: 14, borderWidth: 1, borderColor: "rgba(201,168,76,0.2)" },
-    placeIconWrap: { width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(201,168,76,0.12)", alignItems: "center", justifyContent: "center", marginBottom: 10 },
+    placeCard: { width: 140, backgroundColor: "#1a1a1a", borderRadius: 16, padding: 14, borderWidth: 1, borderColor: "#2a2a2a" },
+    placeIconWrap: { width: 36, height: 36, borderRadius: 18, backgroundColor: "#222", alignItems: "center", justifyContent: "center", marginBottom: 10 },
     placeName: { fontSize: 13, fontWeight: "700", color: "#fff", marginBottom: 2 },
     placeArea: { fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 10 },
-    placeBadgeWrap: { backgroundColor: "rgba(201,168,76,0.15)", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, alignSelf: "flex-start" },
+    placeBadgeWrap: { backgroundColor: "#222", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, alignSelf: "flex-start" },
     placeBadgeText: { fontSize: 10, fontWeight: "700", color: "#c9a84c" },
 });

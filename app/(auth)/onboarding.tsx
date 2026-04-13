@@ -120,7 +120,7 @@ export default function OnboardingScreen() {
 
                 <TouchableOpacity style={s.btn} onPress={goNext}>
                     <Text style={s.btnText}>
-                        {currentIndex < slides.length - 1 ? "Continue" : "Get Started →"}
+                        {currentIndex < slides.length - 1 ? "Continue" : "Get Started"}
                     </Text>
                 </TouchableOpacity>
 
