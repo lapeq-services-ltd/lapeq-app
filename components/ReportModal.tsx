@@ -7,14 +7,23 @@ import Animated, {
   withTiming, 
   useAnimatedStyle, 
   interpolate,
-  withDelay
+  withDelay,
+  useDerivedValue
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { Shield } from 'lucide-react-native';
+import { Canvas, Path, Skia } from '@shopify/react-native-skia';
 import { useTheme } from '@/context/ThemeContext';
 
 const { width } = Dimensions.get('window');
 const GOLD = '#c9a84c';
+
+// 🚨 exact same number of control points/nodes for morphing logic
+const PLANE_WINGS_WIDE = "M 40 16 L 8 48 L 40 64 L 72 48 Z";
+const PLANE_WINGS_FOLDED = "M 40 8 L 28 52 L 40 64 L 52 52 Z";
+
+// Parse paths once outside the component/render loop to maximize frame performance
+const pathA = Skia.Path.MakeFromSVGString(PLANE_WINGS_WIDE)!;
+const pathB = Skia.Path.MakeFromSVGString(PLANE_WINGS_FOLDED)!;
 
 interface ReportModalProps {
   visible: boolean;
@@ -28,7 +37,8 @@ export default function ReportModal({ visible, onClose }: ReportModalProps) {
   const modalScale = useSharedValue(0);
   const modalOpacity = useSharedValue(0);
   
-  // 🚀 The Flying Asset Values
+  // 🚀 The Flying Morph Values
+  const flapProgress = useSharedValue(0);
   const flyProgress = useSharedValue(0); // 0 = inside circle, 1 = flown up and out
   const ambientFloat = useSharedValue(0); // Subtle hovering once it lands
 
@@ -45,11 +55,18 @@ export default function ReportModal({ visible, onClose }: ReportModalProps) {
       // 2. Trigger the "Flying" effect with a spring snap
       flyProgress.value = withSpring(1, { damping: 12, stiffness: 90 });
 
-      // 3. Start ambient background floating loops
+      // 3. Continuous wing flap loop
+      flapProgress.value = withRepeat(
+        withTiming(1, { duration: 350 }),
+        -1,
+        true
+      );
+
+      // 4. Start ambient background floating loops
       floatingBlob1.value = withRepeat(withTiming(1, { duration: 4000 }), -1, true);
       floatingBlob2.value = withRepeat(withTiming(1, { duration: 4500 }), -1, true);
       
-      // 4. Start subtle icon idle hover after it finishes flying
+      // 5. Start subtle icon idle hover after it finishes flying
       ambientFloat.value = withDelay(800, withRepeat(withTiming(1, { duration: 2000 }), -1, true));
 
       // Trigger success haptics
@@ -58,6 +75,7 @@ export default function ReportModal({ visible, onClose }: ReportModalProps) {
       modalScale.value = withTiming(0, { duration: 150 });
       modalOpacity.value = withTiming(0, { duration: 150 });
       flyProgress.value = withTiming(0, { duration: 150 });
+      flapProgress.value = withTiming(0, { duration: 150 });
       ambientFloat.value = withTiming(0, { duration: 150 });
     }
   }, [visible]);
@@ -94,6 +112,11 @@ export default function ReportModal({ visible, onClose }: ReportModalProps) {
     transform: [{ translateY: interpolate(floatingBlob2.value, [0, 1], [0, 20]) }],
   }));
 
+  // Morphs the Skia path on the UI thread frame-by-frame
+  const animatedPath = useDerivedValue(() => {
+    return pathA.interpolate(pathB, flapProgress.value) || pathA;
+  });
+
   if (!visible) return null;
 
   return (
@@ -110,10 +133,25 @@ export default function ReportModal({ visible, onClose }: ReportModalProps) {
           {/* The background base circle */}
           <View style={[styles.circleBase, { backgroundColor: isDark ? 'rgba(201, 168, 76, 0.08)' : 'rgba(201, 168, 76, 0.12)' }]} />
           
-          {/* The Flying Shield Layer */}
+          {/* The Flying Shield Layer (Morphed using Skia) */}
           <Animated.View style={[styles.flyingIconWrapper, animatedFlyingIconStyle]}>
             <View style={[styles.shieldBackgroundCircle, { backgroundColor: isDark ? '#141416' : '#f4f4f6', borderColor: isDark ? 'rgba(201, 168, 76, 0.3)' : 'rgba(201, 168, 76, 0.2)' }]}>
-              <Shield size={42} color={GOLD} strokeWidth={1.5} />
+              <Canvas style={{ width: 80, height: 80 }}>
+                {/* Morphs outline */}
+                <Path
+                  path={animatedPath}
+                  color={GOLD}
+                  style="stroke"
+                  strokeWidth={2}
+                  strokeJoin="round"
+                />
+                {/* Morphs fill overlay for premium 3D volume */}
+                <Path
+                  path={animatedPath}
+                  color={`${GOLD}20`}
+                  style="fill"
+                />
+              </Canvas>
             </View>
           </Animated.View>
         </View>
