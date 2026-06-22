@@ -42,6 +42,11 @@ insert into storage.buckets (id, name, public)
 values ('bug-reports', 'bug-reports', true)
 on conflict (id) do nothing;
 
+-- Ensure it is public even if it was previously created as private
+update storage.buckets
+set public = true
+where id = 'bug-reports';
+
 -- 2. Drop policies if exist to prevent errors on rerun
 drop policy if exists "Public Access to Bug Reports" on storage.objects;
 drop policy if exists "Anyone can upload bug reports" on storage.objects;
