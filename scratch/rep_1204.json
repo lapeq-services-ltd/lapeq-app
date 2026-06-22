@@ -1,0 +1,12 @@
+{
+  "AllowMultiple": "false",
+  "Description": "\"Mark diaspora support redesign task done and tsc verification task in progress in task.md.\"",
+  "EndLine": "11",
+  "Instruction": "\"Mark Task 7 complete and Task 8 in progress.\"",
+  "ReplacementContent": "\"- [x] Redesign `app/services/diaspora-support.tsx` to have a premium, diaspora-first UI\\n- [/] Run `npx tsc --noEmit` to verify type safety\"",
+  "StartLine": "9",
+  "TargetContent": "\"- [/] Redesign `app/services/diaspora-support.tsx` to have a premium, diaspora-first UI\\n- [ ] Run `npx tsc --noEmit` to verify type safety\"",
+  "TargetFile": "\"C:\\\\Users\\\\PAP AMNESTY\\\\.gemini\\\\antigravity-ide\\\\brain\\\\6795a66a-f3d9-434d-b4a8-180fff88dba1\\\\task.md\"",
+  "toolAction": "\"Updating task tracker status\"",
+  "toolSummary": "\"Updating task file on step 8\""
+}

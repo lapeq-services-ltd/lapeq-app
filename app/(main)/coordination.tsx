@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+﻿import { useState, useEffect, useRef } from "react";
 import {
     View, Text, ScrollView, TouchableOpacity, StyleSheet, Animated, Image
 } from "react-native";
@@ -76,7 +76,7 @@ export default function CoordinationScreen() {
                                     </View>
                                 </View>
                                 <Text style={s.etaTime}>8 min</Text>
-                                <Text style={s.etaCar}>Toyota Camry — Silver — LND 234 GH</Text>
+                                <Text style={s.etaCar}>Toyota Camry - Silver - LND 234 GH</Text>
                                 <View style={s.membershipTag}>
                                     <Crown size={16} color={theme === 'dark' ? C.black : C.primary} />
                                     <Text style={s.membershipTagText}>Included in your membership</Text>

@@ -40,6 +40,7 @@ const CAR_IMAGES: Record<string, any> = {
     "standard-sedan": require("@/assets/images/standard-sedan.png"),
     "luxury-sedan": require("@/assets/images/mercedes-sedan.png"),
     "premium-suv": require("@/assets/images/range-rover-suv.png"),
+    "escalade-suv": require("@/assets/images/escalade-suv.png"),
     "executive-van": require("@/assets/images/sprinter-van.png"),
 };
 
@@ -51,6 +52,7 @@ const SERVICE_LABELS: Record<string, string> = {
     "project-trust": "Project Trust",
     "concierge-request": "Concierge Request",
     "diaspora-support": "Diaspora Support",
+    "lifestyle-request": "Bespoke Request",
 };
 
 export default function RequestDetailsScreen() {
@@ -124,7 +126,8 @@ export default function RequestDetailsScreen() {
         switch (status.toLowerCase()) {
             case "pending": return { bg: "#2a1f00", text: "#f0a500" };
             case "approved":
-            case "arranged": return { bg: `${C.primary}20`, text: C.primary };
+            case "arranged":
+            case "active": return { bg: `${C.primary}20`, text: C.primary };
             case "en-route":
             case "in-progress": return { bg: `${C.primary}40`, text: C.primary };
             case "completed": return { bg: "#1a3a2a", text: "#4caf50" };

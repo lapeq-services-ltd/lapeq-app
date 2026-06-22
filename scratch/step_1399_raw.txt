@@ -1,0 +1,12 @@
+{
+  "AllowMultiple": "false",
+  "Description": "\"Update React, React Native, and Lucide react native imports in diaspora-support.tsx\"",
+  "EndLine": "8",
+  "Instruction": "\"Update React, React Native, Safe Area, Lucide, and Expo AV imports in diaspora-support.tsx.\"",
+  "ReplacementContent": "\"import { useState, useMemo, useRef, useEffect } from \\\"react\\\";\\nimport { Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, View, Platform, KeyboardAvoidingView, Modal, Animated, Alert, Keyboard } from \\\"react-native\\\";\\nimport { useRouter } from \\\"expo-router\\\";\\nimport { useSafeAreaInsets, SafeAreaView } from \\\"react-native-safe-area-context\\\";\\nimport { supabase } from \\\"@/lib/supabase\\\";\\nimport { useTheme } from \\\"@/context/ThemeContext\\\";\\nimport { Audio } from \\\"expo-av\\\";\\nimport { ChevronLeft, Check, MapPin, Briefcase, FileText, ArrowRight, ChevronDown, ChevronUp, Mic, Maximize2, Play, Pause, Trash2, X } from \\\"lucide-react-native\\\";\"",
+  "StartLine": "1",
+  "TargetContent": "\"import { useState, useMemo, useRef } from \\\"react\\\";\\nimport { Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, View, Platform, KeyboardAvoidingView, Modal, Animated } from \\\"react-native\\\";\\nimport { useRouter } from \\\"expo-router\\\";\\nimport { SafeAreaView } from \\\"react-native-safe-area-context\\\";\\nimport { supabase } from \\\"@/lib/supabase\\\";\\nimport { useTheme } from \\\"@/context/ThemeContext\\\";\\nimport { ChevronLeft, Check, MapPin, Briefcase, FileText, ArrowRight, ChevronDown, ChevronUp } from \\\"lucide-react-native\\\";\"",
+  "TargetFile": "\"c:\\\\Users\\\\PAP AMNESTY\\\\Documents\\\\lapeq-app\\\\app\\\\services\\\\diaspora-support.tsx\"",
+  "toolAction": "\"Replacing imports in diaspora-support.tsx\"",
+  "toolSummary": "\"Add new imports to diaspora-support.tsx\""
+}

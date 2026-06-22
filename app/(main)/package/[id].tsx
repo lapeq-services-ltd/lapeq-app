@@ -16,6 +16,24 @@ type Package = {
     status: string;
     budget_range: string | null;
     notes: string | null;
+    activities: string[] | null;
+};
+
+const ACTIVITY_CONFIG: Record<string, { icon: any; label: string }> = {
+    "Hotel / Villa Stay": { icon: <MapPin size={16} color="#c9a84c" />, label: "Accommodation" },
+    "Private Dining": { icon: <Coffee size={16} color="#c9a84c" />, label: "Private Dining reservations" },
+    "Spa & Wellness": { icon: <Star size={16} color="#c9a84c" />, label: "Spa & Wellness appointments" },
+    "Nightlife & Lounges": { icon: <Star size={16} color="#c9a84c" />, label: "Nightlife & Lounge reservations" },
+    "Private Chef at Home": { icon: <Coffee size={16} color="#c9a84c" />, label: "Private Chef at Home" },
+    "Chauffeur & Transport": { icon: <Car size={16} color="#c9a84c" />, label: "Private Chauffeur & Transport" },
+    "Shopping & Styling": { icon: <Star size={16} color="#c9a84c" />, label: "Personal Shopping & Styling" },
+    "Exclusive Events": { icon: <Star size={16} color="#c9a84c" />, label: "VIP Event tickets & access" },
+    "Cultural Experiences": { icon: <Star size={16} color="#c9a84c" />, label: "Cultural tours & sightseeing" },
+    "Business Dinner": { icon: <Coffee size={16} color="#c9a84c" />, label: "Business Dinner planning" },
+    "Boat / Yacht": { icon: <Car size={16} color="#c9a84c" />, label: "Boat & Yacht charter" },
+    "Photography Session": { icon: <Star size={16} color="#c9a84c" />, label: "Photography session" },
+    "Golf & Recreation": { icon: <Star size={16} color="#c9a84c" />, label: "Golf & Recreational bookings" },
+    "Airport Protocol": { icon: <Car size={16} color="#c9a84c" />, label: "VIP Airport Protocol & reception" },
 };
 
 type PackageItem = {
@@ -46,7 +64,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; desc: string
     building: {
         label: "Being Crafted",
         color: "#3b82f6",
-        desc: "Your concierge is actively researching and arranging every detail of your experience — hotels, dining, transport, and activities.",
+        desc: "Your concierge is actively researching and arranging every detail of your experience - hotels, dining, transport, and activities.",
     },
     ready: {
         label: "Ready to View",
@@ -106,12 +124,28 @@ export default function PackageDetailScreen() {
     useEffect(() => {
         if (!id) return;
         (async () => {
-            const [{ data: pkgData }, { data: itemsData }] = await Promise.all([
-                supabase.from("packages").select("*").eq("id", id).single(),
-                supabase.from("package_items").select("*").eq("package_id", id).order("day_number").order("sort_order"),
-            ]);
-            setPkg(pkgData ?? null);
-            setItems(itemsData ?? []);
+            const { data: reqData } = await supabase
+                .from("requests")
+                .select("*")
+                .eq("id", id)
+                .single();
+            if (reqData) {
+                const d = (reqData.details as any) ?? {};
+                setPkg({
+                    id: reqData.id,
+                    title: reqData.title,
+                    city: d.city ?? "—",
+                    start_date: d.start_date ?? null,
+                    end_date: d.end_date ?? null,
+                    type: d.type ?? "custom",
+                    status: reqData.status,
+                    budget_range: d.budget_range ?? null,
+                    notes: d.notes ?? null,
+                    activities: d.activities ?? null,
+                });
+            }
+            // No package_items yet — itinerary comes from admin notifications
+            setItems([]);
             setLoading(false);
         })();
     }, [id]);
@@ -203,17 +237,23 @@ export default function PackageDetailScreen() {
                     <>
                         <View style={s.craftingSection}>
                             <Text style={s.craftingTitle}>What We're Arranging</Text>
-                            {[
-                                { icon: <MapPin size={16} color={C.primary} />, label: "Accommodation in " + pkg.city },
-                                { icon: <Coffee size={16} color={C.primary} />, label: "Dining reservations" },
-                                { icon: <Car size={16} color={C.primary} />, label: "Private transport" },
-                                { icon: <Star size={16} color={C.primary} />, label: "Curated activities & experiences" },
-                            ].map((row, i) => (
-                                <View key={i} style={s.craftingRow}>
-                                    <View style={s.craftingIconWrap}>{row.icon}</View>
-                                    <Text style={s.craftingRowText}>{row.label}</Text>
-                                </View>
-                            ))}
+                            {(() => {
+                                const rows = [];
+                                if (pkg.activities && pkg.activities.length > 0) {
+                                    pkg.activities.forEach(act => {
+                                        const cfg = ACTIVITY_CONFIG[act] ?? { icon: <Star size={16} color={C.primary} />, label: act };
+                                        rows.push({ icon: cfg.icon, label: cfg.label });
+                                    });
+                                } else {
+                                    rows.push({ icon: <Star size={16} color={C.primary} />, label: "Curated activities in " + pkg.city });
+                                }
+                                return rows.map((row, i) => (
+                                    <View key={i} style={s.craftingRow}>
+                                        <View style={s.craftingIconWrap}>{row.icon}</View>
+                                        <Text style={s.craftingRowText}>{row.label}</Text>
+                                    </View>
+                                ));
+                            })()}
                         </View>
 
                         {pkg.notes ? (
@@ -286,11 +326,11 @@ export default function PackageDetailScreen() {
                         <Text style={s.conciergeCardTitle}>Your Concierge Is Available</Text>
                     </View>
                     <Text style={s.conciergeCardBody}>
-                        Need to adjust dates, swap a venue, or add something new? Your concierge handles everything — just send a message.
+                        Need to adjust dates, swap a venue, or add something new? Your concierge handles everything - just send a message.
                     </Text>
                 </View>
 
-                <TouchableOpacity style={s.messageBtn} onPress={() => router.push("/chat")} activeOpacity={0.85}>
+                <TouchableOpacity style={s.messageBtn} onPress={() => router.push({ pathname: "/chat", params: { mode: "concierge", packageId: pkg.id } })} activeOpacity={0.85}>
                     <MessageCircle size={20} color="#0a0a0a" />
                     <Text style={s.messageBtnText}>Message My Concierge</Text>
                 </TouchableOpacity>

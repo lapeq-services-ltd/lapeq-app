@@ -5,6 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@/context/ThemeContext";
 import { supabase } from "@/lib/supabase";
 import { Check } from "lucide-react-native";
+import VoiceInput from "@/components/VoiceInput";
 
 const PAIRING_TYPES = ["Investor Matching", "Legal Advisory", "Business Partner", "Executive Recruitment", "Industry Introductions", "Other"];
 
@@ -24,7 +25,6 @@ export default function CorporatePairingScreen() {
     const scrollRef = useRef<ScrollView>(null);
     const objY = useRef(0);
     const companyRef = useRef<TextInput>(null);
-    const objectiveRef = useRef<TextInput>(null);
     const alertOpacity = useRef(new Animated.Value(0)).current;
     const alertScale = useRef(new Animated.Value(0.9)).current;
 
@@ -86,23 +86,19 @@ export default function CorporatePairingScreen() {
                         placeholderTextColor={C.muted}
                         value={company}
                         onChangeText={setCompany}
-                        returnKeyType="next"
-                        onSubmitEditing={() => objectiveRef.current?.focus()}
+                        returnKeyType="done"
+                        onSubmitEditing={() => Keyboard.dismiss()}
                     />
 
-                    <Text style={s.label} onLayout={e => { objY.current = e.nativeEvent.layout.y; }}>Objective *</Text>
-                    <TextInput
-                        ref={objectiveRef}
-                        style={[s.input, s.textarea, showError && !objective && s.inputError]}
+                    <Text style={s.label}>Objective *</Text>
+                    <VoiceInput
                         placeholder="What are you looking to achieve? Be specific."
-                        placeholderTextColor={C.muted}
-                        multiline
                         value={objective}
-                        onChangeText={setObjective}
-                        returnKeyType="done"
-                        blurOnSubmit
-                        onSubmitEditing={() => Keyboard.dismiss()}
-                        onFocus={() => setTimeout(() => scrollRef.current?.scrollTo({ y: objY.current - 80, animated: true }), 350)}
+                        onChange={setObjective}
+                        accent={C.primary}
+                        textColor={C.text}
+                        border={showError && !objective ? "#ef5350" : C.border}
+                        inputBg={C.surface}
                     />
 
                     {showError && (!pairingType || !objective) && (

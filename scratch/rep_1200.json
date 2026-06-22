@@ -1,0 +1,12 @@
+{
+  "AllowMultiple": "false",
+  "Description": "\"Mark stack registration and routes updated tasks complete, and diaspora UI redesign task in progress in task.md.\"",
+  "EndLine": "11",
+  "Instruction": "\"Mark Tasks 5-6 complete and Task 7 in progress.\"",
+  "ReplacementContent": "\"- [x] Register `journal` and `monthly-picks` in the root stack in `app/_layout.tsx`\\n- [x] Update route references in `app/(tabs)/index.tsx` and `app/(tabs)/profile.tsx` to `/journal` and `/monthly-picks`\\n- [/] Redesign `app/services/diaspora-support.tsx` to have a premium, diaspora-first UI\"",
+  "StartLine": "7",
+  "TargetContent": "\"- [/] Register `journal` and `monthly-picks` in the root stack in `app/_layout.tsx`\\n- [/] Update route references in `app/(tabs)/index.tsx` and `app/(tabs)/profile.tsx` to `/journal` and `/monthly-picks`\\n- [ ] Redesign `app/services/diaspora-support.tsx` to have a premium, diaspora-first UI\"",
+  "TargetFile": "\"C:\\\\Users\\\\PAP AMNESTY\\\\.gemini\\\\antigravity-ide\\\\brain\\\\6795a66a-f3d9-434d-b4a8-180fff88dba1\\\\task.md\"",
+  "toolAction": "\"Updating task tracker status\"",
+  "toolSummary": "\"Updating task file on step 7\""
+}

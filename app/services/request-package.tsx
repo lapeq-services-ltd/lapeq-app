@@ -1,14 +1,56 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
     View, Text, ScrollView, TouchableOpacity, StyleSheet,
-    TextInput, Alert, Platform, Modal,
+    TextInput, Alert, Modal, KeyboardAvoidingView, Platform, Keyboard,
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ChevronLeft, Calendar, CheckCircle2, ChevronDown } from "lucide-react-native";
+import { ChevronLeft, Calendar, CheckCircle2, ChevronDown, Maximize2, Mic, X, Play, Pause, Trash2, Minus, Plus } from "lucide-react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { supabase } from "@/lib/supabase";
+import LocationSearch from "@/components/LocationSearch";
+import { Audio } from "expo-av";
+import VoiceInput from "@/components/VoiceInput";
+
+const TYPE_ACTIVITIES: Record<string, string[]> = {
+    leisure: [
+        "Hotel / Villa Stay",
+        "Spa & Wellness",
+        "Nightlife & Lounges",
+        "Shopping & Styling",
+        "Golf & Recreation",
+        "Boat / Yacht",
+        "Chauffeur & Transport",
+    ],
+    business: [
+        "Business Dinner",
+        "Chauffeur & Transport",
+        "Airport Protocol",
+        "Hotel / Villa Stay",
+        "Exclusive Events",
+    ],
+    romantic: [
+        "Private Dining",
+        "Hotel / Villa Stay",
+        "Spa & Wellness",
+        "Private Chef at Home",
+        "Boat / Yacht",
+        "Photography Session",
+    ],
+    cultural: [
+        "Cultural Experiences",
+        "Exclusive Events",
+        "Photography Session",
+        "Hotel / Villa Stay",
+    ],
+    adventure: [
+        "Golf & Recreation",
+        "Boat / Yacht",
+        "Cultural Experiences",
+        "Chauffeur & Transport",
+    ],
+};
 
 const TYPES = [
     { key: "leisure", label: "Leisure" },
@@ -35,17 +77,29 @@ function toISO(d: Date | null) {
     return d.toISOString().split("T")[0];
 }
 
+// Reusable voice input field with expand and mic dictation
 export default function RequestPackageScreen() {
     const router = useRouter();
     const { C, theme } = useTheme();
     const s = useMemo(() => getStyles(C, theme), [C, theme]);
 
     const [city, setCity] = useState("");
+    const [citySelected, setCitySelected] = useState(false);
     const [startDate, setStartDate] = useState<Date | null>(null);
     const [endDate, setEndDate] = useState<Date | null>(null);
     const [type, setType] = useState<string | null>(null);
-    const [budget, setBudget] = useState<string | null>(null);
+    const [showTypeDropdown, setShowTypeDropdown] = useState(false);
+    const [budget, setBudget] = useState<string>("under-500k");
+    const [activities, setActivities] = useState<string[]>([]);
     const [notes, setNotes] = useState("");
+
+    const toggleActivity = (item: string) =>
+        setActivities(prev => prev.includes(item) ? prev.filter(a => a !== item) : [...prev, item]);
+
+    const filteredActivities = useMemo(() => {
+        if (!type) return [];
+        return TYPE_ACTIVITIES[type] ?? [];
+    }, [type]);
 
     // Date picker state
     const [pickerTarget, setPickerTarget] = useState<"start" | "end" | null>(null);
@@ -71,23 +125,47 @@ export default function RequestPackageScreen() {
         setPickerTarget(null);
     };
 
+    const handleAndroidChange = (_: any, date?: Date) => {
+        setPickerTarget(null);
+        if (date) {
+            if (pickerTarget === "start") {
+                setStartDate(date);
+                if (endDate && date > endDate) setEndDate(null);
+            } else {
+                setEndDate(date);
+            }
+        }
+    };
+
     const handleSubmit = async () => {
-        if (!city.trim()) { Alert.alert("Please enter a city."); return; }
+        if (!city.trim()) { Alert.alert("Please search and select a destination."); return; }
+        if (!citySelected) { Alert.alert("Please select a location from the search recommendations."); return; }
         if (!type) { Alert.alert("Please choose an experience type."); return; }
 
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
         setLoading(true);
-        const { data, error } = await supabase.from("packages").insert({
+        const voiceNoteUrlMatch = notes ? notes.match(/\[Voice Note: (https:\/\/.*?)\]/) : null;
+        const voiceNoteUrl = voiceNoteUrlMatch ? voiceNoteUrlMatch[1] : null;
+
+        const ref = "LPQ-" + Date.now().toString(36).toUpperCase().slice(-5);
+        const { data, error } = await supabase.from("requests").insert({
             user_id: user.id,
-            city: city.trim(),
-            type,
+            service_type: "experience",
             status: "pending",
-            start_date: toISO(startDate),
-            end_date: toISO(endDate),
-            budget_range: budget,
-            notes: notes.trim() || null,
+            reference: ref,
+            title: `Experience Package - ${city.trim()}`,
+            details: {
+                city: city.trim(),
+                type,
+                start_date: toISO(startDate),
+                end_date: toISO(endDate),
+                budget_range: budget,
+                activities: activities.length > 0 ? activities : null,
+                notes: notes.trim() || null,
+                voice_note: voiceNoteUrl,
+            },
         }).select("id").single();
         setLoading(false);
 
@@ -96,7 +174,13 @@ export default function RequestPackageScreen() {
         setSuccess(true);
     };
 
+    const borderCol = theme === "dark" ? "#2a2a2a" : "#d8d3ca";
+
     return (
+        <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
         <SafeAreaView style={s.root}>
             <View style={s.header}>
                 <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
@@ -104,21 +188,26 @@ export default function RequestPackageScreen() {
                 </TouchableOpacity>
                 <View style={{ flex: 1 }}>
                     <Text style={s.title}>Request a Package</Text>
-                    <Text style={s.subtitle}>Tell us the basics — we handle everything else</Text>
+                    <Text style={s.subtitle}>Tell us the basics - we handle everything else</Text>
                 </View>
             </View>
 
             <ScrollView contentContainerStyle={s.form} keyboardShouldPersistTaps="handled">
 
-                {/* City */}
+                {/* City / Location Autocomplete */}
                 <Text style={s.label}>Where are you going?</Text>
-                <TextInput
-                    style={s.input}
-                    placeholder="e.g. Lagos, Abuja, Dubai, London"
-                    placeholderTextColor={C.muted}
+                <LocationSearch
                     value={city}
-                    onChangeText={setCity}
-                    autoCapitalize="words"
+                    onChangeText={(text) => {
+                        setCity(text);
+                        setCitySelected(false);
+                    }}
+                    placeholder="e.g. Lagos, Abuja, Dubai, London"
+                    onSelect={(place) => {
+                        setCity(place);
+                        setCitySelected(true);
+                    }}
+                    style={{ marginBottom: 28 }}
                 />
 
                 {/* Dates */}
@@ -140,47 +229,125 @@ export default function RequestPackageScreen() {
                     </TouchableOpacity>
                 </View>
 
-                {/* Type */}
+                {/* Type of Experience Custom Dropdown */}
                 <Text style={s.label}>Type of experience</Text>
-                <View style={s.chipRow}>
-                    {TYPES.map(t => (
-                        <TouchableOpacity
-                            key={t.key}
-                            style={[s.chip, type === t.key && s.chipActive]}
-                            onPress={() => setType(t.key)}
-                            activeOpacity={0.8}
-                        >
-                            <Text style={[s.chipText, type === t.key && s.chipTextActive]}>{t.label}</Text>
-                        </TouchableOpacity>
-                    ))}
+                <View style={{ position: "relative", zIndex: 10, marginBottom: 28 }}>
+                    <TouchableOpacity
+                        style={[s.dropdownTrigger, showTypeDropdown && s.dropdownTriggerActive]}
+                        onPress={() => setShowTypeDropdown(!showTypeDropdown)}
+                        activeOpacity={0.9}
+                    >
+                        <Text style={[s.dropdownValue, !type && { color: C.muted }]}>
+                            {type ? TYPES.find(t => t.key === type)?.label : "Select experience type"}
+                        </Text>
+                        <ChevronDown size={18} color={C.primary} style={{ transform: [{ rotate: showTypeDropdown ? "180deg" : "0deg" }] }} />
+                    </TouchableOpacity>
+
+                    {showTypeDropdown && (
+                        <View style={s.dropdownList}>
+                            {TYPES.map(t => (
+                                <TouchableOpacity
+                                    key={t.key}
+                                    style={[s.dropdownItem, type === t.key && s.dropdownItemActive]}
+                                    onPress={() => {
+                                        setType(t.key);
+                                        setActivities([]);
+                                        setShowTypeDropdown(false);
+                                    }}
+                                    activeOpacity={0.7}
+                                >
+                                    <Text style={[s.dropdownItemText, type === t.key && s.dropdownItemTextActive]}>
+                                        {t.label}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    )}
                 </View>
+
+                {/* Tailored Activities */}
+                {type ? (
+                    <>
+                        <Text style={s.label}>What do you want to do? <Text style={s.labelOptional}>(select all that apply)</Text></Text>
+                        <View style={[s.chipRow, { marginBottom: 28 }]}>
+                            {filteredActivities.map(item => (
+                                <TouchableOpacity
+                                    key={item}
+                                    style={[s.chip, activities.includes(item) && s.chipActive]}
+                                    onPress={() => toggleActivity(item)}
+                                    activeOpacity={0.8}
+                                >
+                                    <Text style={[s.chipText, activities.includes(item) && s.chipTextActive]}>{item}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </>
+                ) : (
+                    <View style={{ marginBottom: 28 }}>
+                        <Text style={s.label}>What do you want to do?</Text>
+                        <View style={s.tailorPlaceholder}>
+                            <Text style={{ color: C.muted, fontSize: 13, textAlign: "center" }}>
+                                Select an experience type above to unlock tailored activities.
+                            </Text>
+                        </View>
+                    </View>
+                )}
 
                 {/* Budget */}
-                <Text style={s.label}>Budget range <Text style={s.labelOptional}>(optional)</Text></Text>
-                <View style={[s.chipRow, { marginBottom: 28 }]}>
-                    {BUDGETS.map(b => (
-                        <TouchableOpacity
-                            key={b.key}
-                            style={[s.chip, budget === b.key && s.chipActive]}
-                            onPress={() => setBudget(prev => prev === b.key ? null : b.key)}
-                            activeOpacity={0.8}
-                        >
-                            <Text style={[s.chipText, budget === b.key && s.chipTextActive]}>{b.label}</Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
+                <Text style={s.label}>Budget range</Text>
+                {(() => {
+                    const currentIdx = BUDGETS.findIndex(b => b.key === budget);
+                    return (
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 16, marginBottom: 28 }}>
+                            <TouchableOpacity
+                                style={{
+                                    width: 44, height: 44, borderRadius: 12,
+                                    borderWidth: 1, borderColor: borderCol,
+                                    backgroundColor: C.surface, alignItems: "center", justifyContent: "center",
+                                    opacity: currentIdx <= 0 ? 0.4 : 1
+                                }}
+                                disabled={currentIdx <= 0}
+                                onPress={() => {
+                                    const newIdx = Math.max(0, currentIdx - 1);
+                                    setBudget(BUDGETS[newIdx].key);
+                                }}
+                            >
+                                <Minus size={16} color={C.text} />
+                            </TouchableOpacity>
+                            <View style={{ flex: 1, height: 44, borderRadius: 12, borderWidth: 1, borderColor: borderCol, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" }}>
+                                <Text style={{ fontSize: 14, fontWeight: "600", color: C.text }}>
+                                    {BUDGETS[currentIdx]?.label ?? "Select Budget"}
+                                </Text>
+                            </View>
+                            <TouchableOpacity
+                                style={{
+                                    width: 44, height: 44, borderRadius: 12,
+                                    borderWidth: 1, borderColor: borderCol,
+                                    backgroundColor: C.surface, alignItems: "center", justifyContent: "center",
+                                    opacity: currentIdx >= BUDGETS.length - 1 ? 0.4 : 1
+                                }}
+                                disabled={currentIdx >= BUDGETS.length - 1}
+                                onPress={() => {
+                                    const newIdx = Math.min(BUDGETS.length - 1, currentIdx + 1);
+                                    setBudget(BUDGETS[newIdx].key);
+                                }}
+                            >
+                                <Plus size={16} color={C.text} />
+                            </TouchableOpacity>
+                        </View>
+                    );
+                })()}
 
-                {/* Notes */}
+                {/* Notes (VoiceInput) */}
                 <Text style={s.label}>Anything else we should know? <Text style={s.labelOptional}>(optional)</Text></Text>
-                <TextInput
-                    style={s.textarea}
+                <VoiceInput
                     placeholder="Special requests, preferences, dietary requirements, celebration notes..."
-                    placeholderTextColor={C.muted}
                     value={notes}
-                    onChangeText={setNotes}
-                    multiline
-                    numberOfLines={4}
-                    textAlignVertical="top"
+                    onChange={setNotes}
+                    accent={C.primary}
+                    textColor={C.text}
+                    border={borderCol}
+                    inputBg={C.surface}
                 />
 
                 <TouchableOpacity
@@ -198,54 +365,57 @@ export default function RequestPackageScreen() {
 
             </ScrollView>
 
-            {/* Date picker modal */}
-            <Modal
-                visible={!!pickerTarget}
-                transparent
-                animationType="fade"
-                onRequestClose={() => setPickerTarget(null)}
-            >
-                <View style={s.pickerOverlay}>
-                    <View style={s.pickerSheet}>
-                        <View style={s.pickerHeader}>
-                            <Text style={s.pickerTitle}>
-                                {pickerTarget === "start" ? "Select Start Date" : "Select End Date"}
-                            </Text>
-                            <TouchableOpacity onPress={() => setPickerTarget(null)}>
-                                <Text style={{ color: C.muted, fontSize: 15 }}>Cancel</Text>
+            {/* Date picker — iOS only in Modal */}
+            {Platform.OS === "ios" && (
+                <Modal
+                    visible={!!pickerTarget}
+                    transparent
+                    animationType="slide"
+                    onRequestClose={() => setPickerTarget(null)}
+                >
+                    <TouchableOpacity
+                        style={s.pickerOverlay}
+                        activeOpacity={1}
+                        onPress={() => setPickerTarget(null)}
+                    >
+                        <View style={s.pickerSheet} onStartShouldSetResponder={() => true}>
+                            <View style={s.pickerHeader}>
+                                <TouchableOpacity onPress={() => setPickerTarget(null)}>
+                                    <Text style={{ color: C.muted, fontSize: 15 }}>Cancel</Text>
+                                </TouchableOpacity>
+                                <Text style={s.pickerTitle}>
+                                    {pickerTarget === "start" ? "Start Date" : "End Date"}
+                                </Text>
+                                <TouchableOpacity onPress={confirmDate}>
+                                    <Text style={{ color: C.primary, fontSize: 15, fontWeight: "700" }}>Done</Text>
+                                </TouchableOpacity>
+                            </View>
+                            <DateTimePicker
+                                value={tempDate}
+                                mode="date"
+                                display="spinner"
+                                minimumDate={pickerTarget === "end" && startDate ? startDate : new Date()}
+                                onChange={(_, date) => { if (date) setTempDate(date); }}
+                                style={{ width: "100%" }}
+                                themeVariant={theme === "dark" ? "dark" : "light"}
+                            />
+                            <TouchableOpacity style={s.pickerDoneBtn} onPress={confirmDate}>
+                                <Text style={s.pickerDoneText}>Confirm Date</Text>
                             </TouchableOpacity>
                         </View>
-                        <DateTimePicker
-                            value={tempDate}
-                            mode="date"
-                            display={Platform.OS === "ios" ? "spinner" : "default"}
-                            minimumDate={pickerTarget === "end" && startDate ? startDate : new Date()}
-                            onChange={(_, date) => {
-                                if (date) {
-                                    setTempDate(date);
-                                    if (Platform.OS === "android") {
-                                        if (pickerTarget === "start") {
-                                            setStartDate(date);
-                                            if (endDate && date > endDate) setEndDate(null);
-                                        } else {
-                                            setEndDate(date);
-                                        }
-                                        setPickerTarget(null);
-                                    }
-                                } else {
-                                    setPickerTarget(null);
-                                }
-                            }}
-                            style={{ backgroundColor: C.background }}
-                        />
-                        {Platform.OS === "ios" && (
-                            <TouchableOpacity style={s.pickerDoneBtn} onPress={confirmDate}>
-                                <Text style={s.pickerDoneText}>Confirm</Text>
-                            </TouchableOpacity>
-                        )}
-                    </View>
-                </View>
-            </Modal>
+                    </TouchableOpacity>
+                </Modal>
+            )}
+
+            {/* Date picker — Android only native dialogue */}
+            {Platform.OS === "android" && !!pickerTarget && (
+                <DateTimePicker
+                    value={tempDate}
+                    mode="date"
+                    minimumDate={pickerTarget === "end" && startDate ? startDate : new Date()}
+                    onChange={handleAndroidChange}
+                />
+            )}
 
             {/* Success modal */}
             <Modal visible={success} transparent animationType="fade">
@@ -263,19 +433,20 @@ export default function RequestPackageScreen() {
                                 if (newId) {
                                     router.replace({ pathname: "/(main)/package/[id]", params: { id: newId } });
                                 } else {
-                                    router.replace("/experiences");
+                                    router.replace("/(main)/experiences");
                                 }
                             }}
                         >
                             <Text style={s.successBtnText}>View My Package</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity onPress={() => { setSuccess(false); router.replace("/experiences"); }} style={{ marginTop: 12 }}>
+                        <TouchableOpacity onPress={() => { setSuccess(false); router.replace("/(main)/experiences"); }} style={{ marginTop: 12 }}>
                             <Text style={{ color: C.muted, fontSize: 14 }}>Back to Experiences</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
             </Modal>
         </SafeAreaView>
+        </KeyboardAvoidingView>
     );
 }
 
@@ -364,4 +535,66 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     successBody: { fontSize: 14, color: C.muted, textAlign: "center", lineHeight: 22, marginBottom: 28 },
     successBtn: { width: "100%", paddingVertical: 16, borderRadius: 14, backgroundColor: C.primary, alignItems: "center" },
     successBtnText: { fontSize: 15, fontWeight: "700", color: "#0a0a0a" },
+
+    // Dropdown styles
+    dropdownTrigger: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        backgroundColor: C.surface,
+        borderRadius: 14,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        borderWidth: 1,
+        borderColor: theme === "dark" ? "#2a2a2a" : "#d8d3ca",
+    },
+    dropdownTriggerActive: {
+        borderColor: C.primary,
+    },
+    dropdownValue: {
+        fontSize: 15,
+        color: C.text,
+    },
+    dropdownList: {
+        backgroundColor: C.surface,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: theme === "dark" ? "#2a2a2a" : "#d8d3ca",
+        marginTop: 4,
+        overflow: "hidden",
+        position: "absolute",
+        top: "100%",
+        left: 0,
+        right: 0,
+        zIndex: 50,
+        elevation: 5,
+    },
+    dropdownItem: {
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        borderBottomWidth: 1,
+        borderBottomColor: theme === "dark" ? "#2a2a2a" : "#f0ece4",
+    },
+    dropdownItemActive: {
+        backgroundColor: `${C.primary}18`,
+    },
+    dropdownItemText: {
+        fontSize: 14,
+        color: C.text,
+    },
+    dropdownItemTextActive: {
+        color: C.primary,
+        fontWeight: "700",
+    },
+
+    // Tailored Placeholder
+    tailorPlaceholder: {
+        backgroundColor: C.surface,
+        borderRadius: 14,
+        padding: 20,
+        borderWidth: 1,
+        borderColor: theme === "dark" ? "#2a2a2a" : "#d8d3ca",
+        alignItems: "center",
+        justifyContent: "center",
+    },
 });

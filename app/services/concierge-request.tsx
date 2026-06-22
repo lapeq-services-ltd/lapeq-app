@@ -5,6 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
 import { Paperclip, Check } from "lucide-react-native";
+import VoiceInput from "@/components/VoiceInput";
 
 const REQUEST_TYPES = ["Sourcing", "Event Planning", "Reservations", "Gifting", "Other"];
 
@@ -22,7 +23,6 @@ export default function ConciergeRequestScreen() {
 
     const scrollRef = useRef<ScrollView>(null);
     const descY = useRef(0);
-    const preferredTimeRef = useRef<TextInput>(null);
     const alertOpacity = useRef(new Animated.Value(0)).current;
     const alertScale = useRef(new Animated.Value(0.9)).current;
 
@@ -68,22 +68,18 @@ export default function ConciergeRequestScreen() {
                     </View>
 
                     <Text style={s.label} onLayout={e => { descY.current = e.nativeEvent.layout.y; }}>Description *</Text>
-                    <TextInput
-                        style={[s.input, s.textarea, showError && !description && s.inputError]}
+                    <VoiceInput
                         placeholder="Provide details about your request..."
-                        placeholderTextColor={C.muted}
-                        multiline
                         value={description}
-                        onChangeText={setDescription}
-                        returnKeyType="next"
-                        blurOnSubmit
-                        onSubmitEditing={() => preferredTimeRef.current?.focus()}
-                        onFocus={() => setTimeout(() => scrollRef.current?.scrollTo({ y: descY.current - 80, animated: true }), 350)}
+                        onChange={setDescription}
+                        accent={C.primary}
+                        textColor={C.text}
+                        border={showError && !description ? "#ef5350" : C.border}
+                        inputBg={C.surface}
                     />
 
                     <Text style={s.label}>Preferred Time (Optional)</Text>
                     <TextInput
-                        ref={preferredTimeRef}
                         style={s.input}
                         placeholder="e.g. Asap, Tomorrow at 2 PM"
                         placeholderTextColor={C.muted}

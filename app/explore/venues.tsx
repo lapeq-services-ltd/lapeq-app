@@ -72,7 +72,7 @@ export default function VenuesScreen() {
             const { data: favs } = await supabase.from("favorites").select("venue_id").eq("user_id", user.id);
             if (favs) setFavorites(new Set(favs.map((f: any) => f.venue_id)));
         }
-        const { data } = await supabase.from("venues").select("*").eq("active", true).eq("category", category).order("name");
+        const { data } = await supabase.from("venues").select("*").eq("active", true).is("deleted_at", null).eq("category", category).order("name");
         if (data) setVenues(data);
         setLoading(false);
     };

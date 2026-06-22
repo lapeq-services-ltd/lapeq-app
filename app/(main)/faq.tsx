@@ -8,7 +8,7 @@ import { useTheme } from "@/context/ThemeContext";
 const FAQS = [
     {
         q: "How do I join LAPEQ?",
-        a: "You can join LAPEQ by registering on the app. Start with our free tier — no obligation. When you're ready to unlock full concierge access, upgrade to Silver, Gold, or Black from your profile.",
+        a: "You can join LAPEQ by registering on the app. Start with our free tier - no obligation. When you're ready to unlock full concierge access, upgrade to Silver, Gold, or Black from your profile.",
     },
     {
         q: "What is the difference between Silver and Gold?",
@@ -16,7 +16,7 @@ const FAQS = [
     },
     {
         q: "Is the Black membership truly invitation-only?",
-        a: "Yes. Black tier is strictly by invitation. It represents our most complete offering — same-day response, a dedicated personal concierge, access to Investment Advisorship, exclusive Black events, and full Corporate Pairing access.",
+        a: "Yes. Black tier is strictly by invitation. It represents our most complete offering - same-day response, a dedicated personal concierge, access to Investment Advisorship, exclusive Black events, and full Corporate Pairing access.",
     },
     {
         q: "Can I upgrade my membership at any time?",
@@ -28,15 +28,15 @@ const FAQS = [
     },
     {
         q: "Which cities does LAPEQ currently operate in?",
-        a: "We currently operate in Abuja, Lagos, Port Harcourt, and Akwa-Ibom. Our concierge teams are on the ground in each city for real-time service delivery.",
+        a: "We currently operate in Abuja and Lagos, with services in Port Harcourt, Akwa Ibom, and Kano coming soon. Our concierge teams are on the ground in each active city for real-time service delivery.",
     },
     {
         q: "How do I make a service request?",
-        a: "Tap any service from the home screen — Chauffeur, Travel, Experiences, or more. Fill in your details and submit. You'll receive a reference number and can track your request status in real time from the app.",
+        a: "Tap any service from the home screen - Chauffeur, Travel, Experiences, or more. Fill in your details and submit. You'll receive a reference number and can track your request status in real time from the app.",
     },
     {
         q: "What is Project Supervision?",
-        a: "Project Supervision is LAPEQ's construction oversight service. We send a team member to your build site for regular inspections, verify materials, liaise with your contractors, and send you weekly photo reports — so you stay fully informed from anywhere in the world.",
+        a: "Project Supervision is LAPEQ's construction oversight service. We send a team member to your build site for regular inspections, verify materials, liaise with your contractors, and send you weekly photo reports - so you stay fully informed from anywhere in the world.",
     },
     {
         q: "How do I contact my concierge?",

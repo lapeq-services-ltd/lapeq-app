@@ -4,8 +4,8 @@ import {
     FlatList, KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
-import { ChevronLeft, Send, Crown, FileText, HelpCircle, MessageCircle } from "lucide-react-native";
+import { useRouter, useLocalSearchParams } from "expo-router";
+import { ChevronLeft, ChevronRight, Send, Crown, HelpCircle, MessageCircle, X } from "lucide-react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { supabase } from "@/lib/supabase";
 
@@ -17,7 +17,7 @@ type Message = {
     type?: string;
 };
 
-type ChatMode = null | "request" | "question" | "concierge";
+type ChatMode = null | "question" | "concierge" | "request";
 
 const QUICK_QUESTIONS = [
     "What's included in Gold membership?",
@@ -29,13 +29,13 @@ const QUICK_QUESTIONS = [
 
 const FAQ_ANSWERS: Record<string, string> = {
     "What's included in Gold membership?":
-        "Gold membership includes full concierge access with a 24-hour response guarantee, chauffeur service, bespoke travel planning, lifestyle management, event access, and priority reservations at partner venues across Abuja, Lagos, and Port Harcourt.",
+        "Gold membership includes full concierge access with a 24-hour response guarantee, chauffeur service, bespoke travel planning, lifestyle management, event access, and priority reservations at partner venues across Abuja, Lagos, Port Harcourt, Akwa Ibom, and Kano.",
     "How does Project Supervision work?":
-        "Our team provides independent oversight of your construction or renovation project in Nigeria. We conduct regular site visits, send weekly photo reports, verify materials, and liaise with contractors — keeping you fully informed from anywhere in the world.",
+        "Our team provides independent oversight of your construction or renovation project in Nigeria. We conduct regular site visits, send weekly photo reports, verify materials, and liaise with contractors - keeping you fully informed from anywhere in the world.",
     "Can you arrange airport pickup?":
-        "Yes. We arrange private airport transfers across all cities we cover. Simply provide your flight details and we'll handle the rest — including meet & greet, luggage assistance, and direct transfer to your destination.",
+        "Yes. We arrange private airport transfers across all cities we cover. Simply provide your flight details and we'll handle the rest - including meet & greet, luggage assistance, and direct transfer to your destination.",
     "What cities do you cover?":
-        "We currently operate in Abuja, Lagos, and Port Harcourt. Our concierge team is based across all three cities for on-the-ground service.",
+        "We currently operate in Abuja and Lagos, with services in Port Harcourt, Akwa Ibom, and Kano coming soon. Our on-the-ground concierge teams ensure real-time service delivery.",
     "How do I upgrade my tier?":
         "You can upgrade your membership directly in the app. Go to Profile → Upgrade Membership, select your desired tier, and submit a request. Our team will process it and reach out to confirm.",
 };
@@ -44,7 +44,7 @@ const FAQ_KEYWORDS: { keywords: string[]; answer: string }[] = [
     { keywords: ["gold", "membership", "included", "include"], answer: FAQ_ANSWERS["What's included in Gold membership?"] },
     { keywords: ["project", "supervision", "construction", "build", "site"], answer: FAQ_ANSWERS["How does Project Supervision work?"] },
     { keywords: ["airport", "pickup", "transfer", "arrival", "flight"], answer: FAQ_ANSWERS["Can you arrange airport pickup?"] },
-    { keywords: ["cities", "city", "cover", "location", "abuja", "lagos", "port harcourt"], answer: FAQ_ANSWERS["What cities do you cover?"] },
+    { keywords: ["cities", "city", "cover", "location", "abuja", "lagos", "port harcourt", "ph", "akwa ibom", "kano"], answer: FAQ_ANSWERS["What cities do you cover?"] },
     { keywords: ["upgrade", "tier", "black", "silver", "change plan"], answer: FAQ_ANSWERS["How do I upgrade my tier?"] },
 ];
 
@@ -60,21 +60,52 @@ function getFaqAnswer(text: string): string | null {
 }
 
 function timeLabel(dateStr: string) {
-    return new Date(dateStr).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const d = new Date(dateStr);
+    const now = new Date();
+    const isToday = d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    if (isToday) return time;
+    const date = d.toLocaleDateString([], { day: "numeric", month: "short" });
+    const year = d.getFullYear() !== now.getFullYear() ? ` ${d.getFullYear()}` : "";
+    return `${date}${year}, ${time}`;
 }
 
 export default function ConciergeChatScreen() {
     const router = useRouter();
+    const { mode: initialMode, packageId } = useLocalSearchParams<{ mode?: string; packageId?: string }>();
     const { C, theme } = useTheme();
     const s = useMemo(() => getStyles(C, theme), [C, theme]);
 
-    const [mode, setMode] = useState<ChatMode>(null);
+    const [mode, setMode] = useState<ChatMode>((initialMode as ChatMode) ?? null);
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState("");
     const [loading, setLoading] = useState(false);
     const [sending, setSending] = useState(false);
     const [userId, setUserId] = useState<string | null>(null);
+    const [refPackage, setRefPackage] = useState<{ reference: string; title: string } | null>(null);
     const listRef = useRef<FlatList>(null);
+
+    useEffect(() => {
+        if (initialMode) setMode(initialMode as ChatMode);
+    }, [initialMode]);
+
+    useEffect(() => {
+        if (packageId) {
+            supabase
+                .from("requests")
+                .select("reference, title, details")
+                .eq("id", packageId)
+                .single()
+                .then(({ data }) => {
+                    if (data) {
+                        setRefPackage({
+                            reference: data.reference ?? "LPQ-REF",
+                            title: data.title ?? `Package to ${data.details?.city ?? "Destination"}`,
+                        });
+                    }
+                });
+        }
+    }, [packageId]);
 
     useEffect(() => {
         supabase.auth.getUser().then(({ data: { user } }) => {
@@ -142,10 +173,12 @@ export default function ConciergeChatScreen() {
         setInput("");
         setSending(true);
 
+        const finalContent = refPackage ? `[Ref: ${refPackage.reference}] ${content}` : content;
+
         // Add user message to local state immediately
         const userMsg: Message = {
             id: `local-${Date.now()}`,
-            content,
+            content: finalContent,
             sender_type: "client",
             created_at: new Date().toISOString(),
             type: mode ?? undefined,
@@ -157,7 +190,7 @@ export default function ConciergeChatScreen() {
             await supabase.from("messages").insert({
                 user_id: userId,
                 sender_type: "client",
-                content,
+                content: finalContent,
                 type: mode,
             });
 
@@ -176,11 +209,11 @@ export default function ConciergeChatScreen() {
                 });
             }, 800);
         } else {
-            // request / concierge — save to DB, no auto-reply
+            // request / concierge - save to DB, no auto-reply
             await supabase.from("messages").insert({
                 user_id: userId,
                 sender_type: "client",
-                content,
+                content: finalContent,
                 type: mode,
             });
         }
@@ -201,7 +234,7 @@ export default function ConciergeChatScreen() {
         return "Concierge Chat";
     };
 
-    // Entry screen — pick a mode
+    // Entry screen - pick a mode
     if (!mode) {
         return (
             <SafeAreaView style={s.root}>
@@ -223,39 +256,89 @@ export default function ConciergeChatScreen() {
                     <Text style={s.modeTitle}>How can we help you today?</Text>
                     <Text style={s.modeSub}>Choose how you'd like to connect with your concierge.</Text>
 
-                    <TouchableOpacity style={s.modeCard} onPress={() => setMode("request")} activeOpacity={0.85}>
-                        <View style={[s.modeIcon, { backgroundColor: C.surface }]}>
-                            <FileText size={24} color={C.primary} />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                            <Text style={s.modeCardTitle}>Make a Request</Text>
-                            <Text style={s.modeCardSub}>Need something arranged? Tell us and we'll handle it.</Text>
-                        </View>
-                    </TouchableOpacity>
+                    <View style={s.modeList}>
+                        <TouchableOpacity style={s.modeItem} onPress={() => setMode("question")} activeOpacity={0.7}>
+                            <View style={s.modeIconBox}>
+                                <HelpCircle size={22} color={C.primary} />
+                            </View>
+                            <View style={s.modeTextContainer}>
+                                <Text style={s.modeItemTitle}>Ask a Question</Text>
+                                <Text style={s.modeItemSub}>Membership, services, cities we cover - ask anything.</Text>
+                            </View>
+                            <ChevronRight size={18} color={C.muted} />
+                        </TouchableOpacity>
 
-                    <TouchableOpacity style={s.modeCard} onPress={() => setMode("question")} activeOpacity={0.85}>
-                        <View style={[s.modeIcon, { backgroundColor: C.surface }]}>
-                            <HelpCircle size={24} color={C.primary} />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                            <Text style={s.modeCardTitle}>Ask a Question</Text>
-                            <Text style={s.modeCardSub}>Membership, services, cities we cover — ask anything.</Text>
-                        </View>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity style={s.modeCard} onPress={() => setMode("concierge")} activeOpacity={0.85}>
-                        <View style={[s.modeIcon, { backgroundColor: C.surface }]}>
-                            <MessageCircle size={24} color={C.primary} />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                            <Text style={s.modeCardTitle}>Talk to My Concierge</Text>
-                            <Text style={s.modeCardSub}>Direct line to your dedicated concierge. No forms needed.</Text>
-                        </View>
-                    </TouchableOpacity>
+                        <TouchableOpacity style={s.modeItem} onPress={() => setMode("concierge")} activeOpacity={0.7}>
+                            <View style={s.modeIconBox}>
+                                <MessageCircle size={22} color={C.primary} />
+                            </View>
+                            <View style={s.modeTextContainer}>
+                                <Text style={s.modeItemTitle}>Talk to My Concierge</Text>
+                                <Text style={s.modeItemSub}>Direct line to your dedicated concierge. No forms needed.</Text>
+                            </View>
+                            <ChevronRight size={18} color={C.muted} />
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </SafeAreaView>
         );
     }
+
+    const renderMessageContent = (content: string, senderType: "client" | "admin") => {
+        if (!content) return null;
+
+        const regex = /(LPQ-[A-Z0-9]{5,8})/gi;
+        const parts = content.split(regex);
+        if (parts.length === 1) {
+            return (
+                <Text style={[s.msgText, senderType === "client" ? s.msgTextUser : s.msgTextConcierge]}>
+                    {content}
+                </Text>
+            );
+        }
+
+        const handleRefPress = async (refCode: string) => {
+            try {
+                const { data, error } = await supabase
+                    .from("requests")
+                    .select("id")
+                    .eq("reference", refCode.toUpperCase())
+                    .single();
+                
+                if (data?.id) {
+                    router.push(`/requests/${data.id}`);
+                } else {
+                    console.warn("Request not found for reference:", refCode, error);
+                }
+            } catch (err) {
+                console.error("Error looking up reference:", err);
+            }
+        };
+
+        return (
+            <Text style={[s.msgText, senderType === "client" ? s.msgTextUser : s.msgTextConcierge]}>
+                {parts.map((part, index) => {
+                    if (part.match(/^LPQ-[A-Z0-9]{5,8}$/i)) {
+                        const linkColor = senderType === "client" ? "#000000" : C.primary;
+                        return (
+                            <Text
+                                key={index}
+                                style={{
+                                    color: linkColor,
+                                    textDecorationLine: "underline",
+                                    fontWeight: "bold"
+                                }}
+                                onPress={() => handleRefPress(part)}
+                            >
+                                {part}
+                            </Text>
+                        );
+                    }
+                    return part;
+                })}
+            </Text>
+        );
+    };
 
     return (
         <SafeAreaView style={s.root}>
@@ -272,6 +355,21 @@ export default function ConciergeChatScreen() {
                 </View>
                 <Crown size={24} color={C.primary} />
             </View>
+
+            {refPackage && (
+                <View style={{
+                    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+                    backgroundColor: `${C.primary}18`, paddingHorizontal: 16, paddingVertical: 10,
+                    borderBottomWidth: 1, borderBottomColor: `${C.primary}30`, gap: 8
+                }}>
+                    <Text style={{ flex: 1, fontSize: 13, color: C.primary, fontWeight: "600" }} numberOfLines={1}>
+                        Referencing: {refPackage.title} ({refPackage.reference})
+                    </Text>
+                    <TouchableOpacity onPress={() => setRefPackage(null)} style={{ padding: 2 }}>
+                        <X size={16} color={C.primary} />
+                    </TouchableOpacity>
+                </View>
+            )}
 
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
@@ -292,7 +390,7 @@ export default function ConciergeChatScreen() {
                             messages.length === 0 ? (
                                 <View style={s.emptyChat}>
                                     {mode === "request" && (
-                                        <Text style={s.emptyChatText}>Describe what you need — a reservation, transport, event access, anything. We'll take it from here.</Text>
+                                        <Text style={s.emptyChatText}>Describe what you need - a reservation, transport, event access, anything. We'll take it from here.</Text>
                                     )}
                                     {mode === "question" && (
                                         <Text style={s.emptyChatText}>Ask us anything or pick a common question below.</Text>
@@ -310,9 +408,7 @@ export default function ConciergeChatScreen() {
                                     <Text style={s.senderLabel}>LAPEQ Concierge</Text>
                                 )}
                                 <View style={[s.bubble, item.sender_type === "client" ? s.bubbleUser : s.bubbleConcierge]}>
-                                    <Text style={[s.msgText, item.sender_type === "client" ? s.msgTextUser : s.msgTextConcierge]}>
-                                        {item.content}
-                                    </Text>
+                                    {renderMessageContent(item.content, item.sender_type)}
                                 </View>
                                 <Text style={s.timeText}>{timeLabel(item.created_at)}</Text>
                             </View>
@@ -379,13 +475,15 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     onlineText: { fontSize: 12, color: C.muted, fontWeight: "500" },
     center: { flex: 1, justifyContent: "center", alignItems: "center" },
 
-    modeContainer: { flex: 1, padding: 24, paddingTop: 32 },
-    modeTitle: { fontSize: 24, fontWeight: "700", color: C.text, marginBottom: 8 },
-    modeSub: { fontSize: 14, color: C.muted, marginBottom: 32, lineHeight: 22 },
-    modeCard: { flexDirection: "row", alignItems: "center", gap: 16, backgroundColor: C.surface, borderRadius: 20, padding: 20, marginBottom: 14, borderWidth: 1, borderColor: theme === "dark" ? "#2a2a2a" : "#d8d3ca" },
-    modeIcon: { width: 52, height: 52, borderRadius: 16, alignItems: "center", justifyContent: "center" },
-    modeCardTitle: { fontSize: 16, fontWeight: "700", color: C.text, marginBottom: 4 },
-    modeCardSub: { fontSize: 13, color: C.muted, lineHeight: 18 },
+    modeContainer: { flex: 1, padding: 24, paddingTop: 36 },
+    modeTitle: { fontSize: 26, fontWeight: "700", color: C.text, marginBottom: 8, letterSpacing: -0.5 },
+    modeSub: { fontSize: 14, color: C.muted, marginBottom: 24, lineHeight: 22 },
+    modeList: { borderTopWidth: 1, borderTopColor: C.border, marginTop: 16 },
+    modeItem: { flexDirection: "row", alignItems: "center", paddingVertical: 20, borderBottomWidth: 1, borderBottomColor: C.border },
+    modeIconBox: { width: 48, height: 48, borderRadius: 24, backgroundColor: `${C.primary}12`, alignItems: "center", justifyContent: "center", marginRight: 16 },
+    modeTextContainer: { flex: 1 },
+    modeItemTitle: { fontSize: 16, fontWeight: "600", color: C.text, marginBottom: 4 },
+    modeItemSub: { fontSize: 13, color: C.muted, lineHeight: 18 },
 
     messageList: { padding: 20, paddingBottom: 10 },
     emptyChat: { backgroundColor: C.surface, borderRadius: 16, padding: 20, marginBottom: 20, borderWidth: 1, borderColor: C.border },

@@ -1,14 +1,14 @@
 export const COUNTRIES = [
-    { name: "Nigeria" },
-    { name: "United Kingdom" },
-    { name: "United States" },
-    { name: "Canada" },
-    { name: "Ghana" },
-    { name: "South Africa" },
-    { name: "Kenya" },
-    { name: "United Arab Emirates" },
-    { name: "France" },
-    { name: "Germany" },
+    { name: "Nigeria",              flag: "🇳🇬" },
+    { name: "United Kingdom",       flag: "🇬🇧" },
+    { name: "United States",        flag: "🇺🇸" },
+    { name: "Canada",               flag: "🇨🇦" },
+    { name: "Ghana",                flag: "🇬🇭" },
+    { name: "South Africa",         flag: "🇿🇦" },
+    { name: "Kenya",                flag: "🇰🇪" },
+    { name: "United Arab Emirates", flag: "🇦🇪" },
+    { name: "France",               flag: "🇫🇷" },
+    { name: "Germany",              flag: "🇩🇪" },
 ];
 
 export const STATES_BY_COUNTRY: Record<string, string[]> = {

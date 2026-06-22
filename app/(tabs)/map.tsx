@@ -35,10 +35,10 @@ export default function MapScreen() {
     const router = useRouter();
     const s = useMemo(() => getStyles(C), [C]);
     const [venues, setVenues] = useState<Venue[]>([]);
-    const [activeCity, setActiveCity] = useState<"Lagos" | "Abuja">("Lagos");
+    const [activeCity, setActiveCity] = useState<"Lagos" | "Abuja" | "Port Harcourt" | "Akwa Ibom" | "Kano">("Lagos");
 
     useEffect(() => {
-        supabase.from("venues").select("id, name, category, city, address").eq("active", true).order("name")
+        supabase.from("venues").select("id, name, category, city, address").eq("active", true).is("deleted_at", null).order("name")
             .then(({ data }) => { if (data) setVenues(data); });
     }, []);
 
@@ -93,17 +93,21 @@ export default function MapScreen() {
                             <Crown size={12} color="#c9a84c" />
                             <Text style={s.headerBadgeText}>PARTNER LOCATIONS</Text>
                         </View>
-                        <View style={s.cityToggle}>
-                            {(["Lagos", "Abuja"] as const).map(city => (
-                                <TouchableOpacity
-                                    key={city}
-                                    style={[s.cityBtn, activeCity === city && s.cityBtnActive]}
-                                    onPress={() => setActiveCity(city)}
-                                >
-                                    <Text style={[s.cityBtnText, activeCity === city && s.cityBtnTextActive]}>{city}</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ maxWidth: 220 }} contentContainerStyle={{ flexDirection: "row", alignItems: "center" }}>
+                            {(["Lagos", "Abuja", "Port Harcourt", "Akwa Ibom", "Kano"] as const).map(city => {
+                                const isAvailable = city === "Lagos" || city === "Abuja";
+                                const displayLabel = isAvailable ? city : `${city} (Soon)`;
+                                return (
+                                    <TouchableOpacity
+                                        key={city}
+                                        style={[s.cityBtn, activeCity === city && s.cityBtnActive]}
+                                        onPress={() => setActiveCity(city)}
+                                    >
+                                        <Text style={[s.cityBtnText, activeCity === city && s.cityBtnTextActive]}>{displayLabel}</Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </ScrollView>
                     </View>
                 </SafeAreaView>
             </View>
@@ -112,31 +116,39 @@ export default function MapScreen() {
             <View style={s.bottomCard}>
                 <View style={s.bottomHandle} />
                 <Text style={s.bottomTitle}>{activeCity} Partners  <Text style={{ fontSize: 12, color: "rgba(201,168,76,0.6)", fontWeight: "600" }}>{cityVenues.length} places</Text></Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 20 }}>
-                    {cityVenues.map(v => {
-                        const Icon = CATEGORY_ICON[v.category] ?? Building2;
-                        return (
-                            <TouchableOpacity
-                                key={v.id}
-                                style={s.placeCard}
-                                onPress={() => router.push({ pathname: "/explore/venue-detail", params: { id: v.id } })}
-                                activeOpacity={0.85}
-                            >
-                                <View style={s.placeIconWrap}>
-                                    <Icon size={16} color="#c9a84c" />
-                                </View>
-                                <Text style={s.placeName} numberOfLines={1}>{v.name}</Text>
-                                {v.address && <Text style={s.placeArea} numberOfLines={1}>{v.address}</Text>}
-                                <View style={s.placeBadgeWrap}>
-                                    <Text style={s.placeBadgeText}>{CATEGORY_LABELS[v.category] ?? v.category}</Text>
-                                </View>
-                            </TouchableOpacity>
-                        );
-                    })}
-                    {cityVenues.length === 0 && (
-                        <Text style={{ color: "rgba(255,255,255,0.3)", fontSize: 13, paddingVertical: 20 }}>No venues yet</Text>
-                    )}
-                </ScrollView>
+                {activeCity !== "Lagos" && activeCity !== "Abuja" ? (
+                    <View style={{ paddingVertical: 20, paddingRight: 20 }}>
+                        <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 14, fontFamily: "Jost_400Regular", lineHeight: 20 }}>
+                            Coming Soon: Concierge services and partner venues in {activeCity} are currently being onboarded.
+                        </Text>
+                    </View>
+                ) : (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 20 }}>
+                        {cityVenues.map(v => {
+                            const Icon = CATEGORY_ICON[v.category] ?? Building2;
+                            return (
+                                <TouchableOpacity
+                                    key={v.id}
+                                    style={s.placeCard}
+                                    onPress={() => router.push({ pathname: "/explore/venue-detail", params: { id: v.id } })}
+                                    activeOpacity={0.85}
+                                >
+                                    <View style={s.placeIconWrap}>
+                                        <Icon size={16} color="#c9a84c" />
+                                    </View>
+                                    <Text style={s.placeName} numberOfLines={1}>{v.name}</Text>
+                                    {v.address && <Text style={s.placeArea} numberOfLines={1}>{v.address}</Text>}
+                                    <View style={s.placeBadgeWrap}>
+                                        <Text style={s.placeBadgeText}>{CATEGORY_LABELS[v.category] ?? v.category}</Text>
+                                    </View>
+                                </TouchableOpacity>
+                            );
+                        })}
+                        {cityVenues.length === 0 && (
+                            <Text style={{ color: "rgba(255,255,255,0.3)", fontSize: 13, paddingVertical: 20 }}>No venues yet</Text>
+                        )}
+                    </ScrollView>
+                )}
             </View>
         </View>
     );

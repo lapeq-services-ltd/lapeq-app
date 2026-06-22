@@ -4,7 +4,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useFocusEffect } from "expo-router";
-import { Settings, Crown, Moon, Sun, ArrowRight, Clock, Plus, MapPin, Heart, Bookmark, Headphones, ClipboardList, Car, Plane, BookOpen } from "lucide-react-native";
+import { Settings, Crown, ArrowRight, Clock, Plus, MapPin, Heart, Bookmark, Headphones, ClipboardList, Car, Plane, BookOpen, Info } from "lucide-react-native";
+import Skeleton from "@/components/Skeleton";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
 
@@ -36,6 +37,7 @@ const SERVICE_LABELS: Record<string, string> = {
     "ladies-concierge": "Ladies Concierge",
     "gentlemens-concierge": "Gentlemen's Concierge",
     "tier-purchase": "Membership Upgrade",
+    "lifestyle-request": "Bespoke Request",
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -49,7 +51,7 @@ const JOURNAL_ARTICLES = [
     { category: "Lifestyle", readTime: "6 min", date: "Feb 2026", title: "The Insider's Guide to Abuja's Most Exclusive Venues", img: require("@/assets/images/lagos-rooftop.jpg"), route: "/journal" },
     { category: "Travel", readTime: "5 min", date: "Mar 2026", title: "Lagos to London: How LAPEQ Members Travel Differently", img: require("@/assets/images/lagos-hotel.jpg"), route: "/journal" },
     { category: "Dining", readTime: "4 min", date: "Mar 2026", title: "Port Harcourt's Best Kept Dining Secrets", img: require("@/assets/images/lagos-restaurant.jpg"), route: "/journal" },
-    { category: "Hospitality", readTime: "7 min", date: "Apr 2026", title: "Nigeria's Finest Hotel Suites — Reviewed by Our Team", img: require("@/assets/images/lagos-beach.jpg"), route: "/journal" },
+    { category: "Hospitality", readTime: "7 min", date: "Apr 2026", title: "Nigeria's Finest Hotel Suites - Reviewed by Our Team", img: require("@/assets/images/lagos-beach.jpg"), route: "/journal" },
 ];
 
 const PLACEHOLDER_IMAGES: Record<string, any> = {
@@ -67,11 +69,11 @@ function formatDate(iso: string) {
 export default function ProfileScreen() {
     const router = useRouter();
     const { theme, toggleTheme, C } = useTheme();
-    const [userName, setUserName] = useState("Member");
-    const [userLocation, setUserLocation] = useState("Lagos");
-    const [userCountry, setUserCountry] = useState("Nigeria");
+    const [userName, setUserName] = useState("");
+    const [userLocation, setUserLocation] = useState("");
+    const [userCountry, setUserCountry] = useState("");
     const [imageUri, setImageUri] = useState<string | null>(null);
-    const [tier, setTier] = useState("Gold");
+    const [tier, setTier] = useState("Standard");
     const [activeTab, setActiveTab] = useState<"requests" | "saved" | "journal">("requests");
     const [showDropdown, setShowDropdown] = useState(false);
     const dropdownScale = useRef(new Animated.Value(0.85)).current;
@@ -103,7 +105,8 @@ export default function ProfileScreen() {
     useFocusEffect(
         useCallback(() => {
             loadStats(requestCount === null);
-        }, [])
+            loadSaved(true);
+        }, [requestCount])
     );
 
     const loadStats = async (showSpinner = false) => {
@@ -121,20 +124,32 @@ export default function ProfileScreen() {
         setRequestCount(reqResult.count ?? 0);
         setSavedCount(favResult.count ?? 0);
         if (recentResult.data) setRecentRequests(recentResult.data);
+        const meta = user.user_metadata ?? {};
+        const metaFullName = meta.full_name || 
+            (meta.first_name ? `${meta.first_name} ${meta.last_name ?? ""}`.trim() : "") ||
+            meta.name || "";
         if (profileResult.data) {
             const p = profileResult.data;
-            if (p.tier) setTier(p.tier);
-            const displayName = p.preferred_name || p.full_name?.split(" ")[0] || "Member";
+            setTier(p.tier || "Standard");
+            const displayName = p.full_name || metaFullName;
             setUserName(displayName);
-            if (p.region) setUserLocation(p.region);
-            if (p.country) setUserCountry(p.country);
-            if (p.avatar_url) setImageUri(p.avatar_url);
+            setUserLocation(p.region || meta.region || "");
+            setUserCountry(p.country || meta.country || "");
+            if (p.avatar_url) {
+                const path = `${user.id}/avatar.jpg`;
+                const { data: signed } = await supabase.storage
+                    .from("avatars")
+                    .createSignedUrl(path, 60 * 60 * 24 * 365);
+                setImageUri(signed?.signedUrl ?? p.avatar_url);
+            }
+        } else {
+            setUserName(metaFullName);
         }
         setLoadingStats(false);
     };
 
-    const loadSaved = async () => {
-        if (savedLoaded) return;
+    const loadSaved = useCallback(async (force = false) => {
+        if (savedLoaded && !force) return;
         setLoadingSaved(true);
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) { setLoadingSaved(false); return; }
@@ -150,7 +165,7 @@ export default function ProfileScreen() {
         }
         setLoadingSaved(false);
         setSavedLoaded(true);
-    };
+    }, [savedLoaded]);
 
     const handleTabChange = (tab: "requests" | "saved" | "journal") => {
         setActiveTab(tab);
@@ -162,8 +177,8 @@ export default function ProfileScreen() {
             <View style={s.header}>
                 <Text style={s.headerTitle}>Profile</Text>
                 <View style={{ flexDirection: "row", gap: 8 }}>
-                    <TouchableOpacity style={s.iconBtn} onPress={toggleTheme}>
-                        {theme === "dark" ? <Sun size={16} color={C.muted} /> : <Moon size={16} color={C.muted} />}
+                    <TouchableOpacity style={s.iconBtn} onPress={() => router.push("/settings/about" as any)}>
+                        <Info size={16} color={C.muted} />
                     </TouchableOpacity>
                     <TouchableOpacity style={s.iconBtn} onPress={() => router.push("/settings")}>
                         <Settings size={16} color={C.muted} />
@@ -182,11 +197,16 @@ export default function ProfileScreen() {
                             source={imageUri ? { uri: imageUri } : require("@/assets/logo/Gemini_Generated_Image_ht0yyyht0yyyht0y-removebg-preview.png")}
                             style={s.avatarImg}
                             resizeMode="cover"
+                            onError={() => setImageUri(null)}
                         />
                     </View>
                     <View style={{ flex: 1 }}>
-                        <Text style={s.name}>{userName}</Text>
-                        <Text style={s.location}>{userLocation}, {userCountry}</Text>
+                        {loadingStats && !userName
+                            ? <Skeleton width={140} height={22} borderRadius={6} style={{ marginBottom: 6 }} />
+                            : <Text style={s.name}>{userName}</Text>}
+                        {(userLocation || userCountry) && (
+                            <Text style={s.location}>{[userLocation, userCountry].filter(Boolean).join(", ")}</Text>
+                        )}
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 6 }}>
                             <Crown size={14} color={C.primary} />
                             <Text style={s.tier}>{tier} Member</Text>
@@ -210,13 +230,13 @@ export default function ProfileScreen() {
                 <View style={s.stats}>
                     <View style={s.statBox}>
                         {loadingStats
-                            ? <ActivityIndicator size="small" color={C.primary} />
+                            ? <Skeleton width={40} height={28} borderRadius={6} />
                             : <Text style={s.statVal}>{requestCount ?? 0}</Text>}
                         <Text style={s.statLabel}>Requests</Text>
                     </View>
                     <View style={s.statBox}>
                         {loadingStats
-                            ? <ActivityIndicator size="small" color={C.primary} />
+                            ? <Skeleton width={40} height={28} borderRadius={6} />
                             : <Text style={s.statVal}>{savedCount ?? 0}</Text>}
                         <Text style={s.statLabel}>Saved</Text>
                     </View>
@@ -238,7 +258,7 @@ export default function ProfileScreen() {
                     </TouchableOpacity>
                 </View>
 
-                {/* Tab content — Requests */}
+                {/* Tab content - Requests */}
                 {activeTab === "requests" && (
                     loadingStats ? (
                         <View style={s.emptyTab}>
@@ -277,7 +297,7 @@ export default function ProfileScreen() {
                     )
                 )}
 
-                {/* Tab content — Journal */}
+                {/* Tab content - Journal */}
                 {activeTab === "journal" && (
                     <View>
                         <View style={s.articleGrid}>
@@ -299,7 +319,7 @@ export default function ProfileScreen() {
                     </View>
                 )}
 
-                {/* Tab content — Saved */}
+                {/* Tab content - Saved */}
                 {activeTab === "saved" && (
                     loadingSaved ? (
                         <View style={s.emptyTab}>
@@ -389,6 +409,10 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     cardGlowCircle: { position: "absolute", top: -40, right: -40, width: 120, height: 120, borderRadius: 60, backgroundColor: "#b8922e" },
     cardSub: { fontSize: 12, color: "rgba(0,0,0,0.6)", textTransform: "uppercase", letterSpacing: 2 },
     cardYear: { fontSize: 18, fontWeight: "700", color: "#000000" },
+    aboutRow: { flexDirection: "row", alignItems: "center", gap: 14, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: `${C.primary}30`, backgroundColor: `${C.primary}08`, marginBottom: 20 },
+    aboutIcon: { width: 38, height: 38, borderRadius: 12, backgroundColor: `${C.primary}18`, alignItems: "center", justifyContent: "center" },
+    aboutTitle: { fontSize: 14, fontWeight: "700", color: C.text, marginBottom: 2 },
+    aboutSub: { fontSize: 12, color: C.muted },
     stats: { flexDirection: "row", gap: 12, marginBottom: 24 },
     statBox: { flex: 1, alignItems: "center", padding: 16, borderRadius: 16, backgroundColor: C.surface, minHeight: 70, justifyContent: "center" },
     statVal: { fontSize: 24, fontWeight: "700", color: C.text },

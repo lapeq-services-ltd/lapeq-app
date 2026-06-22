@@ -1,21 +1,24 @@
-import { useState, useMemo, useRef, useCallback, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import {
     View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
     Platform, Keyboard, KeyboardAvoidingView, Image, ActivityIndicator,
     Modal, Animated, Alert
 } from "react-native";
-import { useRouter } from "expo-router";
+import LocationSearch from "@/components/LocationSearch";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import * as Location from "expo-location";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
 import { MapPin, Clock, Users, Car, Minus, Plus, Navigation, Check } from "lucide-react-native";
+import VoiceInput from "@/components/VoiceInput";
 
 const CAR_OPTIONS = [
     { id: "standard-sedan", name: "Standard Sedan", desc: "Toyota Camry or similar", icon: require("@/assets/images/standard-sedan.png"), maxPax: 4 },
     { id: "luxury-sedan", name: "Luxury Sedan", desc: "Mercedes E-Class or similar", icon: require("@/assets/images/mercedes-sedan.png"), maxPax: 4 },
     { id: "premium-suv", name: "Premium SUV", desc: "Range Rover or similar", icon: require("@/assets/images/range-rover-suv.png"), maxPax: 7 },
+    { id: "escalade-suv", name: "Luxury SUV", desc: "Cadillac Escalade or similar", icon: require("@/assets/images/escalade-suv.png"), maxPax: 7 },
     { id: "executive-van", name: "Executive Van", desc: "Sprinter Van", icon: require("@/assets/images/sprinter-van.png"), maxPax: 14 },
 ];
 
@@ -32,6 +35,7 @@ export default function DrivingServiceScreen() {
     const router = useRouter();
     const { C, theme } = useTheme();
     const s = useMemo(() => getStyles(C), [C]);
+    const { eventTag, eventDate } = useLocalSearchParams<{ eventTag?: string; eventDate?: string }>();
 
     const [pickup, setPickup] = useState("");
     const [dropoff, setDropoff] = useState("");
@@ -43,48 +47,8 @@ export default function DrivingServiceScreen() {
     const [loading, setLoading] = useState(false);
     const [locating, setLocating] = useState(false);
 
-    const [pickupSuggestions, setPickupSuggestions] = useState<string[]>([]);
-    const [dropoffSuggestions, setDropoffSuggestions] = useState<string[]>([]);
-    const [searchingField, setSearchingField] = useState<"pickup" | "dropoff" | null>(null);
-    const [activeField, setActiveField] = useState<"pickup" | "dropoff" | null>(null);
-    const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const abortRef = useRef<AbortController | null>(null);
     const scrollRef = useRef<ScrollView>(null);
     const dropoffY = useRef(0);
-
-    const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN;
-
-    useEffect(() => {
-        if (dropoffSuggestions.length > 0) {
-            scrollRef.current?.scrollTo({ y: Math.max(0, dropoffY.current - 80), animated: true });
-        }
-    }, [dropoffSuggestions]);
-
-    const searchLocation = useCallback((text: string, field: "pickup" | "dropoff") => {
-        if (searchTimer.current) clearTimeout(searchTimer.current);
-        if (abortRef.current) abortRef.current.abort();
-        if (text.length < 2) {
-            field === "pickup" ? setPickupSuggestions([]) : setDropoffSuggestions([]);
-            return;
-        }
-        if (!MAPBOX_TOKEN) return;
-        setSearchingField(field);
-        searchTimer.current = setTimeout(async () => {
-            const controller = new AbortController();
-            abortRef.current = controller;
-            try {
-                const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(text)}.json?access_token=${MAPBOX_TOKEN}&autocomplete=true&limit=6&language=en&country=NG&types=poi,address,place,locality,neighborhood`;
-                const res = await fetch(url, { signal: controller.signal });
-                const json = await res.json();
-                const places = (json.features ?? []).map((f: any) => f.place_name as string);
-                field === "pickup" ? setPickupSuggestions(places) : setDropoffSuggestions(places);
-            } catch (e: any) {
-                if (e?.name !== "AbortError") console.error("[Mapbox]", e);
-            } finally {
-                setSearchingField(null);
-            }
-        }, 150);
-    }, [MAPBOX_TOKEN]);
 
     const [showSuccess, setShowSuccess] = useState(false);
     const alertOpacity = useRef(new Animated.Value(0)).current;
@@ -159,7 +123,7 @@ export default function DrivingServiceScreen() {
                 pickup_location: pickup,
                 dropoff_location: dropoff,
                 scheduled_time: combined.toISOString(),
-                details: { instructions, carType, passengers, carCount, color: carColor === "no-preference" ? null : carColor },
+                details: { instructions, carType, passengers, carCount, color: carColor === "no-preference" ? null : carColor, ...(eventTag ? { eventTag, eventDate } : {}) },
             });
 
             setLoading(false);
@@ -197,6 +161,13 @@ export default function DrivingServiceScreen() {
                         <Text style={[s.backText, { color: C.primary }]}>← Back</Text>
                     </TouchableOpacity>
                     <Text style={[s.title, { color: C.text }]}>Chauffeur Service</Text>
+                    {!!eventTag && (
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                            <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99, backgroundColor: "#c9a84c20", borderWidth: 1, borderColor: "#c9a84c50" }}>
+                                <Text style={{ fontSize: 11, fontWeight: "700", color: "#c9a84c", letterSpacing: 0.5 }}>EVENT · {eventTag}</Text>
+                            </View>
+                        </View>
+                    )}
                     <Text style={[s.subtitle, { color: C.muted }]}>Book a private chauffeur or scheduled ride</Text>
 
                     <Text style={[s.label, { color: C.text }]}>Vehicle Class</Text>
@@ -223,80 +194,36 @@ export default function DrivingServiceScreen() {
                     </ScrollView>
 
                     <Text style={[s.label, { color: C.text }]}>Pickup Location *</Text>
-                    <View style={[s.inputRow, { backgroundColor: C.surface, borderColor: activeField === "pickup" ? C.primary : C.border }]}>
-                        {searchingField === "pickup"
-                            ? <ActivityIndicator size="small" color={C.primary} style={{ marginRight: 8 }} />
-                            : <MapPin size={18} color={C.primary} style={{ marginRight: 8 }} />
-                        }
-                        <TextInput
-                            style={[s.inputFlex, { color: C.text }]}
-                            placeholder="Search pickup location..."
-                            placeholderTextColor={C.muted}
-                            value={pickup}
-                            onChangeText={t => { setPickup(t); if (!t) setPickupSuggestions([]); else searchLocation(t, "pickup"); }}
-                            onFocus={() => setActiveField("pickup")}
-                            onBlur={() => setTimeout(() => { setActiveField(null); setPickupSuggestions([]); }, 500)}
-                            returnKeyType="done"
-                            onSubmitEditing={() => Keyboard.dismiss()}
-                        />
-                        <TouchableOpacity onPress={detectLocation} style={s.locateBtn} disabled={locating}>
-                            {locating
-                                ? <ActivityIndicator size="small" color={C.primary} />
-                                : <Navigation size={18} color={C.primary} />
-                            }
-                        </TouchableOpacity>
-                    </View>
-                    {pickupSuggestions.length > 0 && (
-                        <View style={[s.suggestionBox, { backgroundColor: C.surface, borderColor: C.border }]}>
-                            {pickupSuggestions.map((place, i) => (
-                                <TouchableOpacity
-                                    key={i}
-                                    style={[s.suggestionItem, i < pickupSuggestions.length - 1 && { borderBottomWidth: 1, borderBottomColor: C.border }]}
-                                    onPress={() => { setPickup(place); setPickupSuggestions([]); setActiveField(null); Keyboard.dismiss(); }}
-                                >
-                                    <MapPin size={13} color={C.muted} style={{ marginTop: 2 }} />
-                                    <Text style={[s.suggestionText, { color: C.text }]}>{place}</Text>
-                                </TouchableOpacity>
-                            ))}
+                    <View style={{ marginBottom: 8 }}>
+                        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
+                            <View style={{ flex: 1 }}>
+                                <LocationSearch
+                                    value={pickup}
+                                    onChangeText={setPickup}
+                                    placeholder="Search pickup location..."
+                                    onSelect={setPickup}
+                                />
+                            </View>
+                            <TouchableOpacity onPress={detectLocation} style={[s.locateBtn, { backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, borderRadius: 14, height: 50, width: 50, alignItems: "center", justifyContent: "center" }]} disabled={locating}>
+                                {locating
+                                    ? <ActivityIndicator size="small" color={C.primary} />
+                                    : <Navigation size={18} color={C.primary} />
+                                }
+                            </TouchableOpacity>
                         </View>
-                    )}
+                    </View>
 
                     <Text
                         style={[s.label, { color: C.text }]}
                         onLayout={e => { dropoffY.current = e.nativeEvent.layout.y; }}
                     >Drop-off Location *</Text>
-                    <View style={[s.inputRow, { backgroundColor: C.surface, borderColor: activeField === "dropoff" ? C.primary : C.border }]}>
-                        {searchingField === "dropoff"
-                            ? <ActivityIndicator size="small" color={C.muted} style={{ marginRight: 8 }} />
-                            : <MapPin size={18} color={C.muted} style={{ marginRight: 8 }} />
-                        }
-                        <TextInput
-                            style={[s.inputFlex, { color: C.text }]}
-                            placeholder="Search drop-off location..."
-                            placeholderTextColor={C.muted}
-                            value={dropoff}
-                            onChangeText={t => { setDropoff(t); if (!t) setDropoffSuggestions([]); else searchLocation(t, "dropoff"); }}
-                            onFocus={() => setActiveField("dropoff")}
-                            onBlur={() => setTimeout(() => { setActiveField(null); setDropoffSuggestions([]); }, 500)}
-                            returnKeyType="done"
-                            onSubmitEditing={() => Keyboard.dismiss()}
-                        />
-                    </View>
-                    
-                    {dropoffSuggestions.length > 0 && (
-                        <View style={[s.suggestionBox, { backgroundColor: C.surface, borderColor: C.border }]}>
-                            {dropoffSuggestions.map((place, i) => (
-                                <TouchableOpacity
-                                    key={i}
-                                    style={[s.suggestionItem, i < dropoffSuggestions.length - 1 && { borderBottomWidth: 1, borderBottomColor: C.border }]}
-                                    onPress={() => { setDropoff(place); setDropoffSuggestions([]); setActiveField(null); Keyboard.dismiss(); }}
-                                >
-                                    <MapPin size={13} color={C.primary} style={{ marginTop: 2 }} />
-                                    <Text style={[s.suggestionText, { color: C.text }]}>{place}</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                    )}
+                    <LocationSearch
+                        value={dropoff}
+                        onChangeText={setDropoff}
+                        placeholder="Search drop-off location..."
+                        onSelect={setDropoff}
+                        style={{ marginBottom: 20 }}
+                    />
 
                     <View style={s.dtRow}>
                         <View style={{ flex: 1 }}>
@@ -387,16 +314,14 @@ export default function DrivingServiceScreen() {
                     </View>
 
                     <Text style={[s.label, { color: C.text }]}>Special Instructions</Text>
-                    <TextInput
-                        style={[s.input, s.textarea, { backgroundColor: C.surface, borderColor: C.border, color: C.text }]}
+                    <VoiceInput
                         placeholder="Any preferences or requirements..."
-                        placeholderTextColor={C.muted}
-                        multiline
-                        numberOfLines={4}
                         value={instructions}
-                        onChangeText={setInstructions}
-                        returnKeyType="done"
-                        onSubmitEditing={() => Keyboard.dismiss()}
+                        onChange={instructions => setInstructions(instructions)}
+                        accent={C.primary}
+                        textColor={C.text}
+                        border={C.border}
+                        inputBg={C.surface}
                     />
 
                     <TouchableOpacity
@@ -444,50 +369,54 @@ export default function DrivingServiceScreen() {
 
             {/* Date Picker Modal */}
             <Modal visible={showDatePicker} transparent animationType="slide" onRequestClose={() => setShowDatePicker(false)}>
-                <TouchableOpacity style={s.pickerOverlay} activeOpacity={1} onPress={() => setShowDatePicker(false)} />
-                <View style={[s.pickerSheet, { backgroundColor: C.surface }]}>
-                    <View style={s.pickerHeader}>
-                        <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                            <Text style={{ color: C.muted, fontSize: 15 }}>Cancel</Text>
-                        </TouchableOpacity>
-                        <Text style={{ color: C.text, fontWeight: "700", fontSize: 15 }}>Select Date</Text>
-                        <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                            <Text style={{ color: C.primary, fontWeight: "700", fontSize: 15 }}>Done</Text>
-                        </TouchableOpacity>
+                <View style={{ flex: 1, justifyContent: "flex-end" }}>
+                    <TouchableOpacity style={[StyleSheet.absoluteFillObject, { backgroundColor: "rgba(0,0,0,0.4)" }]} activeOpacity={1} onPress={() => setShowDatePicker(false)} />
+                    <View style={[s.pickerSheet, { backgroundColor: C.surface }]}>
+                        <View style={s.pickerHeader}>
+                            <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                                <Text style={{ color: C.muted, fontSize: 15 }}>Cancel</Text>
+                            </TouchableOpacity>
+                            <Text style={{ color: C.text, fontWeight: "700", fontSize: 15 }}>Select Date</Text>
+                            <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                                <Text style={{ color: C.primary, fontWeight: "700", fontSize: 15 }}>Done</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <DateTimePicker
+                            value={dateObj}
+                            mode="date"
+                            display="spinner"
+                            onChange={onDateChange}
+                            minimumDate={new Date()}
+                            themeVariant={theme === "dark" ? "dark" : "light"}
+                            style={{ width: "100%" }}
+                        />
                     </View>
-                    <DateTimePicker
-                        value={dateObj}
-                        mode="date"
-                        display="spinner"
-                        onChange={onDateChange}
-                        minimumDate={new Date()}
-                        themeVariant={theme === "dark" ? "dark" : "light"}
-                        style={{ width: "100%" }}
-                    />
                 </View>
             </Modal>
 
             {/* Time Picker Modal */}
             <Modal visible={showTimePicker} transparent animationType="slide" onRequestClose={() => setShowTimePicker(false)}>
-                <TouchableOpacity style={s.pickerOverlay} activeOpacity={1} onPress={() => setShowTimePicker(false)} />
-                <View style={[s.pickerSheet, { backgroundColor: C.surface }]}>
-                    <View style={s.pickerHeader}>
-                        <TouchableOpacity onPress={() => setShowTimePicker(false)}>
-                            <Text style={{ color: C.muted, fontSize: 15 }}>Cancel</Text>
-                        </TouchableOpacity>
-                        <Text style={{ color: C.text, fontWeight: "700", fontSize: 15 }}>Select Time</Text>
-                        <TouchableOpacity onPress={() => setShowTimePicker(false)}>
-                            <Text style={{ color: C.primary, fontWeight: "700", fontSize: 15 }}>Done</Text>
-                        </TouchableOpacity>
+                <View style={{ flex: 1, justifyContent: "flex-end" }}>
+                    <TouchableOpacity style={[StyleSheet.absoluteFillObject, { backgroundColor: "rgba(0,0,0,0.4)" }]} activeOpacity={1} onPress={() => setShowTimePicker(false)} />
+                    <View style={[s.pickerSheet, { backgroundColor: C.surface }]}>
+                        <View style={s.pickerHeader}>
+                            <TouchableOpacity onPress={() => setShowTimePicker(false)}>
+                                <Text style={{ color: C.muted, fontSize: 15 }}>Cancel</Text>
+                            </TouchableOpacity>
+                            <Text style={{ color: C.text, fontWeight: "700", fontSize: 15 }}>Select Time</Text>
+                            <TouchableOpacity onPress={() => setShowTimePicker(false)}>
+                                <Text style={{ color: C.primary, fontWeight: "700", fontSize: 15 }}>Done</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <DateTimePicker
+                            value={timeObj}
+                            mode="time"
+                            display="spinner"
+                            onChange={onTimeChange}
+                            themeVariant={theme === "dark" ? "dark" : "light"}
+                            style={{ width: "100%" }}
+                        />
                     </View>
-                    <DateTimePicker
-                        value={timeObj}
-                        mode="time"
-                        display="spinner"
-                        onChange={onTimeChange}
-                        themeVariant={theme === "dark" ? "dark" : "light"}
-                        style={{ width: "100%" }}
-                    />
                 </View>
             </Modal>
         </SafeAreaView>

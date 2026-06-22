@@ -1,0 +1,12 @@
+{
+  "AllowMultiple": "false",
+  "Description": "\"Disable parent ScrollView scroll when the package dropdown is expanded to avoid scrolling or swiping the page during selection.\"",
+  "EndLine": "509",
+  "Instruction": "\"Add scrollEnabled={!pkgExpanded} to the parent ScrollView.\"",
+  "ReplacementContent": "\"                <ScrollView ref={scrollRef} scrollEnabled={!pkgExpanded} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps=\\\"handled\\\">\"",
+  "StartLine": "507",
+  "TargetContent": "\"                <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps=\\\"handled\\\">\"",
+  "TargetFile": "\"c:\\\\Users\\\\PAP AMNESTY\\\\Documents\\\\lapeq-app\\\\app\\\\services\\\\diaspora-support.tsx\"",
+  "toolAction": "\"Modifying parent ScrollView scroll property\"",
+  "toolSummary": "\"File edit\""
+}

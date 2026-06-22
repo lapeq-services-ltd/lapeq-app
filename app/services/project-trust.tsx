@@ -5,6 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@/context/ThemeContext";
 import { supabase } from "@/lib/supabase";
 import { Check } from "lucide-react-native";
+import VoiceInput from "@/components/VoiceInput";
 
 export default function ProjectTrustScreen() {
     const router = useRouter();
@@ -26,7 +27,6 @@ export default function ProjectTrustScreen() {
     const notesY = useRef(0);
     const addressRef = useRef<TextInput>(null);
     const contractorRef = useRef<TextInput>(null);
-    const notesRef = useRef<TextInput>(null);
     const alertOpacity = useRef(new Animated.Value(0)).current;
     const alertScale = useRef(new Animated.Value(0.9)).current;
 
@@ -93,8 +93,8 @@ export default function ProjectTrustScreen() {
                         placeholderTextColor={C.muted}
                         value={contractorName}
                         onChangeText={setContractorName}
-                        returnKeyType="next"
-                        onSubmitEditing={() => notesRef.current?.focus()}
+                        returnKeyType="done"
+                        onSubmitEditing={() => Keyboard.dismiss()}
                     />
 
                     <Text style={s.label}>Inspection Frequency</Text>
@@ -106,19 +106,15 @@ export default function ProjectTrustScreen() {
                         ))}
                     </View>
 
-                    <Text style={s.label} onLayout={e => { notesY.current = e.nativeEvent.layout.y; }}>Additional Notes</Text>
-                    <TextInput
-                        ref={notesRef}
-                        style={[s.input, s.textarea]}
+                    <Text style={s.label}>Additional Notes</Text>
+                    <VoiceInput
                         placeholder="Any specific concerns or requirements..."
-                        placeholderTextColor={C.muted}
-                        multiline
                         value={notes}
-                        onChangeText={setNotes}
-                        returnKeyType="done"
-                        blurOnSubmit
-                        onSubmitEditing={() => Keyboard.dismiss()}
-                        onFocus={() => setTimeout(() => scrollRef.current?.scrollTo({ y: notesY.current - 80, animated: true }), 350)}
+                        onChange={setNotes}
+                        accent={C.primary}
+                        textColor={C.text}
+                        border={C.border}
+                        inputBg={C.surface}
                     />
 
                     <View style={s.infoBox}>

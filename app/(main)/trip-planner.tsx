@@ -16,7 +16,7 @@ export default function TripPlannerScreen() {
     const DAY_1 = [
         { icon: <MapPin size={20} color={C.text} />, title: "Check in at Eko Hotel & Suites", time: "2:00 PM", rating: "4.8", desc: "Ocean view suite, Victoria Island. Pool access and spa arranged.", tag: "Reservation handled by concierge", vip: false },
         { icon: <Coffee size={20} color={C.text} />, title: "Dinner at Nok by Alara", time: "7:30 PM", rating: "4.9", desc: "Modern Nigerian cuisine. Private table reserved with personal sommelier.", tag: "Car hire arranged", vip: false },
-        { icon: <Crown size={20} color={C.primary} />, title: "VIP Evening at Quilox", time: "11:00 PM", rating: null, desc: "VIP table and bottle service arranged. No queue, no hassle — simply arrive.", tag: "Priority Access", vip: true },
+        { icon: <Crown size={20} color={C.primary} />, title: "VIP Evening at Quilox", time: "11:00 PM", rating: null, desc: "VIP table and bottle service arranged. No queue, no hassle - simply arrive.", tag: "Priority Access", vip: true },
     ];
 
     const DAY_2 = [
@@ -49,17 +49,21 @@ export default function TripPlannerScreen() {
 
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
                     <View style={{ flexDirection: "row", gap: 8 }}>
-                        {["Lagos", "Port Harcourt", "Abuja"].map((city, i) => (
-                            <TouchableOpacity key={city} style={[s.cityChip, i === 0 && s.cityChipActive]}>
-                                <Text style={[s.cityChipText, i === 0 && s.cityChipTextActive]}>{city}</Text>
-                            </TouchableOpacity>
-                        ))}
+                        {["Lagos", "Abuja", "Port Harcourt", "Akwa Ibom", "Kano"].map((city) => {
+                            const isAvailable = city === "Lagos" || city === "Abuja";
+                            const displayLabel = isAvailable ? city : `${city} (Soon)`;
+                            return (
+                                <TouchableOpacity key={city} style={[s.cityChip, city === "Lagos" && s.cityChipActive]}>
+                                    <Text style={[s.cityChipText, city === "Lagos" && s.cityChipTextActive]}>{displayLabel}</Text>
+                                </TouchableOpacity>
+                            );
+                        })}
                     </View>
                 </ScrollView>
 
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                     <View style={s.dayBadge}><Text style={s.dayNum}>1</Text></View>
-                    <Text style={s.dayTitle}>Friday — Arrive & Settle</Text>
+                    <Text style={s.dayTitle}>Friday - Arrive & Settle</Text>
                 </View>
                 <View style={s.timeline}>
                     {DAY_1.map((item, i) => (
@@ -91,7 +95,7 @@ export default function TripPlannerScreen() {
 
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12, marginTop: 20 }}>
                     <View style={s.dayBadge}><Text style={s.dayNum}>2</Text></View>
-                    <Text style={s.dayTitle}>Saturday — Explore & Unwind</Text>
+                    <Text style={s.dayTitle}>Saturday - Explore & Unwind</Text>
                 </View>
                 <View style={s.timeline}>
                     {DAY_2.map((item, i) => (
@@ -124,7 +128,7 @@ export default function TripPlannerScreen() {
                         <Text style={s.conciergeNoteTitle}>Everything Is Handled</Text>
                     </View>
                     <Text style={s.conciergeNoteBody}>
-                        All reservations, car hire, and arrangements have been coordinated by your dedicated concierge. Costs are managed through your membership — no surprises, no hassle.
+                        All reservations, car hire, and arrangements have been coordinated by your dedicated concierge. Costs are managed through your membership - no surprises, no hassle.
                     </Text>
                 </View>
 

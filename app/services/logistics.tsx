@@ -1,10 +1,12 @@
 import { useState, useMemo, useRef } from "react";
 import { Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, View, Platform, KeyboardAvoidingView, Keyboard, Modal, Animated } from "react-native";
+import LocationSearch from "@/components/LocationSearch";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@/context/ThemeContext";
 import { supabase } from "@/lib/supabase";
 import { Check } from "lucide-react-native";
+import VoiceInput from "@/components/VoiceInput";
 
 export default function LogisticsScreen() {
     const router = useRouter();
@@ -26,7 +28,6 @@ export default function LogisticsScreen() {
     const pickupRef = useRef<TextInput>(null);
     const deliveryRef = useRef<TextInput>(null);
     const dateRef = useRef<TextInput>(null);
-    const notesRef = useRef<TextInput>(null);
     const alertOpacity = useRef(new Animated.Value(0)).current;
     const alertScale = useRef(new Animated.Value(0.9)).current;
 
@@ -72,27 +73,21 @@ export default function LogisticsScreen() {
                     />
 
                     <Text style={s.label}>Pickup Address *</Text>
-                    <TextInput
-                        ref={pickupRef}
-                        style={[s.input, showError && !pickup && s.inputError]}
-                        placeholder="Where to collect from"
-                        placeholderTextColor={C.muted}
+                    <LocationSearch
                         value={pickup}
                         onChangeText={setPickup}
-                        returnKeyType="next"
-                        onSubmitEditing={() => deliveryRef.current?.focus()}
+                        placeholder="Where to collect from"
+                        onSelect={setPickup}
+                        style={{ marginBottom: 16 }}
                     />
 
                     <Text style={s.label}>Delivery Address *</Text>
-                    <TextInput
-                        ref={deliveryRef}
-                        style={[s.input, showError && !delivery && s.inputError]}
-                        placeholder="Where to deliver to"
-                        placeholderTextColor={C.muted}
+                    <LocationSearch
                         value={delivery}
                         onChangeText={setDelivery}
-                        returnKeyType="next"
-                        onSubmitEditing={() => dateRef.current?.focus()}
+                        placeholder="Where to deliver to"
+                        onSelect={setDelivery}
+                        style={{ marginBottom: 16 }}
                     />
 
                     <Text style={s.label}>Preferred Date *</Text>
@@ -103,8 +98,8 @@ export default function LogisticsScreen() {
                         placeholderTextColor={C.muted}
                         value={date}
                         onChangeText={setDate}
-                        returnKeyType="next"
-                        onSubmitEditing={() => notesRef.current?.focus()}
+                        returnKeyType="done"
+                        onSubmitEditing={() => Keyboard.dismiss()}
                     />
 
                     <TouchableOpacity style={s.toggleRow} onPress={() => setFragile(v => !v)}>
@@ -114,19 +109,15 @@ export default function LogisticsScreen() {
                         </View>
                     </TouchableOpacity>
 
-                    <Text style={s.label} onLayout={e => { notesY.current = e.nativeEvent.layout.y; }}>Notes</Text>
-                    <TextInput
-                        ref={notesRef}
-                        style={[s.input, s.textarea]}
+                    <Text style={s.label}>Notes</Text>
+                    <VoiceInput
                         placeholder="Any special handling instructions..."
-                        placeholderTextColor={C.muted}
-                        multiline
                         value={notes}
-                        onChangeText={setNotes}
-                        returnKeyType="done"
-                        blurOnSubmit
-                        onSubmitEditing={() => Keyboard.dismiss()}
-                        onFocus={() => setTimeout(() => scrollRef.current?.scrollTo({ y: notesY.current - 80, animated: true }), 350)}
+                        onChange={setNotes}
+                        accent={C.primary}
+                        textColor={C.text}
+                        border={C.border}
+                        inputBg={C.surface}
                     />
 
                     {showError && (!itemDesc || !pickup || !delivery || !date) && (

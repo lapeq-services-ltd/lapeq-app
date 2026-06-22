@@ -14,6 +14,7 @@ const CAR_IMAGES: Record<string, any> = {
     "standard-sedan": require("@/assets/images/standard-sedan.png"),
     "luxury-sedan": require("@/assets/images/mercedes-sedan.png"),
     "premium-suv": require("@/assets/images/range-rover-suv.png"),
+    "escalade-suv": require("@/assets/images/escalade-suv.png"),
     "executive-van": require("@/assets/images/sprinter-van.png"),
 };
 
@@ -50,7 +51,7 @@ export default function RequestsScreen() {
 
     const pagerRef = useRef<ScrollView>(null);
 
-    const STATUS_FILTERS = ["Pending", "Approved", "Arranged", "In Progress", "Completed"];
+    const STATUS_FILTERS = ["Pending", "Active", "Completed"];
     const hasActiveFilter = !!(filterStatus || filterDateFrom || filterDateTo);
     const fmtDate = (d: Date | null) => d ? d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : null;
 
@@ -65,7 +66,7 @@ export default function RequestsScreen() {
 
         if (activeRes.data) setActiveRequests(activeRes.data as RequestType[]);
         if (cancelledRes.data) setCancelledRequests(cancelledRes.data as RequestType[]);
-        setLoading(false);
+        loading && setLoading(false);
         setRefreshing(false);
     };
 
@@ -128,8 +129,9 @@ export default function RequestsScreen() {
     const getStatusStyle = (status: string) => {
         switch (status.toLowerCase()) {
             case 'pending': return { bg: "#2a1f00", text: "#f0a500" };
-            case 'approved': return { bg: `${C.primary}20`, text: C.primary };
-            case 'arranged': return { bg: `${C.primary}20`, text: C.primary };
+            case 'approved':
+            case 'arranged':
+            case 'active': return { bg: `${C.primary}20`, text: C.primary };
             case 'en-route': return { bg: `${C.primary}50`, text: C.primary };
             case 'in-progress': return { bg: `${C.primary}40`, text: C.primary };
             case 'completed': return { bg: '#1a3a2a', text: '#4caf50' };
@@ -210,7 +212,7 @@ export default function RequestsScreen() {
         <SafeAreaView style={s.root}>
             {/* Header */}
             <View style={s.header}>
-                <TouchableOpacity style={s.backBtn} onPress={() => router.push("/profile")}>
+                <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
                     <ChevronLeft size={24} color={C.text} />
                 </TouchableOpacity>
                 <Text style={s.headerTitle}>My Requests</Text>

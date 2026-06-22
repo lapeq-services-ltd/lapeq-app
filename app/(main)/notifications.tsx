@@ -2,7 +2,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator }
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@/context/ThemeContext";
 import { useMemo, useEffect, useState } from "react";
-import { Crown, Bell, ChevronLeft, Receipt, Package } from "lucide-react-native";
+import { Crown, Bell, ChevronLeft, Receipt, Package, Calendar } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { supabase } from "@/lib/supabase";
 
@@ -36,7 +36,7 @@ export default function NotificationsScreen() {
 
     useEffect(() => {
         const load = async () => {
-            // Use getSession() — reads from local SecureStore cache reliably
+            // Use getSession() - reads from local SecureStore cache reliably
             // getUser() can return null if SecureStore hasn't hydrated yet
             const { data: { session } } = await supabase.auth.getSession();
             if (!session?.user) { setLoading(false); return; }
@@ -62,14 +62,14 @@ export default function NotificationsScreen() {
         load();
     }, []);
 
-    const getIcon = (type: string) => {
-        switch (type) {
-            case "welcome": return <Crown size={20} color={C.primary} />;
-            case "receipt": return <Receipt size={20} color={C.primary} />;
-            case "request": return <Package size={20} color={C.primary} />;
-            default: return <Bell size={20} color={C.primary} />;
-        }
-    };
+    const TYPE_CONFIG: Record<string, { icon: any; glow: string; iconColor: string }> = useMemo(() => ({
+        welcome: { icon: Crown, glow: "rgba(201, 168, 76, 0.12)", iconColor: "#c9a84c" },
+        receipt: { icon: Receipt, glow: "rgba(52, 211, 153, 0.12)", iconColor: "#34d399" },
+        request: { icon: Package, glow: "rgba(96, 165, 250, 0.12)", iconColor: "#60a5fa" },
+        itinerary: { icon: Calendar, glow: "rgba(192, 132, 252, 0.12)", iconColor: "#c084fc" },
+        chat: { icon: Bell, glow: "rgba(251, 113, 133, 0.12)", iconColor: "#fb7185" },
+        default: { icon: Bell, glow: "rgba(255, 255, 255, 0.08)", iconColor: C.muted },
+    }), [C]);
 
     return (
         <SafeAreaView style={s.root}>
@@ -94,32 +94,56 @@ export default function NotificationsScreen() {
                     data={notifications}
                     keyExtractor={(item) => item.id}
                     contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 10, paddingBottom: 40 }}
-                    renderItem={({ item }) => (
-                        <TouchableOpacity 
-                           style={[s.notifCard, !item.read && s.unreadCard]}
-                           activeOpacity={0.7}
-                           onPress={() => {
-                               if (item.type === "request" || item.type === "receipt") {
-                                   if (item.target_id) router.push(`/requests/${item.target_id}`);
-                                   else router.push("/requests");
-                               } else if (item.type === "welcome") {
-                                   router.push("/explore");
-                               } else {
-                                   router.push("/");
-                               }
-                           }}
-                        >
-                            <View style={[s.iconBox, { backgroundColor: `${C.primary}18` }]}>
-                                {getIcon(item.type)}
-                            </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={[s.title, !item.read && { fontWeight: "700" }]}>{item.title}</Text>
-                                <Text style={s.message}>{item.body}</Text>
-                                <Text style={s.time}>{timeAgo(item.created_at)}</Text>
-                            </View>
-                            {!item.read && <View style={s.unreadDot} />}
-                        </TouchableOpacity>
-                    )}
+                    ItemSeparatorComponent={() => <View style={s.separator} />}
+                    renderItem={({ item }) => {
+                        const cfg = TYPE_CONFIG[item.type] ?? TYPE_CONFIG.default;
+                        const IconComponent = cfg.icon;
+                        return (
+                            <TouchableOpacity 
+                               style={[
+                                   s.notifItem,
+                                   !item.read && { 
+                                       backgroundColor: `${cfg.iconColor}0c`, 
+                                       borderLeftWidth: 4, 
+                                       borderLeftColor: cfg.iconColor,
+                                       paddingLeft: 12
+                                   }
+                               ]}
+                               activeOpacity={0.7}
+                               onPress={() => {
+                                    if (item.type === "request" || item.type === "receipt") {
+                                        if (item.target_id) router.push(`/requests/${item.target_id}`);
+                                        else router.push("/requests");
+                                    } else if (item.type === "chat") {
+                                        router.push("/chat");
+                                    } else if (item.type === "itinerary") {
+                                        router.push({ pathname: "/itinerary-view", params: { notifId: item.id } });
+                                    } else if (item.type === "welcome") {
+                                        router.push("/explore");
+                                    } else {
+                                        router.push("/");
+                                    }
+                                }}
+                            >
+                                <View style={[s.iconBox, { backgroundColor: cfg.glow }]}>
+                                    <IconComponent size={18} color={cfg.iconColor} />
+                                </View>
+                                
+                                <View style={{ flex: 1 }}>
+                                    <View style={s.itemHeader}>
+                                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1 }}>
+                                            {!item.read && <View style={[s.unreadDot, { backgroundColor: cfg.iconColor }]} />}
+                                            <Text style={[s.title, !item.read && { fontWeight: "700" }]} numberOfLines={1}>
+                                                {item.title}
+                                            </Text>
+                                        </View>
+                                        <Text style={s.time}>{timeAgo(item.created_at)}</Text>
+                                    </View>
+                                    <Text style={s.message}>{item.body}</Text>
+                                </View>
+                            </TouchableOpacity>
+                        );
+                    }}
                 />
             )}
         </SafeAreaView>
@@ -133,11 +157,52 @@ const getStyles = (C: any) => StyleSheet.create({
     headerTitle: { fontSize: 24, fontWeight: "700", color: C.text },
     center: { flex: 1, justifyContent: "center", alignItems: "center", gap: 12 },
     empty: { fontSize: 14, color: C.muted },
-    notifCard: { flexDirection: "row", alignItems: "flex-start", gap: 16, padding: 16, borderRadius: 16, backgroundColor: C.surface, marginBottom: 12, borderWidth: 1, borderColor: C.border },
-    unreadCard: { borderColor: `${C.primary}4d`, backgroundColor: `${C.primary}05` },
-    iconBox: { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-    title: { fontSize: 16, fontWeight: "600", color: C.text, marginBottom: 4 },
-    message: { fontSize: 13, color: C.muted, lineHeight: 18, marginBottom: 8 },
-    time: { fontSize: 11, color: C.primary, fontWeight: "500" },
-    unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: C.primary, marginTop: 6 },
+    notifItem: { 
+        flexDirection: "row", 
+        alignItems: "flex-start", 
+        gap: 14, 
+        paddingVertical: 16, 
+        paddingLeft: 16, 
+        position: "relative" 
+    },
+    unreadDot: { 
+        width: 8, 
+        height: 8, 
+        borderRadius: 4 
+    },
+    separator: {
+        height: 1,
+        backgroundColor: C.border,
+    },
+    iconBox: { 
+        width: 40, 
+        height: 40, 
+        borderRadius: 12, 
+        alignItems: "center", 
+        justifyContent: "center" 
+    },
+    itemHeader: { 
+        flexDirection: "row", 
+        justifyContent: "space-between", 
+        alignItems: "center", 
+        marginBottom: 4, 
+        gap: 8 
+    },
+    title: { 
+        fontSize: 15, 
+        fontWeight: "500", 
+        color: C.text, 
+        flex: 1 
+    },
+    time: { 
+        fontSize: 11, 
+        color: C.muted, 
+        fontWeight: "500" 
+    },
+    message: { 
+        fontSize: 13, 
+        color: C.muted, 
+        lineHeight: 18, 
+        paddingRight: 4 
+    },
 });

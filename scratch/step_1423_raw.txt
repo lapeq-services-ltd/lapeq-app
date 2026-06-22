@@ -1,0 +1,12 @@
+{
+  "AllowMultiple": "false",
+  "Description": "\"Add suggestion chip styles in diaspora-support.tsx\"",
+  "EndLine": "852",
+  "Instruction": "\"Add suggestionChip and suggestionChipText styles.\"",
+  "ReplacementContent": "\"        // Specify country input\\n        singleLineInput: { backgroundColor: surface, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, fontSize: 14, color: C.text, borderWidth: 1, borderColor: border, marginTop: 6 },\\n        suggestionChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, borderWidth: 1, borderColor: border, backgroundColor: surface },\\n        suggestionChipText: { fontSize: 12, color: C.muted, fontWeight: \\\"600\\\" },\"",
+  "StartLine": "849",
+  "TargetContent": "\"        // Specify country input\\n        singleLineInput: { backgroundColor: surface, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, fontSize: 14, color: C.text, borderWidth: 1, borderColor: border, marginTop: 6 },\"",
+  "TargetFile": "\"c:\\\\Users\\\\PAP AMNESTY\\\\Documents\\\\lapeq-app\\\\app\\\\services\\\\diaspora-support.tsx\"",
+  "toolAction": "\"Replacing style definitions in diaspora-support.tsx\"",
+  "toolSummary": "\"Add suggestion chip styles to diaspora-support.tsx\""
+}

@@ -95,7 +95,7 @@ export default function VenueDetailScreen() {
             const { data: fav } = await supabase.from("favorites").select("id").eq("user_id", user.id).eq("venue_id", id).single();
             setIsFav(!!fav);
         }
-        const { data } = await supabase.from("venues").select("*").eq("id", id).single();
+        const { data } = await supabase.from("venues").select("*").eq("id", id).is("deleted_at", null).single();
         if (data) {
             setVenue(data);
             const { data: imgs } = await supabase

@@ -1,0 +1,12 @@
+{
+  "AllowMultiple": "false",
+  "Description": "\"Remove invalid React Native style borderVertical from textarea in diaspora-support.tsx\"",
+  "EndLine": "365",
+  "Instruction": "\"Remove borderVertical: 1, from the textarea style object\"",
+  "ReplacementContent": "\"        textarea: { backgroundColor: surface, borderRadius: 18, padding: 18, fontSize: 14, color: C.text, minHeight: 140, lineHeight: 22, borderWidth: 1, borderColor: border, marginBottom: 6 },\"",
+  "StartLine": "362",
+  "TargetContent": "\"        textarea: { backgroundColor: surface, borderRadius: 18, borderVertical: 1, padding: 18, fontSize: 14, color: C.text, minHeight: 140, lineHeight: 22, borderWidth: 1, borderColor: border, marginBottom: 6 },\"",
+  "TargetFile": "\"c:\\\\Users\\\\PAP AMNESTY\\\\Documents\\\\lapeq-app\\\\app\\\\services\\\\diaspora-support.tsx\"",
+  "toolAction": "\"Replacing borderVertical style in diaspora-support.tsx\"",
+  "toolSummary": "\"Fix TypeScript compilation error in diaspora-support.tsx\""
+}
