@@ -14,6 +14,22 @@ interface Props {
     style?: object;
 }
 
+const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN;
+
+// Reverse-geocode coords → street address using Mapbox (better Nigerian coverage)
+export async function reverseGeocodeWithMapbox(lat: number, lng: number): Promise<string | null> {
+    if (!MAPBOX_TOKEN) return null;
+    try {
+        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&types=address,poi&country=NG&language=en&limit=1`;
+        const res = await fetch(url);
+        const json = await res.json();
+        if (json.features?.length > 0) {
+            return json.features[0].place_name_en || json.features[0].place_name || null;
+        }
+    } catch {}
+    return null;
+}
+
 export default function LocationSearch({ value, onChangeText, placeholder = "Search location...", onSelect, style }: Props) {
     const { C, theme } = useTheme();
     const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -32,45 +48,25 @@ export default function LocationSearch({ value, onChangeText, placeholder = "Sea
             const controller = new AbortController();
             abortRef.current = controller;
             try {
-                const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(text)}&format=jsonv2&addressdetails=1&limit=10&accept-language=en`;
-                const res = await fetch(url, {
-                    signal: controller.signal,
-                    headers: { "User-Agent": "LapeqApp/1.0" },
-                });
+                // Mapbox Geocoding — much better Nigerian street & POI coverage than Nominatim
+                const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(text)}.json?access_token=${MAPBOX_TOKEN}&country=NG&language=en&limit=8&types=address,poi,place,locality,neighborhood,district`;
+                const res = await fetch(url, { signal: controller.signal });
                 const json = await res.json();
-                const places = (json as any[]).map((item: any) => {
-                    const a = item.address || {};
-                    const parts: string[] = [];
-                    if (a.road) parts.push(a.house_number ? `${a.house_number} ${a.road}` : a.road);
-                    const area = a.suburb || a.neighbourhood || a.quarter || a.village;
-                    if (area) parts.push(area);
-                    const city = a.city || a.town || a.state_district || a.county;
-                    if (city) parts.push(city);
-                    const state = a.state;
-                    if (state && state !== city) parts.push(state);
-                    const country = a.country;
-                    if (country) parts.push(country);
 
-                    return {
-                        display: parts.length > 0 ? parts.join(", ") : item.display_name,
-                        is_nigeria: a.country_code === "ng" || (country && country.toLowerCase() === "nigeria"),
-                    };
-                });
+                const results: string[] = (json.features ?? []).map((f: any) => {
+                    // Use English place name, strip ", Nigeria" suffix for cleaner display
+                    const name: string = f.place_name_en || f.place_name || f.text || "";
+                    return name.replace(/, Nigeria$/i, "").trim();
+                }).filter(Boolean);
 
-                // Boost/sort Nigeria results to the top
-                places.sort((a, b) => {
-                    if (a.is_nigeria && !b.is_nigeria) return -1;
-                    if (!a.is_nigeria && b.is_nigeria) return 1;
-                    return 0;
-                });
-
-                setSuggestions(places.map(p => p.display));
+                // Remove exact duplicates
+                setSuggestions([...new Set(results)]);
             } catch (e: any) {
                 if (e?.name !== "AbortError") setSuggestions([]);
             } finally {
                 setSearching(false);
             }
-        }, 400);
+        }, 350);
     }, []);
 
     const handleChange = (text: string) => {

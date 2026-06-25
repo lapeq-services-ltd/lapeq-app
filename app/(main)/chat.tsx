@@ -8,6 +8,7 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { ChevronLeft, ChevronRight, Send, Crown, HelpCircle, MessageCircle, X } from "lucide-react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { supabase } from "@/lib/supabase";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type Message = {
     id: string;
@@ -76,7 +77,7 @@ export default function ConciergeChatScreen() {
     const { C, theme } = useTheme();
     const s = useMemo(() => getStyles(C, theme), [C, theme]);
 
-    const [mode, setMode] = useState<ChatMode>((initialMode as ChatMode) ?? null);
+    const [mode, setMode] = useState<ChatMode>((initialMode as ChatMode) ?? "concierge");
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState("");
     const [loading, setLoading] = useState(false);
@@ -109,7 +110,13 @@ export default function ConciergeChatScreen() {
 
     useEffect(() => {
         supabase.auth.getUser().then(({ data: { user } }) => {
-            if (user) setUserId(user.id);
+            if (user) {
+                setUserId(user.id);
+                // Stamp when user opens chat so home screen dot clears correctly
+                if (initialMode === "concierge" || !initialMode) {
+                    AsyncStorage.setItem(`lapeq_chat_last_open_${user.id}`, new Date().toISOString());
+                }
+            }
         });
     }, []);
 
@@ -123,7 +130,7 @@ export default function ConciergeChatScreen() {
                 .from("messages")
                 .select("*")
                 .eq("user_id", userId)
-                .eq("type", mode)          // only this conversation type
+                .in("type", [mode, "system"])   // include system messages (e.g. request reference links)
                 .order("created_at", { ascending: true })
                 .limit(100);
             if (data) setMessages(data as Message[]);
@@ -141,7 +148,8 @@ export default function ConciergeChatScreen() {
                 filter: `user_id=eq.${userId}`,
             }, (payload) => {
                 const newMsg = payload.new as Message;
-                if (newMsg.sender_type === "admin" && newMsg.type === mode) {
+                // Show admin messages that match current mode OR system messages
+                if (newMsg.sender_type === "admin" && (newMsg.type === mode || newMsg.type === "system")) {
                     setMessages(prev => [...prev, newMsg]);
                     setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
                 }
@@ -160,7 +168,7 @@ export default function ConciergeChatScreen() {
             .from("messages")
             .select("*")
             .eq("user_id", userId)
-            .eq("type", mode)
+            .in("type", [mode, "system"])
             .order("created_at", { ascending: true })
             .limit(100);
         if (data) setMessages(data as Message[]);
@@ -416,49 +424,51 @@ export default function ConciergeChatScreen() {
                     />
                 )}
 
-                {/* Quick Questions sticky bar */}
+                {/* Quick Questions — shown in question mode INSTEAD of the text input */}
                 {mode === "question" && (
-                    <View style={{ paddingBottom: 16 }}>
-                        <ScrollView 
-                            horizontal 
-                            showsHorizontalScrollIndicator={false} 
-                            contentContainerStyle={{ paddingHorizontal: 20, gap: 10 }}
-                        >
+                    <View style={{ paddingHorizontal: 16, paddingBottom: 20, paddingTop: 8 }}>
+                        <Text style={{ fontSize: 11, color: C.muted, fontWeight: "700", letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 12 }}>
+                            Select a question
+                        </Text>
+                        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
                             {QUICK_QUESTIONS.map(q => (
-                                <TouchableOpacity 
-                                    key={q} 
-                                    style={[s.quickQ, { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 20 }]} 
+                                <TouchableOpacity
+                                    key={q}
+                                    style={[s.quickQ, { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 20 }]}
                                     onPress={() => sendMessage(q)}
                                     disabled={sending}
                                 >
                                     <Text style={s.quickQText}>{q}</Text>
                                 </TouchableOpacity>
                             ))}
-                        </ScrollView>
+                        </View>
                     </View>
                 )}
 
-                <View style={s.inputContainer}>
-                    <TextInput
-                        style={s.input}
-                        placeholder={getPlaceholder()}
-                        placeholderTextColor={C.muted}
-                        value={input}
-                        onChangeText={setInput}
-                        multiline
-                        onSubmitEditing={() => sendMessage()}
-                    />
-                    <TouchableOpacity
-                        style={[s.sendBtn, (!input.trim() || sending) && s.sendBtnDisabled]}
-                        onPress={() => sendMessage()}
-                        disabled={!input.trim() || sending}
-                    >
-                        {sending
-                            ? <ActivityIndicator size="small" color={C.background} />
-                            : <Send size={20} color={!input.trim() ? C.muted : C.background} />
-                        }
-                    </TouchableOpacity>
-                </View>
+                {/* Text input — only for concierge and request modes */}
+                {mode !== "question" && (
+                    <View style={s.inputContainer}>
+                        <TextInput
+                            style={s.input}
+                            placeholder={getPlaceholder()}
+                            placeholderTextColor={C.muted}
+                            value={input}
+                            onChangeText={setInput}
+                            multiline
+                            onSubmitEditing={() => sendMessage()}
+                        />
+                        <TouchableOpacity
+                            style={[s.sendBtn, (!input.trim() || sending) && s.sendBtnDisabled]}
+                            onPress={() => sendMessage()}
+                            disabled={!input.trim() || sending}
+                        >
+                            {sending
+                                ? <ActivityIndicator size="small" color={C.background} />
+                                : <Send size={20} color={!input.trim() ? C.muted : C.background} />
+                            }
+                        </TouchableOpacity>
+                    </View>
+                )}
             </KeyboardAvoidingView>
         </SafeAreaView>
     );

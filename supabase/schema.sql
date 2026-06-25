@@ -13,6 +13,7 @@ drop trigger if exists on_request_updated on public.requests;
 drop function if exists public.handle_updated_at cascade;
 drop function if exists public.is_admin cascade;
 
+drop table if exists public.push_subscriptions cascade;
 drop table if exists public.explore_items cascade;
 drop table if exists public.events cascade;
 drop table if exists public.messages cascade;
@@ -134,6 +135,17 @@ create table public.notifications (
   body text not null,
   read boolean default false,
   request_id uuid references public.requests(id) on delete set null,
+  created_at timestamp with time zone default now()
+);
+
+-- =============================================
+-- 4b. PUSH SUBSCRIPTIONS
+-- =============================================
+create table public.push_subscriptions (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  token text unique not null,
+  platform text,
   created_at timestamp with time zone default now()
 );
 
@@ -271,6 +283,25 @@ create policy "Admins can insert notifications"
 create policy "Admins can delete notifications"
   on public.notifications for delete
   using (public.is_admin());
+
+-- ---- PUSH SUBSCRIPTIONS ----
+alter table public.push_subscriptions enable row level security;
+
+create policy "Users can view own push subscriptions"
+  on public.push_subscriptions for select
+  using (auth.uid() = user_id);
+
+create policy "Users can insert own push subscriptions"
+  on public.push_subscriptions for insert
+  with check (auth.uid() = user_id);
+
+create policy "Users can update own push subscriptions"
+  on public.push_subscriptions for update
+  using (auth.uid() = user_id);
+
+create policy "Users can delete own push subscriptions"
+  on public.push_subscriptions for delete
+  using (auth.uid() = user_id);
 
 -- ---- MESSAGES ----
 alter table public.messages enable row level security;

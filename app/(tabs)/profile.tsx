@@ -8,6 +8,7 @@ import { Settings, Crown, ArrowRight, Clock, Plus, MapPin, Heart, Bookmark, Head
 import Skeleton from "@/components/Skeleton";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
+import EmptyState from "@/components/EmptyState";
 
 type RecentRequest = {
     id: string;
@@ -29,13 +30,14 @@ const SERVICE_LABELS: Record<string, string> = {
     "lifestyle-travel": "Hospitality & Travel",
     "concierge": "Concierge Request",
     "concierge-request": "Concierge Request",
-    "driving": "Chauffeur Service",
+    "driving": "Elite Transit & Aviation",
+    "private-jet": "Private Aviation",
     "logistics": "Logistics",
     "corporate-pairing": "Corporate Pairing",
     "diaspora-support": "Diaspora Support",
     "project-trust": "Project Supervision",
     "ladies-concierge": "Ladies Concierge",
-    "gentlemens-concierge": "Gentlemen's Concierge",
+    "gentlemens-concierge": "Gentlemens Concierge",
     "tier-purchase": "Membership Upgrade",
     "lifestyle-request": "Bespoke Request",
 };
@@ -265,9 +267,13 @@ export default function ProfileScreen() {
                             <ActivityIndicator color={C.primary} />
                         </View>
                     ) : recentRequests.length === 0 ? (
-                        <View style={s.emptyTab}>
-                            <Text style={s.emptyTabText}>No requests yet.{"\n"}Start by booking a service.</Text>
-                        </View>
+                        <EmptyState
+                            type="requests"
+                            title="No requests yet"
+                            description="Start by booking a luxury service customized to your lifestyle."
+                            buttonText="Explore Services"
+                            onButtonPress={() => router.push("/services/lifestyle" as any)}
+                        />
                     ) : (
                         <View style={{ gap: 10 }}>
                             {recentRequests.map((req) => (
@@ -326,9 +332,13 @@ export default function ProfileScreen() {
                             <ActivityIndicator color={C.primary} />
                         </View>
                     ) : savedVenues.length === 0 ? (
-                        <View style={s.emptyTab}>
-                            <Text style={s.emptyTabText}>No saved places yet.{"\n"}Tap the heart on any venue.</Text>
-                        </View>
+                        <EmptyState
+                            type="saved"
+                            title="No saved places yet"
+                            description="Tap the heart on any experience or venue to save it for later."
+                            buttonText="Discover Places"
+                            onButtonPress={() => router.push("/explore" as any)}
+                        />
                     ) : (
                         <View style={{ gap: 10 }}>
                             {savedVenues.map((venue) => {
@@ -368,7 +378,7 @@ export default function ProfileScreen() {
                         {[
                             { icon: Headphones, label: "Contact My Concierge", sub: "Chat with your concierge", route: "/chat" },
                             { icon: ClipboardList, label: "My Requests", sub: "Track and manage bookings", route: "/requests" },
-                            { icon: Car, label: "Book a Chauffeur", sub: "Private driving service", route: "/services/driving" },
+                            { icon: Car, label: "Elite Transit & Aviation", sub: "Car & Private Aviation", route: "/services/driving" },
                             { icon: Plane, label: "Plan a Trip", sub: "Flights & hotel arrangements", route: "/services/lifestyle-travel" },
                         ].map(({ icon: Icon, label, sub, route }) => (
                             <TouchableOpacity

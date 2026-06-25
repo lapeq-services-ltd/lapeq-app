@@ -1,4 +1,4 @@
-﻿import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
     View, Text, TextInput, TouchableOpacity, StyleSheet,
     KeyboardAvoidingView, Platform, Animated, Image, ImageBackground,
@@ -6,13 +6,14 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Eye, EyeOff, ChevronDown } from "lucide-react-native";
+import { Eye, EyeOff } from "lucide-react-native";
 
 const isAndroid = Platform.OS === "android";
 import Svg, { Path } from "react-native-svg";
 import { supabase } from "@/lib/supabase";
 import * as WebBrowser from "expo-web-browser";
 import { makeRedirectUri } from "expo-auth-session";
+import * as AppleAuthentication from "expo-apple-authentication";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -25,15 +26,15 @@ const BORDER_ACTIVE = "rgba(201,168,76,0.5)";
 
 const DIAL_CODES = [
     { flag: "🇳🇬", code: "+234", name: "Nigeria" },
-    { flag: "🇬🇧", code: "+44",  name: "United Kingdom" },
-    { flag: "🇺🇸", code: "+1",   name: "United States" },
-    { flag: "🇨🇦", code: "+1",   name: "Canada" },
+    { flag: "🇬🇧", code: "+44", name: "United Kingdom" },
+    { flag: "🇺🇸", code: "+1", name: "United States" },
+    { flag: "🇨🇦", code: "+1", name: "Canada" },
     { flag: "🇬🇭", code: "+233", name: "Ghana" },
-    { flag: "🇿🇦", code: "+27",  name: "South Africa" },
+    { flag: "🇿🇦", code: "+27", name: "South Africa" },
     { flag: "🇰🇪", code: "+254", name: "Kenya" },
     { flag: "🇦🇪", code: "+971", name: "UAE" },
-    { flag: "🇫🇷", code: "+33",  name: "France" },
-    { flag: "🇩🇪", code: "+49",  name: "Germany" },
+    { flag: "🇫🇷", code: "+33", name: "France" },
+    { flag: "🇩🇪", code: "+49", name: "Germany" },
 ];
 
 function AppleIcon({ size = 20, color = "#fff" }: { size?: number; color?: string }) {
@@ -57,7 +58,6 @@ function GoogleIcon({ size = 20 }: { size?: number }) {
 
 export default function LoginScreen() {
     const router = useRouter();
-    const [tab, setTab] = useState<"email" | "phone">("email");
 
     // Email fields
     const [email, setEmail] = useState("");
@@ -66,22 +66,13 @@ export default function LoginScreen() {
     const [emailFocused, setEmailFocused] = useState(false);
     const [passwordFocused, setPasswordFocused] = useState(false);
 
-    // Phone fields
-    const [dialCode, setDialCode] = useState(DIAL_CODES[0]);
-    const [phone, setPhone] = useState("");
-    const [phoneFocused, setPhoneFocused] = useState(false);
-    const [showDialModal, setShowDialModal] = useState(false);
-
-    // Phone OTP
-    const [otpSent, setOtpSent] = useState(false);
-    const [otpSending, setOtpSending] = useState(false);
-    const [otpCountdown, setOtpCountdown] = useState(0);
-    const [otpCode, setOtpCode] = useState(["", "", "", "", "", ""]);
-    const [otpVerified, setOtpVerified] = useState(false);
-    const otpRefs = useRef<Array<TextInput | null>>(Array(6).fill(null));
-
     const [loading, setLoading] = useState(false);
     const [showAlert, setShowAlert] = useState(false);
+    const [appleAuthAvailable, setAppleAuthAvailable] = useState(false);
+
+    useEffect(() => {
+        AppleAuthentication.isAvailableAsync().then(setAppleAuthAvailable);
+    }, []);
     const [alertType, setAlertType] = useState<"denied" | "unconfirmed">("denied");
 
     const alertOpacity = useRef(new Animated.Value(0)).current;
@@ -95,25 +86,6 @@ export default function LoginScreen() {
             Animated.timing(slideUp, { toValue: 0, duration: 800, useNativeDriver: true }),
         ]).start();
     }, []);
-
-    useEffect(() => {
-        setOtpCode(["", "", "", "", "", ""]);
-        setOtpSent(false);
-        setOtpVerified(false);
-        setOtpCountdown(0);
-        setPhone("");
-    }, [tab]);
-
-    useEffect(() => {
-        if (otpCountdown <= 0) return;
-        const timer = setInterval(() => {
-            setOtpCountdown(c => {
-                if (c <= 1) { clearInterval(timer); return 0; }
-                return c - 1;
-            });
-        }, 1000);
-        return () => clearInterval(timer);
-    }, [otpCountdown]);
 
     const handleEmailLogin = async () => {
         if (!email || !password) return;
@@ -131,42 +103,34 @@ export default function LoginScreen() {
         }
     };
 
-    const sendOTP = async () => {
-        if (!phone.trim() || otpSending || otpCountdown > 0) return;
-        setOtpSending(true);
-        const fullPhone = `${dialCode.code}${phone.trim()}`;
-        const { error } = await supabase.auth.signInWithOtp({ phone: fullPhone });
-        setOtpSending(false);
-        if (!error) {
-            setOtpSent(true);
-            setOtpCountdown(60);
-        }
-    };
-
-    const handleOtpChange = async (val: string, idx: number) => {
-        if (!/^\d*$/.test(val)) return;
-        const next = [...otpCode];
-        next[idx] = val.slice(-1);
-        setOtpCode(next);
-        if (val && idx < 5) otpRefs.current[idx + 1]?.focus();
-        if (next.every(d => d)) {
-            const fullPhone = `${dialCode.code}${phone.trim()}`;
-            const { error } = await supabase.auth.verifyOtp({ phone: fullPhone, token: next.join(""), type: "sms" });
-            if (!error) setOtpVerified(true);
-        }
-    };
-
-    const handleOtpKeyPress = (e: any, idx: number) => {
-        if (e.nativeEvent.key === "Backspace" && !otpCode[idx] && idx > 0) {
-            const next = [...otpCode];
-            next[idx - 1] = "";
-            setOtpCode(next);
-            otpRefs.current[idx - 1]?.focus();
-        }
-    };
-
     const handleAppleSignIn = async () => {
-        // Requires expo-apple-authentication - to be wired up
+        setLoading(true);
+        try {
+            const credential = await AppleAuthentication.signInAsync({
+                requestedScopes: [
+                    AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+                    AppleAuthentication.AppleAuthenticationScope.EMAIL,
+                ],
+            });
+
+            if (credential.identityToken) {
+                const { error } = await supabase.auth.signInWithIdToken({
+                    provider: "apple",
+                    token: credential.identityToken,
+                });
+                if (error) {
+                    Alert.alert("Apple Sign-In", error.message);
+                }
+            } else {
+                throw new Error("No identity token received from Apple.");
+            }
+        } catch (e: any) {
+            if (e.code !== "ERR_REQUEST_CANCELED") {
+                Alert.alert("Apple Sign-In failed", e.message || "An unknown error occurred.");
+            }
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleGoogleSignIn = async () => {
@@ -228,135 +192,57 @@ export default function LoginScreen() {
                                 <Text style={s.tagline}>Access without limits.</Text>
                             </View>
 
-                            {/* Tab Toggle */}
-                            <View style={s.toggle}>
-                                <TouchableOpacity style={[s.toggleBtn, tab === "email" && s.toggleBtnActive]} onPress={() => setTab("email")}>
-                                    <Text style={[s.toggleText, tab === "email" && s.toggleTextActive]}>Email</Text>
+                            {/* Email Form */}
+                            <View style={s.form}>
+                                <View style={s.fieldWrap}>
+                                    <Text style={s.inputLabel}>EMAIL</Text>
+                                    <View style={[s.inputBox, emailFocused && s.inputBoxFocused]}>
+                                        <TextInput
+                                            style={s.input}
+                                            placeholder="you@example.com"
+                                            placeholderTextColor="rgba(255,255,255,0.2)"
+                                            keyboardType="email-address"
+                                            autoCapitalize="none"
+                                            value={email}
+                                            onChangeText={setEmail}
+                                            onFocus={() => setEmailFocused(true)}
+                                            onBlur={() => setEmailFocused(false)}
+                                            returnKeyType="next"
+                                        />
+                                    </View>
+                                </View>
+
+                                <View style={s.fieldWrap}>
+                                    <Text style={s.inputLabel}>PASSWORD</Text>
+                                    <View style={[s.inputBox, passwordFocused && s.inputBoxFocused]}>
+                                        <View style={s.row}>
+                                            <TextInput
+                                                style={[s.input, { flex: 1 }]}
+                                                placeholder="••••••••"
+                                                placeholderTextColor="rgba(255,255,255,0.2)"
+                                                secureTextEntry={!showPassword}
+                                                value={password}
+                                                onChangeText={setPassword}
+                                                onFocus={() => setPasswordFocused(true)}
+                                                onBlur={() => setPasswordFocused(false)}
+                                                returnKeyType="done"
+                                                onSubmitEditing={handleEmailLogin}
+                                            />
+                                            <TouchableOpacity onPress={() => setShowPassword(p => !p)} style={s.eyeBtn}>
+                                                {showPassword ? <EyeOff size={18} color={MUTED} /> : <Eye size={18} color={MUTED} />}
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                </View>
+
+                                <TouchableOpacity onPress={() => router.push("/(auth)/forgot-password")} style={s.forgotRow}>
+                                    <Text style={s.forgot}>Forgot password?</Text>
                                 </TouchableOpacity>
-                                <TouchableOpacity style={[s.toggleBtn, tab === "phone" && s.toggleBtnActive]} onPress={() => setTab("phone")}>
-                                    <Text style={[s.toggleText, tab === "phone" && s.toggleTextActive]}>Phone Number</Text>
+
+                                <TouchableOpacity style={[s.btn, loading && s.btnDisabled]} onPress={handleEmailLogin} disabled={loading} activeOpacity={0.85}>
+                                    <Text style={s.btnText}>{loading ? "Signing in..." : "Sign In"}</Text>
                                 </TouchableOpacity>
                             </View>
-
-                            {/* Email Form */}
-                            {tab === "email" && (
-                                <View style={s.form}>
-                                    <View style={s.fieldWrap}>
-                                        <Text style={s.inputLabel}>EMAIL</Text>
-                                        <View style={[s.inputBox, emailFocused && s.inputBoxFocused]}>
-                                            <TextInput
-                                                style={s.input}
-                                                placeholder="you@example.com"
-                                                placeholderTextColor="rgba(255,255,255,0.2)"
-                                                keyboardType="email-address"
-                                                autoCapitalize="none"
-                                                value={email}
-                                                onChangeText={setEmail}
-                                                onFocus={() => setEmailFocused(true)}
-                                                onBlur={() => setEmailFocused(false)}
-                                                returnKeyType="next"
-                                            />
-                                        </View>
-                                    </View>
-
-                                    <View style={s.fieldWrap}>
-                                        <Text style={s.inputLabel}>PASSWORD</Text>
-                                        <View style={[s.inputBox, passwordFocused && s.inputBoxFocused]}>
-                                            <View style={s.row}>
-                                                <TextInput
-                                                    style={[s.input, { flex: 1 }]}
-                                                    placeholder="••••••••"
-                                                    placeholderTextColor="rgba(255,255,255,0.2)"
-                                                    secureTextEntry={!showPassword}
-                                                    value={password}
-                                                    onChangeText={setPassword}
-                                                    onFocus={() => setPasswordFocused(true)}
-                                                    onBlur={() => setPasswordFocused(false)}
-                                                    returnKeyType="done"
-                                                    onSubmitEditing={handleEmailLogin}
-                                                />
-                                                <TouchableOpacity onPress={() => setShowPassword(p => !p)} style={s.eyeBtn}>
-                                                    {showPassword ? <EyeOff size={18} color={MUTED} /> : <Eye size={18} color={MUTED} />}
-                                                </TouchableOpacity>
-                                            </View>
-                                        </View>
-                                    </View>
-
-                                    <TouchableOpacity onPress={() => router.push("/(auth)/forgot-password")} style={s.forgotRow}>
-                                        <Text style={s.forgot}>Forgot password?</Text>
-                                    </TouchableOpacity>
-
-                                    <TouchableOpacity style={[s.btn, loading && s.btnDisabled]} onPress={handleEmailLogin} disabled={loading} activeOpacity={0.85}>
-                                        <Text style={s.btnText}>{loading ? "Signing in..." : "Sign In"}</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            )}
-
-                            {/* Phone Form */}
-                            {tab === "phone" && (
-                                <View style={s.form}>
-                                    <View style={s.fieldWrap}>
-                                        <Text style={s.inputLabel}>MOBILE NUMBER</Text>
-                                        <View style={[s.inputBox, phoneFocused && s.inputBoxFocused]}>
-                                            <View style={s.row}>
-                                                <TouchableOpacity style={s.dialBtn} onPress={() => setShowDialModal(true)}>
-                                                    <Text style={s.dialFlag}>{dialCode.flag}</Text>
-                                                    <Text style={s.dialCode}>{dialCode.code}</Text>
-                                                    <ChevronDown size={14} color={MUTED} />
-                                                </TouchableOpacity>
-                                                <View style={s.dialDivider} />
-                                                <TextInput
-                                                    style={[s.input, { flex: 1, paddingLeft: 12 }]}
-                                                    placeholder="800 000 0000"
-                                                    placeholderTextColor="rgba(255,255,255,0.2)"
-                                                    keyboardType="phone-pad"
-                                                    value={phone}
-                                                    onChangeText={setPhone}
-                                                    onFocus={() => setPhoneFocused(true)}
-                                                    onBlur={() => setPhoneFocused(false)}
-                                                />
-                                                {otpVerified ? (
-                                                    <Text style={s.verifiedCheck}>✓</Text>
-                                                ) : phone.trim().length >= 7 ? (
-                                                    <TouchableOpacity
-                                                        style={[s.sendBtn, (otpSending || otpCountdown > 0) && s.sendBtnDisabled]}
-                                                        onPress={sendOTP}
-                                                        disabled={otpSending || otpCountdown > 0}
-                                                    >
-                                                        <Text style={s.sendBtnText}>
-                                                            {otpSending ? "..." : otpCountdown > 0 ? `${otpCountdown}s` : otpSent ? "Resend" : "Send"}
-                                                        </Text>
-                                                    </TouchableOpacity>
-                                                ) : null}
-                                            </View>
-                                        </View>
-                                    </View>
-
-                                    {/* OTP boxes */}
-                                    {!otpVerified && (
-                                        <View style={s.fieldWrap}>
-                                            <Text style={s.inputLabel}>VERIFICATION CODE</Text>
-                                            <View style={s.otpRow}>
-                                                {otpCode.map((digit, i) => (
-                                                    <View key={i} style={[s.otpBox, digit ? s.otpBoxFilled : null]}>
-                                                        <TextInput
-                                                            ref={r => { otpRefs.current[i] = r; }}
-                                                            style={s.otpInput}
-                                                            value={digit}
-                                                            onChangeText={v => handleOtpChange(v, i)}
-                                                            onKeyPress={e => handleOtpKeyPress(e, i)}
-                                                            keyboardType="number-pad"
-                                                            maxLength={1}
-                                                            selectTextOnFocus
-                                                            textAlign="center"
-                                                        />
-                                                    </View>
-                                                ))}
-                                            </View>
-                                        </View>
-                                    )}
-                                </View>
-                            )}
 
                             {/* Social auth */}
                             <View style={s.dividerRow}>
@@ -366,10 +252,12 @@ export default function LoginScreen() {
                             </View>
 
                             <View style={s.socialRow}>
-                                <TouchableOpacity style={s.socialBtn} onPress={handleAppleSignIn} activeOpacity={0.8}>
-                                    <AppleIcon size={19} />
-                                    <Text style={s.socialText}>Apple</Text>
-                                </TouchableOpacity>
+                                {appleAuthAvailable && (
+                                    <TouchableOpacity style={s.socialBtn} onPress={handleAppleSignIn} activeOpacity={0.8}>
+                                        <AppleIcon size={19} />
+                                        <Text style={s.socialText}>Apple</Text>
+                                    </TouchableOpacity>
+                                )}
                                 <TouchableOpacity style={s.socialBtn} onPress={handleGoogleSignIn} activeOpacity={0.8}>
                                     <GoogleIcon size={19} />
                                     <Text style={s.socialText}>Google</Text>
@@ -412,37 +300,6 @@ export default function LoginScreen() {
                             )}
                         </View>
                     </Animated.View>
-                </View>
-            </Modal>
-
-            {/* Dial code picker */}
-            <Modal visible={showDialModal} animationType="slide" transparent onRequestClose={() => setShowDialModal(false)}>
-                <View style={s.pickerOverlay}>
-                    <View style={s.pickerSheet}>
-                        <View style={s.pickerHeader}>
-                            <Text style={s.pickerTitle}>Select Country Code</Text>
-                            <TouchableOpacity onPress={() => setShowDialModal(false)}>
-                                <Text style={s.pickerClose}>✕</Text>
-                            </TouchableOpacity>
-                        </View>
-                        <FlatList
-                            data={DIAL_CODES}
-                            keyExtractor={item => item.name}
-                            showsVerticalScrollIndicator={false}
-                            renderItem={({ item }) => (
-                                <TouchableOpacity
-                                    style={[s.pickerItem, dialCode.name === item.name && s.pickerItemActive]}
-                                    onPress={() => { setDialCode(item); setShowDialModal(false); }}
-                                >
-                                    <Text style={s.pickerFlag}>{item.flag}</Text>
-                                    <Text style={[s.pickerItemText, dialCode.name === item.name && s.pickerItemTextActive]}>
-                                        {item.name}
-                                    </Text>
-                                    <Text style={s.pickerCode}>{item.code}</Text>
-                                </TouchableOpacity>
-                            )}
-                        />
-                    </View>
                 </View>
             </Modal>
         </ImageBackground>

@@ -26,7 +26,6 @@ export default function ServicesLayout() {
             <Stack.Screen name="gentlemens-concierge" />
             <Stack.Screen name="request-package" />
             <Stack.Screen name="experiences" />
-            <Stack.Screen name="private-jets" />
         </Stack>
     );
 }

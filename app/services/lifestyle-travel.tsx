@@ -26,7 +26,6 @@ const AIRCRAFT = [
 const SERVICE_TYPES = [
     { id: "Curated Itinerary",      label: "Curated Itinerary", emoji: "✦", desc: "A full trip planned end-to-end for you",           img: require("@/assets/images/lagos-hotel.jpg") },
     { id: "Stays & Accommodations", label: "Stays",             emoji: "⌂", desc: "Hotels, villas, and private residences",           img: require("@/assets/images/lagos-rooftop.jpg") },
-    { id: "Flights & Jets",         label: "Flights & Jets",    emoji: "↗", desc: "Commercial first class or private aviation",       img: require("@/assets/images/onboarding-trust.png") },
     { id: "Private Dining",         label: "Private & Fine Dining", emoji: "◈", desc: "Exclusive tables, private chef, and fine dining experiences", img: require("@/assets/images/lagos-restaurant.jpg") },
     { id: "VIP Protocol",           label: "VIP Protocol",      emoji: "◆", desc: "Airport arrivals, security, and event access",     img: require("@/assets/images/lagos-beach.jpg") },
 ];

@@ -1,4 +1,5 @@
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import {
     View,
     Text,
@@ -20,7 +21,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 let trialPopupShown = false;
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Bell, Crown, ChevronRight, Calendar, Plane, Car, Headphones, LayoutGrid } from "lucide-react-native";
+import { Bell, Crown, ChevronRight, Calendar, Plane, Car, HelpCircle, MessageCircle, LayoutGrid } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
 
@@ -78,6 +79,8 @@ export default function HomeScreen() {
     const s = useMemo(() => getStyles(C, theme), [C, theme]);
     const [userName, setUserName] = useState("");
     const [unreadCount, setUnreadCount] = useState(0);
+    const [unreadMessages, setUnreadMessages] = useState(0);
+    const [userId, setUserId] = useState<string | null>(null);
     const [partners, setPartners] = useState<Partner[]>([]);
     const [partnersLoading, setPartnersLoading] = useState(true);
     const [dbVenues, setDbVenues] = useState<{ id: string; name: string; city: string }[]>([]);
@@ -89,7 +92,7 @@ export default function HomeScreen() {
     const translateX = useRef(new Animated.Value(0)).current;
     const offsetRef = useRef(0);
     const partnerTranslateX = useRef(new Animated.Value(0)).current;
-    
+
     const loopedPicks = useMemo(() =>
         picks.length > 0 ? [...picks, ...picks, ...picks] : [],
         [picks]
@@ -121,11 +124,12 @@ export default function HomeScreen() {
             await AsyncStorage.setItem("lapeq_last_user", user.id);
 
             // Run profile, notifications, and AsyncStorage reads all in parallel
-            const [welcomeSeen, tourSeen, profileResult, notifResult] = await Promise.all([
+            const [welcomeSeen, tourSeen, profileResult, notifResult, lastChatOpen] = await Promise.all([
                 AsyncStorage.getItem("lapeq_welcome_seen"),
                 AsyncStorage.getItem("lapeq_tour_seen"),
                 supabase.from("profiles").select("full_name, tier").eq("id", user.id).single(),
                 supabase.from("notifications").select("*", { count: "exact", head: true }).eq("user_id", user.id).eq("read", false),
+                AsyncStorage.getItem(`lapeq_chat_last_open_${user.id}`),
             ]);
 
             if (!welcomeSeen) setShowWelcome(true);
@@ -150,6 +154,22 @@ export default function HomeScreen() {
             setProfileLoaded(true);
 
             setUnreadCount(notifResult.count ?? 0);
+
+            // Check for admin messages newer than last time user opened chat
+            if (lastChatOpen) {
+                const { count } = await supabase
+                    .from("messages")
+                    .select("*", { count: "exact", head: true })
+                    .eq("user_id", user.id)
+                    .eq("sender_type", "admin")
+                    .gt("created_at", lastChatOpen);
+                setUnreadMessages(count ?? 0);
+            } else {
+                // First time — set timestamp to now so dot starts clean
+                await AsyncStorage.setItem(`lapeq_chat_last_open_${user.id}`, new Date().toISOString());
+                setUnreadMessages(0);
+            }
+            setUserId(user.id);
 
             if (
                 !trialPopupShown &&
@@ -190,6 +210,50 @@ export default function HomeScreen() {
             });
     }, []);
 
+    // Realtime: bump badge when a new notification or admin message arrives
+    useEffect(() => {
+        if (!userId) return;
+        const ch = supabase
+            .channel(`home-notifs-${userId}`)
+            .on('postgres_changes',
+                { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
+                () => setUnreadCount(prev => prev + 1)
+            )
+            .on('postgres_changes',
+                { event: 'INSERT', schema: 'public', table: 'messages', filter: `user_id=eq.${userId}` },
+                (payload: any) => {
+                    if (payload.new?.sender_type === 'admin') setUnreadMessages(prev => prev + 1);
+                }
+            )
+            .subscribe();
+        return () => { supabase.removeChannel(ch); };
+    }, [userId]);
+
+    // Re-fetch unread count whenever home screen comes into focus
+    useFocusEffect(useCallback(() => {
+        if (!userId) return;
+        // Notification badge
+        supabase.from("notifications").select("*", { count: "exact", head: true })
+            .eq("user_id", userId).eq("read", false)
+            .then(({ count }) => setUnreadCount(count ?? 0));
+        // Message dot — compare against last time user opened chat
+        AsyncStorage.getItem(`lapeq_chat_last_open_${userId}`).then(async lastOpen => {
+            if (lastOpen) {
+                const { count } = await supabase
+                    .from("messages")
+                    .select("*", { count: "exact", head: true })
+                    .eq("user_id", userId)
+                    .eq("sender_type", "admin")
+                    .gt("created_at", lastOpen);
+                setUnreadMessages(count ?? 0);
+            } else {
+                // Initialize clean — dot starts at 0
+                await AsyncStorage.setItem(`lapeq_chat_last_open_${userId}`, new Date().toISOString());
+                setUnreadMessages(0);
+            }
+        });
+    }, [userId]));
+
     const loopedPartners = useMemo(() =>
         partners.length > 0 ? [...partners, ...partners, ...partners] : [],
         [partners]
@@ -198,7 +262,7 @@ export default function HomeScreen() {
     const getVenueIdForCard = (title: string, sub: string) => {
         const cleanedTitle = title.replace(/\s+restaurant/gi, "").replace(/\s+grill/gi, "").trim().toLowerCase();
         const lowerSub = sub.toLowerCase();
-        
+
         let matches = dbVenues.filter(v => {
             const vName = v.name.toLowerCase();
             return vName.includes(cleanedTitle) || cleanedTitle.includes(vName);
@@ -296,7 +360,7 @@ export default function HomeScreen() {
                     {[
                         { label: "Experiences", sub: "Curated itineraries", Icon: Calendar, route: "/(main)/experiences" as const },
                         { label: "Personalized Plan", sub: "Activity Ideas/Reccomendations", Icon: Plane, route: "/services/lifestyle-travel" as const },
-                        { label: "Chauffeur", sub: "Private driving", Icon: Car, route: "/services/driving" as const },
+                        { label: "Elite Transit", sub: "Drive & Flights/Jets", Icon: Car, route: "/services/driving" as const },
                         { label: "Lifestyle", sub: "All services", Icon: LayoutGrid, route: "/services/lifestyle" as const },
                     ].map(({ label, sub, Icon, route }) => (
                         <TouchableOpacity key={label} style={s.quickCard} onPress={() => router.push(route)} activeOpacity={0.8}>
@@ -309,16 +373,50 @@ export default function HomeScreen() {
                     ))}
                 </View>
 
-                <TouchableOpacity style={[s.banner, theme === "dark" && { backgroundColor: C.primary }]} onPress={() => router.push("/chat")}>
-                    <View style={s.bannerIcon}>
-                        <Headphones size={28} color={theme === "dark" ? C.background : C.primary} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                        <Text style={[s.bannerTitle, theme === "dark" && { color: C.background }]}>24/7 Concierge Available</Text>
-                        <Text style={[s.bannerSub, theme === "dark" && { color: `${C.background}99` }]}>Your dedicated concierge is a message away</Text>
-                    </View>
-                    <ChevronRight size={24} color={theme === "dark" ? `${C.background}66` : C.muted} />
-                </TouchableOpacity>
+                {/* Concierge quick-access */}
+                <View style={{ flexDirection: "row", justifyContent: "center", gap: 12, marginTop: 4, marginBottom: 24 }}>
+                    <TouchableOpacity
+                        onPress={() => router.push({ pathname: "/(main)/chat", params: { mode: "concierge" } } as any)}
+                        activeOpacity={0.75}
+                        style={{
+                            flexDirection: "row", alignItems: "center", gap: 8,
+                            paddingVertical: 11, paddingHorizontal: 18,
+                            borderRadius: 50,
+                            borderWidth: 1,
+                            borderColor: `${C.primary}40`,
+                            backgroundColor: `${C.primary}0d`,
+                        }}
+                    >
+                        <View style={{ position: "relative" }}>
+                            <MessageCircle size={16} color={C.primary} />
+                            {unreadMessages > 0 && (
+                                <View style={{
+                                    position: "absolute", top: -3, right: -3,
+                                    width: 8, height: 8, borderRadius: 4,
+                                    backgroundColor: C.primary,
+                                    borderWidth: 1.5, borderColor: C.background,
+                                }} />
+                            )}
+                        </View>
+                        <Text style={{ fontSize: 13, fontWeight: "600", color: C.primary, fontFamily: "Jost_600SemiBold" }}>My Concierge</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        onPress={() => router.push({ pathname: "/(main)/chat", params: { mode: "question" } } as any)}
+                        activeOpacity={0.75}
+                        style={{
+                            flexDirection: "row", alignItems: "center", gap: 8,
+                            paddingVertical: 11, paddingHorizontal: 18,
+                            borderRadius: 50,
+                            borderWidth: 1,
+                            borderColor: theme === "dark" ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
+                            backgroundColor: theme === "dark" ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
+                        }}
+                    >
+                        <HelpCircle size={16} color={C.primary} />
+                        <Text style={{ fontSize: 13, fontWeight: "600", color: C.text, fontFamily: "Jost_600SemiBold" }}>Ask a Question</Text>
+                    </TouchableOpacity>
+                </View>
 
                 {/* Featured swipe row */}
                 <View style={s.sectionRow}>
@@ -495,25 +593,25 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     logoImg: { width: 36, height: 36 },
     headerTitle: { fontSize: 24, fontWeight: "700", color: C.text, letterSpacing: -0.3 },
     iconBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" },
-    notifBadge: { 
-        position: "absolute", 
-        top: -4, 
-        right: -4, 
-        minWidth: 18, 
-        height: 18, 
-        borderRadius: 9, 
-        backgroundColor: C.red, 
-        alignItems: "center", 
-        justifyContent: "center", 
-        paddingHorizontal: 4, 
-        borderWidth: 1.5, 
-        borderColor: C.background 
+    notifBadge: {
+        position: "absolute",
+        top: -4,
+        right: -4,
+        minWidth: 18,
+        height: 18,
+        borderRadius: 9,
+        backgroundColor: C.red,
+        alignItems: "center",
+        justifyContent: "center",
+        paddingHorizontal: 4,
+        borderWidth: 1.5,
+        borderColor: C.background
     },
-    notifBadgeText: { 
-        color: "#ffffff", 
-        fontSize: 9, 
-        fontWeight: "800", 
-        textAlign: "center" 
+    notifBadgeText: {
+        color: "#ffffff",
+        fontSize: 9,
+        fontWeight: "800",
+        textAlign: "center"
     },
     crownBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: `${C.primary}18`, borderWidth: 1, borderColor: C.primary, alignItems: "center", justifyContent: "center" },
     greetSub: { fontSize: 18, color: C.muted },
