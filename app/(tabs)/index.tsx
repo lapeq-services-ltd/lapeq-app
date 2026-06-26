@@ -391,7 +391,7 @@ export default function HomeScreen() {
                 <View style={s.quickGrid}>
                     {[
                         { label: "Lifestyle", sub: "Curated itineraries", img: require("@/assets/icons/clink.png"), route: "/(main)/experiences" as const },
-                        { label: "Make a Request", sub: "Bespoke activity & travel plans", img: require("@/assets/images/lagos-hotel.jpg"), route: "/services/lifestyle-travel" as const },
+                        { label: "Make a Request", sub: "Bespoke activity & travel plans", img: require("@/assets/icons/request.png"), route: "/services/lifestyle-travel" as const },
                         { label: "Elite Transit", sub: "Drive & Flights/Jets", img: require("@/assets/images/carsabuja.jpg"), route: "/services/driving" as const },
                         { label: "Lapeq Co-Brand", sub: "Your brand on our platform", img: require("@/assets/images/app-collab.png"), route: "/services/lifestyle" as const },
                     ].map(({ label, sub, img, route }) => (
@@ -639,7 +639,7 @@ export default function HomeScreen() {
                     <Animated.View style={[s.quickDropdown, { opacity: dropdownOpacity, transform: [{ scale: dropdownScale }] }]}>
                         <Text style={s.quickDropdownHeading}>Quick Actions</Text>
                         {[
-                            { img: require("@/assets/images/lagos-hotel.jpg"), label: "Make a Request", sub: "Bespoke activity & travel plans", route: "/services/lifestyle-travel" },
+                            { img: require("@/assets/icons/request.png"), label: "Make a Request", sub: "Bespoke activity & travel plans", route: "/services/lifestyle-travel" },
                             { img: require("@/assets/images/gents (1).jpg"), label: "My Concierge", sub: "Chat with your concierge", route: "/chat" },
                             { img: require("@/assets/images/lagos-rooftop.jpg"), label: "My Requests", sub: "Track and manage bookings", route: "/requests" },
                             { img: require("@/assets/images/carsabuja.jpg"), label: "Elite Transit & Aviation", sub: "Car & Private Aviation", route: "/services/driving" },

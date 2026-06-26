@@ -566,7 +566,7 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     modeSub: { fontSize: 14, color: C.muted, marginBottom: 24, lineHeight: 22 },
     modeList: { borderTopWidth: 1, borderTopColor: C.border, marginTop: 16 },
     modeItem: { flexDirection: "row", alignItems: "center", paddingVertical: 20, borderBottomWidth: 1, borderBottomColor: C.border },
-    modeIconBox: { width: 48, height: 48, borderRadius: 24, backgroundColor: `${C.primary}12`, alignItems: "center", justifyContent: "center", marginRight: 16 },
+    modeIconBox: { width: 48, height: 48, borderRadius: 24, backgroundColor: "transparent", alignItems: "center", justifyContent: "center", marginRight: 16 },
     modeTextContainer: { flex: 1 },
     modeItemTitle: { fontSize: 16, fontWeight: "600", color: C.text, marginBottom: 4 },
     modeItemSub: { fontSize: 13, color: C.muted, lineHeight: 18 },
@@ -575,7 +575,7 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     emptyChat: { backgroundColor: C.surface, borderRadius: 16, padding: 20, marginBottom: 20, borderWidth: 1, borderColor: C.border },
     emptyChatText: { fontSize: 14, color: C.muted, lineHeight: 22 },
     quickQ: { backgroundColor: C.surface, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: C.border },
-    quickQText: { fontSize: 13, color: C.primary, fontWeight: "500" },
+    quickQText: { fontSize: 13, color: C.text, fontWeight: "500" },
 
     messageWrapper: { marginBottom: 16, maxWidth: "80%" },
     wrapperUser: { alignSelf: "flex-end", alignItems: "flex-end" },
