@@ -85,6 +85,40 @@ export default function ConciergeChatScreen() {
     const [userId, setUserId] = useState<string | null>(null);
     const [refPackage, setRefPackage] = useState<{ reference: string; title: string } | null>(null);
     const listRef = useRef<FlatList>(null);
+    const [faqs, setFaqs] = useState<{ question: string; answer: string; keywords: string[] }[]>([]);
+
+    useEffect(() => {
+        // Load FAQs from Supabase database
+        const loadFaqs = async () => {
+            try {
+                const { data } = await supabase.from("faqs").select("question, answer, keywords");
+                if (data && data.length > 0) {
+                    setFaqs(data.map(d => ({
+                        question: d.question,
+                        answer: d.answer,
+                        keywords: d.keywords || [],
+                    })));
+                } else {
+                    setFaqs(getDefaultFaqs());
+                }
+            } catch {
+                setFaqs(getDefaultFaqs());
+            }
+        };
+        loadFaqs();
+    }, []);
+
+    function getDefaultFaqs() {
+        return Object.keys(FAQ_ANSWERS).map(q => ({
+            question: q,
+            answer: FAQ_ANSWERS[q],
+            keywords: FAQ_KEYWORDS.find(k => k.answer === FAQ_ANSWERS[q])?.keywords || [],
+        }));
+    }
+
+    const quickQuestions = useMemo(() => {
+        return faqs.map(f => f.question).slice(0, 6);
+    }, [faqs]);
 
     useEffect(() => {
         if (initialMode) setMode(initialMode as ChatMode);
@@ -202,9 +236,13 @@ export default function ConciergeChatScreen() {
                 type: mode,
             });
 
-            // Check for FAQ answer
-            const answer = getFaqAnswer(content);
-            const replyText = answer ?? "Your concierge will follow up on this shortly. Is there anything else we can help you with?";
+            // Check for FAQ answer from database/state
+            const lowerContent = content.toLowerCase();
+            const matchingFaq = faqs.find(f => 
+                f.question.toLowerCase() === lowerContent || 
+                f.keywords.some(kw => lowerContent.includes(kw.toLowerCase()))
+            );
+            const replyText = matchingFaq ? matchingFaq.answer : "Your concierge will follow up on this shortly. Is there anything else we can help you with?";
 
             setTimeout(async () => {
                 // Save bot auto-reply directly to the DB so it persists
@@ -431,7 +469,7 @@ export default function ConciergeChatScreen() {
                             Select a question
                         </Text>
                         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-                            {QUICK_QUESTIONS.map(q => (
+                            {quickQuestions.map(q => (
                                 <TouchableOpacity
                                     key={q}
                                     style={[s.quickQ, { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 20 }]}
