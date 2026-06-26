@@ -87,7 +87,7 @@ export default function ConciergeChatScreen() {
     const [refPackage, setRefPackage] = useState<{ reference: string; title: string } | null>(null);
     const listRef = useRef<FlatList>(null);
     const [faqs, setFaqs] = useState<{ question: string; answer: string; keywords: string[] }[]>([]);
-    const [showQuickQuestions, setShowQuickQuestions] = useState(true);
+    const [showQuickQuestions, setShowQuickQuestions] = useState(false);
 
     useEffect(() => {
         // Load FAQs from Supabase database
@@ -511,28 +511,30 @@ export default function ConciergeChatScreen() {
                     </View>
                 )}
 
-                {/* Text input — visible for all modes */}
-                <View style={s.inputContainer}>
-                    <TextInput
-                        style={s.input}
-                        placeholder={getPlaceholder()}
-                        placeholderTextColor={C.muted}
-                        value={input}
-                        onChangeText={setInput}
-                        multiline
-                        onSubmitEditing={() => sendMessage()}
-                    />
-                    <TouchableOpacity
-                        style={[s.sendBtn, (!input.trim() || sending) && s.sendBtnDisabled]}
-                        onPress={() => sendMessage()}
-                        disabled={!input.trim() || sending}
-                    >
-                        {sending
-                            ? <ActivityIndicator size="small" color={C.background} />
-                            : <Send size={20} color={!input.trim() ? C.muted : C.background} />
-                        }
-                    </TouchableOpacity>
-                </View>
+                {/* Text input — only for concierge and request modes */}
+                {mode !== "question" && (
+                    <View style={s.inputContainer}>
+                        <TextInput
+                            style={s.input}
+                            placeholder={getPlaceholder()}
+                            placeholderTextColor={C.muted}
+                            value={input}
+                            onChangeText={setInput}
+                            multiline
+                            onSubmitEditing={() => sendMessage()}
+                        />
+                        <TouchableOpacity
+                            style={[s.sendBtn, (!input.trim() || sending) && s.sendBtnDisabled]}
+                            onPress={() => sendMessage()}
+                            disabled={!input.trim() || sending}
+                        >
+                            {sending
+                                ? <ActivityIndicator size="small" color={C.background} />
+                                : <Send size={20} color={!input.trim() ? C.muted : C.background} />
+                            }
+                        </TouchableOpacity>
+                    </View>
+                )}
             </KeyboardAvoidingView>
         </SafeAreaView>
     );
