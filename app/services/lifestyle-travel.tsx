@@ -11,6 +11,7 @@ import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
 import { ChevronLeft, Calendar, Check, Plane, Plus, Minus } from "lucide-react-native";
 import VoiceInput from "@/components/VoiceInput";
+import * as Haptics from "expo-haptics";
 
 
 const { width: W } = Dimensions.get("window");
@@ -627,6 +628,64 @@ export default function LifestyleTravelScreen() {
                         </View>
                     </>
 
+                ) : isLifestyleService ? (
+                    /* ── LIFESTYLE SERVICES GENERAL FORM ── */
+                    <>
+                        <View style={s.section}>
+                            <Text style={s.sectionLabel}>City / Location</Text>
+                            <View style={s.wrapRow}>
+                                {CITIES.map(c => {
+                                    const isAvailable = c === "Lagos" || c === "Abuja" || c === "Other";
+                                    const displayLabel = isAvailable ? c : `${c} (Coming Soon)`;
+                                    return (
+                                        <TouchableOpacity
+                                            key={c}
+                                            style={[s.chip, destination === c && s.chipActive]}
+                                            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setDestination(c); }}
+                                            activeOpacity={0.8}
+                                        >
+                                            <Text style={[s.chipText, destination === c && s.chipTextActive]}>{displayLabel}</Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
+                        </View>
+
+                        <View style={s.section}>
+                            <Text style={s.sectionLabel}>When is this needed?</Text>
+                            <TouchableOpacity
+                                style={[s.dateCard, dateFromObj && { borderColor: GOLD }]}
+                                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowDateFrom(true); }}
+                            >
+                                <Calendar size={16} color={dateFromObj ? GOLD : C.muted} />
+                                <View>
+                                    <Text style={s.dateCardLabel}>Date</Text>
+                                    <Text style={[s.dateCardValue, { color: dateFromObj ? C.text : C.muted }]}>
+                                        {fmtDate(dateFromObj) ?? "Select Date"}
+                                    </Text>
+                                </View>
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={s.section}>
+                            <Text style={s.sectionLabel}>Budget Limit</Text>
+                            <BudgetStepper value={curatedBudget} onChange={setCuratedBudget} min={10000} step={10000} C={C} theme={theme} />
+                        </View>
+
+                        <View style={s.section}>
+                            <Text style={s.sectionLabel}>Describe Your Request</Text>
+                            <Text style={s.sectionSub}>Please describe what you need in detail for your concierge team to curate it.</Text>
+                            <VoiceInput
+                                placeholder="e.g., I need a corporate lawyer to review an apartment lease contract..."
+                                value={preferences}
+                                onChange={setPreferences}
+                                accent={GOLD}
+                                textColor={C.text}
+                                border={isDark ? "#2a2a2a" : "#e0dbd2"}
+                                inputBg={C.surface}
+                            />
+                        </View>
+                    </>
                 ) : (
                     /* ── CURATED ITINERARY ── */
                     <>
