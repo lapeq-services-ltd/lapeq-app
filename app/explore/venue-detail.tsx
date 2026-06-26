@@ -70,7 +70,7 @@ function staticMapUrl(lat: number, lng: number) {
 }
 
 export default function VenueDetailScreen() {
-    const { id } = useLocalSearchParams<{ id: string }>();
+    const { id, overrideDescription } = useLocalSearchParams<{ id: string; overrideDescription?: string }>();
     const router = useRouter();
     const { C, theme } = useTheme();
     const s = useMemo(() => getStyles(C, theme), [C, theme]);
@@ -214,7 +214,7 @@ export default function VenueDetailScreen() {
                     <View style={s.section}>
                         <Text style={s.sectionLabel}>ABOUT</Text>
                         <Text style={s.description}>
-                            {venue.description ?? "One of Lapeq's curated partner venues, selected for quality, exclusivity, and experience. Book through Lapeq for priority reservations and member benefits."}
+                            {overrideDescription || venue.description || "One of Lapeq's curated partner venues, selected for quality, exclusivity, and experience. Book through Lapeq for priority reservations and member benefits."}
                         </Text>
                     </View>
 

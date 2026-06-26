@@ -205,7 +205,13 @@ export default function MonthlyPicksScreen() {
                             activeOpacity={0.88}
                             onPress={() => {
                                   if (venueId) {
-                                      router.push({ pathname: "/explore/venue-detail", params: { id: venueId } });
+                                      router.push({
+                                          pathname: "/explore/venue-detail",
+                                          params: {
+                                              id: venueId,
+                                              overrideDescription: pick.body || undefined
+                                          }
+                                      });
                                   } else {
                                       router.push("/explore" as any);
                                   }

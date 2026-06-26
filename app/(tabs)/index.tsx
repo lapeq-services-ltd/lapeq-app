@@ -522,18 +522,29 @@ export default function HomeScreen() {
                         <Text style={s.viewAll}>View All →</Text>
                     </TouchableOpacity>
                 </View>
-                <View style={{ height: 220, overflow: "hidden", marginBottom: 24, marginHorizontal: -20 }}>
-                    {loopedPicks.length > 0 ? (
-                        <Animated.View style={{ flexDirection: "row", transform: [{ translateX }], paddingLeft: 20 }}>
-                            {loopedPicks.map((card, i) => (
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ paddingHorizontal: 20, gap: CARD_GAP }}
+                    style={{ marginBottom: 24, marginHorizontal: -20 }}
+                >
+                    {picks.length > 0 ? (
+                        picks.map((card, i) => {
+                            const venueId = getVenueIdForCard(card.title, card.city || "");
+                            return (
                                 <TouchableOpacity
-                                    key={i}
-                                    style={[s.expCard, { width: CARD_WIDTH, marginRight: CARD_GAP }]}
+                                    key={card.id || i}
+                                    style={[s.expCard, { width: CARD_WIDTH }]}
                                     activeOpacity={0.9}
                                     onPress={() => {
-                                        const venueId = getVenueIdForCard(card.title, card.city || "");
                                         if (venueId) {
-                                            router.push({ pathname: "/explore/venue-detail", params: { id: venueId } });
+                                            router.push({
+                                                pathname: "/explore/venue-detail",
+                                                params: {
+                                                    id: venueId,
+                                                    overrideDescription: card.body || undefined
+                                                }
+                                            });
                                         } else {
                                             router.push("/explore" as any);
                                         }
@@ -552,18 +563,18 @@ export default function HomeScreen() {
                                         )}
                                     </View>
                                     <View style={{ padding: 10 }}>
-                                        <Text style={s.expTitle}>{card.title}</Text>
+                                        <Text style={s.expTitle} numberOfLines={1}>{card.title}</Text>
                                         <Text style={s.expLoc}>{card.city || card.category}</Text>
                                     </View>
                                 </TouchableOpacity>
-                            ))}
-                        </Animated.View>
+                            );
+                        })
                     ) : (
-                        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+                        <View style={{ width: SCREEN_WIDTH - 40, alignItems: "center", justifyContent: "center", height: 160 }}>
                             <Text style={{ color: C.muted, fontSize: 13 }}>No recommendations this month.</Text>
                         </View>
                     )}
-                </View>
+                </ScrollView>
 
                 <View style={s.sectionRow}>
                     <Text style={s.sectionTitle}>Upcoming Events</Text>
