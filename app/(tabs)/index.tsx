@@ -190,6 +190,7 @@ export default function HomeScreen() {
                     .select("*", { count: "exact", head: true })
                     .eq("user_id", user.id)
                     .eq("sender_type", "admin")
+                    .eq("type", "concierge")
                     .gt("created_at", lastChatOpen);
                 setUnreadMessages(count ?? 0);
             } else {
@@ -250,7 +251,9 @@ export default function HomeScreen() {
             .on('postgres_changes',
                 { event: 'INSERT', schema: 'public', table: 'messages', filter: `user_id=eq.${userId}` },
                 (payload: any) => {
-                    if (payload.new?.sender_type === 'admin') setUnreadMessages(prev => prev + 1);
+                    if (payload.new?.sender_type === 'admin' && payload.new?.type === 'concierge') {
+                        setUnreadMessages(prev => prev + 1);
+                    }
                 }
             )
             .subscribe();
@@ -272,6 +275,7 @@ export default function HomeScreen() {
                     .select("*", { count: "exact", head: true })
                     .eq("user_id", userId)
                     .eq("sender_type", "admin")
+                    .eq("type", "concierge")
                     .gt("created_at", lastOpen);
                 setUnreadMessages(count ?? 0);
             } else {
@@ -445,12 +449,12 @@ export default function HomeScreen() {
                             paddingVertical: 11, paddingHorizontal: 18,
                             borderRadius: 50,
                             borderWidth: 1,
-                            borderColor: theme === "dark" ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
-                            backgroundColor: theme === "dark" ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
+                            borderColor: `${C.primary}40`,
+                            backgroundColor: `${C.primary}0d`,
                         }}
                     >
                         <HelpCircle size={16} color={C.primary} />
-                        <Text style={{ fontSize: 13, fontWeight: "600", color: C.text, fontFamily: "Jost_600SemiBold" }}>Ask a Question</Text>
+                        <Text style={{ fontSize: 13, fontWeight: "600", color: C.primary, fontFamily: "Jost_600SemiBold" }}>Ask a Question</Text>
                     </TouchableOpacity>
                 </View>
 

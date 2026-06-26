@@ -5,10 +5,11 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { ChevronLeft, ChevronRight, Send, Crown, HelpCircle, MessageCircle, X } from "lucide-react-native";
+import { ChevronLeft, ChevronRight, Send, Crown, HelpCircle, MessageCircle, X, ChevronDown, ChevronUp } from "lucide-react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { supabase } from "@/lib/supabase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Haptics from "expo-haptics";
 
 type Message = {
     id: string;
@@ -86,6 +87,7 @@ export default function ConciergeChatScreen() {
     const [refPackage, setRefPackage] = useState<{ reference: string; title: string } | null>(null);
     const listRef = useRef<FlatList>(null);
     const [faqs, setFaqs] = useState<{ question: string; answer: string; keywords: string[] }[]>([]);
+    const [showQuickQuestions, setShowQuickQuestions] = useState(true);
 
     useEffect(() => {
         // Load FAQs from Supabase database
@@ -153,6 +155,13 @@ export default function ConciergeChatScreen() {
             }
         });
     }, []);
+
+    // Stamp last open whenever user opens or switches to concierge mode
+    useEffect(() => {
+        if (userId && mode === "concierge") {
+            AsyncStorage.setItem(`lapeq_chat_last_open_${userId}`, new Date().toISOString());
+        }
+    }, [mode, userId]);
 
     // Load messages + Realtime when mode is selected
     useEffect(() => {
@@ -462,51 +471,68 @@ export default function ConciergeChatScreen() {
                     />
                 )}
 
-                {/* Quick Questions — shown in question mode INSTEAD of the text input */}
+                {/* Quick Questions — shown in question mode and is collapsible */}
                 {mode === "question" && (
-                    <View style={{ paddingHorizontal: 16, paddingBottom: 20, paddingTop: 8 }}>
-                        <Text style={{ fontSize: 11, color: C.muted, fontWeight: "700", letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 12 }}>
-                            Select a question
-                        </Text>
-                        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-                            {quickQuestions.map(q => (
-                                <TouchableOpacity
-                                    key={q}
-                                    style={[s.quickQ, { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 20 }]}
-                                    onPress={() => sendMessage(q)}
-                                    disabled={sending}
-                                >
-                                    <Text style={s.quickQText}>{q}</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
+                    <View style={{ paddingHorizontal: 16, paddingBottom: showQuickQuestions ? 20 : 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: C.border }}>
+                        <TouchableOpacity
+                            style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 8 }}
+                            onPress={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                setShowQuickQuestions(prev => !prev);
+                            }}
+                            activeOpacity={0.7}
+                        >
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                                <HelpCircle size={14} color={C.primary} />
+                                <Text style={{ fontSize: 11, color: C.muted, fontWeight: "700", letterSpacing: 1.2, textTransform: "uppercase" }}>
+                                    Select a question
+                                </Text>
+                            </View>
+                            {showQuickQuestions ? (
+                                <ChevronDown size={16} color={C.muted} />
+                            ) : (
+                                <ChevronUp size={16} color={C.muted} />
+                            )}
+                        </TouchableOpacity>
+                        {showQuickQuestions && (
+                            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 8 }}>
+                                {quickQuestions.map(q => (
+                                    <TouchableOpacity
+                                        key={q}
+                                        style={[s.quickQ, { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 20 }]}
+                                        onPress={() => sendMessage(q)}
+                                        disabled={sending}
+                                    >
+                                        <Text style={s.quickQText}>{q}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        )}
                     </View>
                 )}
 
-                {/* Text input — only for concierge and request modes */}
-                {mode !== "question" && (
-                    <View style={s.inputContainer}>
-                        <TextInput
-                            style={s.input}
-                            placeholder={getPlaceholder()}
-                            placeholderTextColor={C.muted}
-                            value={input}
-                            onChangeText={setInput}
-                            multiline
-                            onSubmitEditing={() => sendMessage()}
-                        />
-                        <TouchableOpacity
-                            style={[s.sendBtn, (!input.trim() || sending) && s.sendBtnDisabled]}
-                            onPress={() => sendMessage()}
-                            disabled={!input.trim() || sending}
-                        >
-                            {sending
-                                ? <ActivityIndicator size="small" color={C.background} />
-                                : <Send size={20} color={!input.trim() ? C.muted : C.background} />
-                            }
-                        </TouchableOpacity>
-                    </View>
-                )}
+                {/* Text input — visible for all modes */}
+                <View style={s.inputContainer}>
+                    <TextInput
+                        style={s.input}
+                        placeholder={getPlaceholder()}
+                        placeholderTextColor={C.muted}
+                        value={input}
+                        onChangeText={setInput}
+                        multiline
+                        onSubmitEditing={() => sendMessage()}
+                    />
+                    <TouchableOpacity
+                        style={[s.sendBtn, (!input.trim() || sending) && s.sendBtnDisabled]}
+                        onPress={() => sendMessage()}
+                        disabled={!input.trim() || sending}
+                    >
+                        {sending
+                            ? <ActivityIndicator size="small" color={C.background} />
+                            : <Send size={20} color={!input.trim() ? C.muted : C.background} />
+                        }
+                    </TouchableOpacity>
+                </View>
             </KeyboardAvoidingView>
         </SafeAreaView>
     );
