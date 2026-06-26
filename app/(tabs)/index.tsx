@@ -522,59 +522,56 @@ export default function HomeScreen() {
                         <Text style={s.viewAll}>View All →</Text>
                     </TouchableOpacity>
                 </View>
-                <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ paddingHorizontal: 20, gap: CARD_GAP }}
-                    style={{ marginBottom: 24, marginHorizontal: -20 }}
-                >
-                    {picks.length > 0 ? (
-                        picks.map((card, i) => {
-                            const venueId = getVenueIdForCard(card.title, card.city || "");
-                            return (
-                                <TouchableOpacity
-                                    key={card.id || i}
-                                    style={[s.expCard, { width: CARD_WIDTH }]}
-                                    activeOpacity={0.9}
-                                    onPress={() => {
-                                        if (venueId) {
-                                            router.push({
-                                                pathname: "/explore/venue-detail",
-                                                params: {
-                                                    id: venueId,
-                                                    overrideDescription: card.body || undefined
-                                                }
-                                            });
-                                        } else {
-                                            router.push("/explore" as any);
-                                        }
-                                    }}
-                                >
-                                    <View style={s.expImgWrap}>
-                                        <Image
-                                            source={card.image_url ? { uri: card.image_url } : require("@/assets/images/lagos-rooftop.jpg")}
-                                            style={s.expImg}
-                                            resizeMode="cover"
-                                        />
-                                        {card.tag && (
-                                            <View style={s.expBadge}>
-                                                <Text style={[s.expBadgeText, { color: darkBadgeColor }]}>{card.tag}</Text>
-                                            </View>
-                                        )}
-                                    </View>
-                                    <View style={{ padding: 10 }}>
-                                        <Text style={s.expTitle} numberOfLines={1}>{card.title}</Text>
-                                        <Text style={s.expLoc}>{card.city || card.category}</Text>
-                                    </View>
-                                </TouchableOpacity>
-                            );
-                        })
+                <View style={{ height: 220, overflow: "hidden", marginBottom: 24, marginHorizontal: -20 }}>
+                    {loopedPicks.length > 0 ? (
+                        <Animated.View style={{ flexDirection: "row", transform: [{ translateX }], paddingLeft: 20 }}>
+                            {loopedPicks.map((card, i) => {
+                                const venueId = getVenueIdForCard(card.title, card.city || "");
+                                return (
+                                    <TouchableOpacity
+                                        key={i}
+                                        style={[s.expCard, { width: CARD_WIDTH, marginRight: CARD_GAP }]}
+                                        activeOpacity={0.9}
+                                        onPress={() => {
+                                            if (venueId) {
+                                                router.push({
+                                                    pathname: "/explore/venue-detail",
+                                                    params: {
+                                                        id: venueId,
+                                                        overrideDescription: card.body || undefined
+                                                    }
+                                                });
+                                            } else {
+                                                router.push("/explore" as any);
+                                            }
+                                        }}
+                                    >
+                                        <View style={s.expImgWrap}>
+                                            <Image
+                                                source={card.image_url ? { uri: card.image_url } : require("@/assets/images/lagos-rooftop.jpg")}
+                                                style={s.expImg}
+                                                resizeMode="cover"
+                                            />
+                                            {card.tag && (
+                                                <View style={s.expBadge}>
+                                                    <Text style={[s.expBadgeText, { color: darkBadgeColor }]}>{card.tag}</Text>
+                                                </View>
+                                            )}
+                                        </View>
+                                        <View style={{ padding: 10 }}>
+                                            <Text style={s.expTitle} numberOfLines={1}>{card.title}</Text>
+                                            <Text style={s.expLoc}>{card.city || card.category}</Text>
+                                        </View>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </Animated.View>
                     ) : (
-                        <View style={{ width: SCREEN_WIDTH - 40, alignItems: "center", justifyContent: "center", height: 160 }}>
+                        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
                             <Text style={{ color: C.muted, fontSize: 13 }}>No recommendations this month.</Text>
                         </View>
                     )}
-                </ScrollView>
+                </View>
 
                 <View style={s.sectionRow}>
                     <Text style={s.sectionTitle}>Upcoming Events</Text>
