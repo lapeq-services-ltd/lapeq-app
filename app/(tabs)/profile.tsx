@@ -1,10 +1,10 @@
-import { useMemo, useCallback, useState, useRef } from "react";
+import { useMemo, useCallback, useState } from "react";
 import {
-    View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, ActivityIndicator, Pressable, Animated
+    View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, ActivityIndicator
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useFocusEffect } from "expo-router";
-import { Settings, Crown, ArrowRight, Clock, Plus, MapPin, Heart, Bookmark, Headphones, ClipboardList, Car, Plane, BookOpen, Info } from "lucide-react-native";
+import { Settings, Crown, ArrowRight, Clock, MapPin, Heart, Bookmark, BookOpen, Info } from "lucide-react-native";
 import Skeleton from "@/components/Skeleton";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
@@ -77,21 +77,6 @@ export default function ProfileScreen() {
     const [imageUri, setImageUri] = useState<string | null>(null);
     const [tier, setTier] = useState("Standard");
     const [activeTab, setActiveTab] = useState<"requests" | "saved" | "journal">("requests");
-    const [showDropdown, setShowDropdown] = useState(false);
-    const dropdownScale = useRef(new Animated.Value(0.85)).current;
-    const dropdownOpacity = useRef(new Animated.Value(0)).current;
-
-    const openDropdown = () => {
-        setShowDropdown(true);
-        dropdownScale.setValue(0.85);
-        dropdownOpacity.setValue(0);
-        Animated.parallel([
-            Animated.spring(dropdownScale, { toValue: 1, useNativeDriver: true, tension: 280, friction: 18 }),
-            Animated.timing(dropdownOpacity, { toValue: 1, duration: 80, useNativeDriver: true }),
-        ]).start();
-    };
-
-    const closeDropdown = () => setShowDropdown(false);
 
     const [requestCount, setRequestCount] = useState<number | null>(null);
     const [savedCount, setSavedCount] = useState<number | null>(null);
@@ -184,9 +169,6 @@ export default function ProfileScreen() {
                     </TouchableOpacity>
                     <TouchableOpacity style={s.iconBtn} onPress={() => router.push("/settings")}>
                         <Settings size={16} color={C.muted} />
-                    </TouchableOpacity>
-                    <TouchableOpacity style={s.plusBtn} onPress={openDropdown}>
-                        <Plus size={18} color="#0a0a0a" />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -369,36 +351,6 @@ export default function ProfileScreen() {
                     )
                 )}
             </ScrollView>
-            {/* + Dropdown */}
-            {showDropdown && (
-                <>
-                    <Pressable style={s.dropdownBackdrop} onPress={closeDropdown} />
-                    <Animated.View style={[s.dropdown, { opacity: dropdownOpacity, transform: [{ scale: dropdownScale }] }]}>
-                        <Text style={s.dropdownHeading}>Quick Actions</Text>
-                        {[
-                            { icon: Headphones, label: "Contact My Concierge", sub: "Chat with your concierge", route: "/chat" },
-                            { icon: ClipboardList, label: "My Requests", sub: "Track and manage bookings", route: "/requests" },
-                            { icon: Car, label: "Elite Transit & Aviation", sub: "Car & Private Aviation", route: "/services/driving" },
-                            { icon: Plane, label: "Plan a Trip", sub: "Flights & hotel arrangements", route: "/services/lifestyle-travel" },
-                        ].map(({ icon: Icon, label, sub, route }) => (
-                            <TouchableOpacity
-                                key={label}
-                                style={s.dropdownItem}
-                                onPress={() => { closeDropdown(); router.push(route as any); }}
-                            >
-                                <View style={s.dropdownIcon}>
-                                    <Icon size={18} color={C.primary} />
-                                </View>
-                                <View style={{ flex: 1 }}>
-                                    <Text style={s.dropdownLabel}>{label}</Text>
-                                    <Text style={s.dropdownSub}>{sub}</Text>
-                                </View>
-                                <ArrowRight size={14} color={C.muted} />
-                            </TouchableOpacity>
-                        ))}
-                    </Animated.View>
-                </>
-            )}
         </SafeAreaView>
     );
 }
@@ -408,7 +360,6 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16 },
     headerTitle: { fontSize: 24, fontWeight: "700", color: C.text },
     iconBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" },
-    plusBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: C.primary, alignItems: "center", justifyContent: "center" },
     profileRow: { flexDirection: "row", alignItems: "center", gap: 20, marginBottom: 24 },
     avatar: { width: 96, height: 96, borderRadius: 48, borderWidth: 3, borderColor: C.primary, overflow: "hidden", backgroundColor: C.surface },
     avatarImg: { width: "100%", height: "100%" },
@@ -455,11 +406,4 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     articleCardMeta: { fontSize: 11, color: "rgba(255,255,255,0.6)" },
     articleViewAll: { alignItems: "center", paddingVertical: 16 },
     articleViewAllText: { fontSize: 14, fontWeight: "600", color: C.primary },
-    dropdownBackdrop: { ...StyleSheet.absoluteFillObject, zIndex: 10 },
-    dropdown: { position: "absolute", top: 60, right: 20, zIndex: 20, backgroundColor: C.surface, borderRadius: 20, padding: 8, width: 280, borderWidth: 1, borderColor: theme === "dark" ? "#2a2a2a" : "#d8d3ca", shadowColor: "#000", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 24, elevation: 12 },
-    dropdownHeading: { fontSize: 11, fontWeight: "700", color: C.muted, letterSpacing: 1.5, textTransform: "uppercase", paddingHorizontal: 14, paddingVertical: 10 },
-    dropdownItem: { flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 14 },
-    dropdownIcon: { width: 38, height: 38, borderRadius: 10, backgroundColor: `${C.primary}18`, alignItems: "center", justifyContent: "center" },
-    dropdownLabel: { fontSize: 14, fontWeight: "600", color: C.text },
-    dropdownSub: { fontSize: 12, color: C.muted, marginTop: 1 },
 });

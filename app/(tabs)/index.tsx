@@ -10,6 +10,7 @@ import {
     Dimensions,
     Animated,
     Modal,
+    Pressable,
 } from "react-native";
 import WelcomeModal from "@/components/WelcomeModal";
 import AppTour from "@/components/AppTour";
@@ -17,11 +18,12 @@ import BenefitNudge from "@/components/BenefitNudge";
 import PromoPopup from "@/components/PromoPopup";
 import Skeleton from "@/components/Skeleton";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Haptics from "expo-haptics";
 
 let trialPopupShown = false;
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Bell, Crown, ChevronRight, Calendar, Plane, Car, HelpCircle, MessageCircle, LayoutGrid } from "lucide-react-native";
+import { Bell, Crown, ChevronRight, Calendar, Plane, Car, HelpCircle, MessageCircle, LayoutGrid, Plus, Headphones, ClipboardList, Sparkles } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
 
@@ -92,6 +94,32 @@ export default function HomeScreen() {
     const translateX = useRef(new Animated.Value(0)).current;
     const offsetRef = useRef(0);
     const partnerTranslateX = useRef(new Animated.Value(0)).current;
+
+    // Quick Actions FAB
+    const [showDropdown, setShowDropdown] = useState(false);
+    const dropdownScale = useRef(new Animated.Value(0.85)).current;
+    const dropdownOpacity = useRef(new Animated.Value(0)).current;
+    const fabRotate = useRef(new Animated.Value(0)).current;
+
+    const openDropdown = () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setShowDropdown(true);
+        dropdownScale.setValue(0.85);
+        dropdownOpacity.setValue(0);
+        Animated.parallel([
+            Animated.spring(dropdownScale, { toValue: 1, useNativeDriver: true, tension: 280, friction: 18 }),
+            Animated.timing(dropdownOpacity, { toValue: 1, duration: 100, useNativeDriver: true }),
+            Animated.timing(fabRotate, { toValue: 1, duration: 200, useNativeDriver: true }),
+        ]).start();
+    };
+
+    const closeDropdown = () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        Animated.parallel([
+            Animated.timing(dropdownOpacity, { toValue: 0, duration: 120, useNativeDriver: true }),
+            Animated.timing(fabRotate, { toValue: 0, duration: 200, useNativeDriver: true }),
+        ]).start(() => setShowDropdown(false));
+    };
 
     const loopedPicks = useMemo(() =>
         picks.length > 0 ? [...picks, ...picks, ...picks] : [],
@@ -358,14 +386,22 @@ export default function HomeScreen() {
 
                 <View style={s.quickGrid}>
                     {[
-                        { label: "Experiences", sub: "Curated itineraries", Icon: Calendar, route: "/(main)/experiences" as const },
-                        { label: "Personalized Plan", sub: "Activity Ideas/Reccomendations", Icon: Plane, route: "/services/lifestyle-travel" as const },
-                        { label: "Elite Transit", sub: "Drive & Flights/Jets", Icon: Car, route: "/services/driving" as const },
-                        { label: "Lifestyle", sub: "All services", Icon: LayoutGrid, route: "/services/lifestyle" as const },
-                    ].map(({ label, sub, Icon, route }) => (
-                        <TouchableOpacity key={label} style={s.quickCard} onPress={() => router.push(route)} activeOpacity={0.8}>
+                        { label: "Experiences", sub: "Curated itineraries", img: require("@/assets/images/lagos-beach.jpg"), route: "/(main)/experiences" as const },
+                        { label: "Make a Request", sub: "Bespoke activity & travel plans", img: require("@/assets/images/lagos-hotel.jpg"), route: "/services/lifestyle-travel" as const },
+                        { label: "Elite Transit", sub: "Drive & Flights/Jets", img: require("@/assets/images/carsabuja.jpg"), route: "/services/driving" as const },
+                        { label: "Lapeq Co-Brand", sub: "Your brand on our platform", img: require("@/assets/images/app-collab.png"), route: "/services/lifestyle" as const },
+                    ].map(({ label, sub, img, route }) => (
+                        <TouchableOpacity
+                            key={label}
+                            style={s.quickCard}
+                            onPress={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                router.push(route);
+                            }}
+                            activeOpacity={0.8}
+                        >
                             <View style={s.quickCardIcon}>
-                                <Icon size={22} color={C.primary} />
+                                <Image source={img} style={{ width: "100%", height: "100%", borderRadius: 12 }} resizeMode="cover" />
                             </View>
                             <Text style={s.quickCardLabel}>{label}</Text>
                             <Text style={s.quickCardSub}>{sub}</Text>
@@ -583,6 +619,50 @@ export default function HomeScreen() {
             <AppTour visible={showTour} onFinish={() => setShowTour(false)} />
             <BenefitNudge />
             <PromoPopup />
+
+            {/* Quick Actions FAB */}
+            {showDropdown && (
+                <>
+                    <Pressable style={s.dropdownBackdrop} onPress={closeDropdown} />
+                    <Animated.View style={[s.quickDropdown, { opacity: dropdownOpacity, transform: [{ scale: dropdownScale }] }]}>
+                        <Text style={s.quickDropdownHeading}>Quick Actions</Text>
+                        {[
+                            { img: require("@/assets/images/lagos-hotel.jpg"), label: "Make a Request", sub: "Bespoke activity & travel plans", route: "/services/lifestyle-travel" },
+                            { img: require("@/assets/images/gents (1).jpg"), label: "My Concierge", sub: "Chat with your concierge", route: "/chat" },
+                            { img: require("@/assets/images/lagos-rooftop.jpg"), label: "My Requests", sub: "Track and manage bookings", route: "/requests" },
+                            { img: require("@/assets/images/carsabuja.jpg"), label: "Elite Transit & Aviation", sub: "Car & Private Aviation", route: "/services/driving" },
+                        ].map(({ img, label, sub, route }) => (
+                            <TouchableOpacity
+                                key={label}
+                                style={s.quickDropdownItem}
+                                onPress={() => {
+                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                    closeDropdown();
+                                    router.push(route as any);
+                                }}
+                            >
+                                <View style={s.quickDropdownIcon}>
+                                    <Image source={img} style={{ width: "100%", height: "100%", borderRadius: 10 }} resizeMode="cover" />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={[s.quickDropdownLabel, { color: C.text }]}>{label}</Text>
+                                    <Text style={[s.quickDropdownSub, { color: C.muted }]}>{sub}</Text>
+                                </View>
+                                <ChevronRight size={14} color={C.muted} />
+                            </TouchableOpacity>
+                        ))}
+                    </Animated.View>
+                </>
+            )}
+            <TouchableOpacity
+                style={[s.fab, { backgroundColor: C.primary }]}
+                onPress={showDropdown ? closeDropdown : openDropdown}
+                activeOpacity={0.85}
+            >
+                <Animated.View style={{ transform: [{ rotate: fabRotate.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "45deg"] }) }] }}>
+                    <Plus size={20} color={C.background} strokeWidth={2.5} />
+                </Animated.View>
+            </TouchableOpacity>
         </SafeAreaView>
     );
 }
@@ -656,6 +736,75 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     expTitle: { fontSize: 16, fontWeight: "600", color: C.text },
     expLoc: { fontSize: 13, color: C.muted, marginTop: 4 },
     expDesc: { fontSize: 13, color: C.muted, marginTop: 6, lineHeight: 18 },
+    fab: {
+        position: "absolute",
+        right: 16,
+        bottom: 112,
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        alignItems: "center",
+        justifyContent: "center",
+        elevation: 10,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.24,
+        shadowRadius: 12,
+        zIndex: 35,
+    },
+    dropdownBackdrop: {
+        ...StyleSheet.absoluteFillObject,
+        zIndex: 20,
+        backgroundColor: "rgba(0, 0, 0, 0.3)",
+    },
+    quickDropdown: {
+        position: "absolute",
+        bottom: 176,
+        right: 16,
+        zIndex: 30,
+        backgroundColor: C.surface,
+        borderRadius: 20,
+        padding: 8,
+        width: 280,
+        borderWidth: 1,
+        borderColor: theme === "dark" ? "#2a2a2a" : "#d8d3ca",
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.2,
+        shadowRadius: 24,
+        elevation: 12,
+    },
+    quickDropdownHeading: {
+        fontSize: 11,
+        fontWeight: "700",
+        color: C.muted,
+        letterSpacing: 1.5,
+        textTransform: "uppercase",
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+    },
+    quickDropdownItem: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 12,
+        padding: 12,
+        borderRadius: 14,
+    },
+    quickDropdownIcon: {
+        width: 38,
+        height: 38,
+        borderRadius: 10,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    quickDropdownLabel: {
+        fontSize: 14,
+        fontWeight: "600",
+    },
+    quickDropdownSub: {
+        fontSize: 12,
+        marginTop: 1,
+    },
     emptyEvents: { padding: 24, borderRadius: 16, backgroundColor: C.surface, alignItems: "center" },
     emptyEventsText: { fontSize: 14, color: C.muted, textAlign: "center", lineHeight: 22 },
     partnerCard: { width: 160, height: 200, borderRadius: 16, overflow: "hidden", position: "relative" },

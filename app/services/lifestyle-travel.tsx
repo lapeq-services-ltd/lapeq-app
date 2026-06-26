@@ -28,6 +28,17 @@ const SERVICE_TYPES = [
     { id: "Stays & Accommodations", label: "Stays",             emoji: "⌂", desc: "Hotels, villas, and private residences",           img: require("@/assets/images/lagos-rooftop.jpg") },
     { id: "Private Dining",         label: "Private & Fine Dining", emoji: "◈", desc: "Exclusive tables, private chef, and fine dining experiences", img: require("@/assets/images/lagos-restaurant.jpg") },
     { id: "VIP Protocol",           label: "VIP Protocol",      emoji: "◆", desc: "Airport arrivals, security, and event access",     img: require("@/assets/images/lagos-beach.jpg") },
+    { id: "Flights & Jets",         label: "Private Jets",      emoji: "✈", desc: "Book private charters, jets & helicopters",        img: require("@/assets/images/exterior-luxury.jpg") },
+    { id: "Legal Advisory",         label: "Legal Advisory",    emoji: "⚖", desc: "Consultations, document support & trusted referrals", img: require("@/assets/images/onboarding-trust.png") },
+    { id: "Gift & Florals",         label: "Gift & Florals",    emoji: "◈", desc: "Bouquets, luxury gifts & occasion curation",        img: require("@/assets/images/lagos-restaurant.jpg") },
+    { id: "Recreational Activities",label: "Recreation",        emoji: "◎", desc: "Golf, tennis, water sports & leisure bookings",    img: require("@/assets/images/lagos-beach.jpg") },
+    { id: "Medical Concierge",      label: "Medical Concierge", emoji: "✦", desc: "Doctor appointments & specialist referrals",        img: require("@/assets/images/onboarding-lifestyle.png") },
+    { id: "Home & Property",        label: "Home & Property",   emoji: "⌂", desc: "Interior design, sourcing & management",           img: require("@/assets/images/lagos-hotel.jpg") },
+    { id: "Financial Advisory",     label: "Financial Advisory",emoji: "◆", desc: "Wealth management, tax & investment planning",       img: require("@/assets/images/lagos-rooftop.jpg") },
+    { id: "Photography & Content",  label: "Photography",       emoji: "□", desc: "Photographers, portrait sessions & content creators", img: require("@/assets/images/onboarding-driving.png") },
+    { id: "Childcare & Family",     label: "Childcare & Family",emoji: "△", desc: "Nanny sourcing, school admissions & childcare",        img: require("@/assets/images/onboarding-lifestyle.png") },
+    { id: "Security & Protocol",    label: "Security",          emoji: "◉", desc: "Personal protection & VIP security arrangements",    img: require("@/assets/images/ikoyi-bridge.jpg") },
+    { id: "Bespoke Request",        label: "Bespoke Request",   emoji: "✦", desc: "Any custom request or premium service not listed",  img: require("@/assets/images/onboarding-lifestyle.png") },
 ];
 
 const MOODS           = ["Romantic", "Adventure", "Business", "Wellness", "Celebration", "Family"];
@@ -147,6 +158,18 @@ export default function LifestyleTravelScreen() {
     const isStays         = serviceType === "Stays & Accommodations";
     const isPrivateDining = serviceType === "Private Dining";
     const isVIPProtocol   = serviceType === "VIP Protocol";
+    const isLifestyleService = [
+        "Legal Advisory",
+        "Gift & Florals",
+        "Recreational Activities",
+        "Medical Concierge",
+        "Home & Property",
+        "Financial Advisory",
+        "Photography & Content",
+        "Childcare & Family",
+        "Security & Protocol",
+        "Bespoke Request",
+    ].includes(serviceType);
 
     const fmtDate = (d: Date | null) => d ? d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : null;
     const fmtTime = (d: Date | null) => d ? d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : null;
@@ -163,6 +186,8 @@ export default function LifestyleTravelScreen() {
             if (!diningCity) { Alert.alert("Select City", "Please choose your city."); return; }
         } else if (isVIPProtocol) {
             if (!protocolType || !protocolCity) { Alert.alert("Add Details", "Please select a service type and city."); return; }
+        } else if (isLifestyleService) {
+            if (preferences.trim().length === 0) { Alert.alert("Add Details", "Please describe what you need."); return; }
         } else {
             if (!destination && preferences.trim().length === 0) { Alert.alert("Add Details", "Please enter a destination or describe your experience."); return; }
         }
@@ -177,13 +202,15 @@ export default function LifestyleTravelScreen() {
             ? { serviceType, occasion: diningOccasion, venueType: diningVenue, city: diningCity, guests: diningGuests, date: fmtDate(dateFromObj), time: fmtTime(eventTime), cuisine: diningCuisine, setup: diningSetup, budget: diningBudget, notes: diningNotes }
             : isVIPProtocol
             ? { serviceType, protocolType, city: protocolCity, date: fmtDate(dateFromObj), time: fmtTime(eventTime), persons: protocolPersons, requirements: protocolReqs }
+            : isLifestyleService
+            ? { serviceType, city: destination, date: fmtDate(dateFromObj), budget: curatedBudget, description: preferences }
             : { serviceType, mood, destination, dateFrom: fmtDate(dateFromObj), dateTo: fmtDate(dateToObj), budget: curatedBudget, preferences };
         const { error } = await supabase.from("requests").insert({
             user_id: user?.id,
             service_type: isJets ? "private-jet" : "lifestyle-travel",
             status: "pending",
             reference: ref,
-            title: isJets ? `${selectedAircraft.name} · ${jetDeparture} → ${jetDestination}` : serviceType,
+            title: isLifestyleService ? `${serviceType} Request` : isJets ? `${selectedAircraft.name} · ${jetDeparture} → ${jetDestination}` : serviceType,
             details,
         });
         setLoading(false);
@@ -229,7 +256,7 @@ export default function LifestyleTravelScreen() {
                                     onPress={() => setServiceType(svc.id)}
                                     activeOpacity={0.8}
                                 >
-                                    <Text style={[s.svcChipEmoji, active && { color: "#0a0a0a" }]}>{svc.emoji}</Text>
+                                    <Image source={svc.img} style={{ width: 20, height: 20, borderRadius: 10 }} />
                                     <Text style={[s.svcChipText, active && { color: "#0a0a0a" }]}>{svc.label}</Text>
                                 </TouchableOpacity>
                             );
