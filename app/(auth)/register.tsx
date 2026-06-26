@@ -10,10 +10,8 @@ import { Eye, EyeOff, ChevronLeft, ChevronDown } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { COUNTRIES, STATES_BY_COUNTRY } from "@/constants/location";
 import Svg, { Path } from "react-native-svg";
-import * as WebBrowser from "expo-web-browser";
-import { makeRedirectUri } from "expo-auth-session";
-
-WebBrowser.maybeCompleteAuthSession();
+import { GoogleSignin, statusCodes } from "@react-native-google-signin/google-signin";
+import Constants from "expo-constants";
 
 const GOLD = "#c9a84c";
 const DARK = "#0a0a0a";
@@ -197,33 +195,38 @@ export default function RegisterScreen() {
     };
 
     const handleGoogleSignIn = async () => {
+        // Native Google Sign-In doesn't work in Expo Go — requires a real build
+        const isExpoGo = Constants.executionEnvironment === "storeClient";
+        if (isExpoGo) {
+            Alert.alert(
+                "Google Sign-In",
+                "Google Sign-In is available in the full Lapeq app. Please download it from the App Store or TestFlight."
+            );
+            return;
+        }
+
         try {
-            const redirectTo = makeRedirectUri({ scheme: "lapeq" });
-            const { data, error } = await supabase.auth.signInWithOAuth({
+            await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+            const response = await GoogleSignin.signIn();
+            const idToken = response.data?.idToken;
+
+            if (!idToken) throw new Error("No ID token returned from Google.");
+
+            const { error } = await supabase.auth.signInWithIdToken({
                 provider: "google",
-                options: { redirectTo, skipBrowserRedirect: true },
+                token: idToken,
             });
-            if (error || !data.url) {
-                Alert.alert("Google Sign-In", error?.message ?? "Could not start sign in.");
-                return;
+            if (error) throw error;
+        } catch (e: any) {
+            if (e.code === statusCodes.SIGN_IN_CANCELLED) {
+                // User cancelled — do nothing
+            } else if (e.code === statusCodes.IN_PROGRESS) {
+                // Already signing in — do nothing
+            } else if (e.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+                Alert.alert("Google Sign-In", "Google Play Services not available on this device.");
+            } else {
+                Alert.alert("Google Sign-In", e.message || "Something went wrong.");
             }
-            const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-            if (result.type === "success" && result.url) {
-                const fragment = result.url.split("#")[1] ?? result.url.split("?")[1] ?? "";
-                const params: Record<string, string> = {};
-                fragment.split("&").forEach(part => {
-                    const [k, v] = part.split("=");
-                    if (k) params[decodeURIComponent(k)] = decodeURIComponent(v ?? "");
-                });
-                if (params.access_token && params.refresh_token) {
-                    await supabase.auth.setSession({
-                        access_token: params.access_token,
-                        refresh_token: params.refresh_token,
-                    });
-                }
-            }
-        } catch {
-            Alert.alert("Error", "Something went wrong with Google sign in.");
         }
     };
 

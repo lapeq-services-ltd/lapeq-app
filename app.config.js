@@ -45,6 +45,15 @@ module.exports = {
           RNMapboxMapsDownloadToken: process.env.MAPBOX_SECRET_TOKEN,
         },
       ],
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          // Derived from iOS OAuth Client ID: strip ".apps.googleusercontent.com" suffix
+          iosUrlScheme: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID
+            ? `com.googleusercontent.apps.${process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID.replace(".apps.googleusercontent.com", "")}`
+            : "com.googleusercontent.apps.placeholder",
+        },
+      ],
     ],
   },
 };
