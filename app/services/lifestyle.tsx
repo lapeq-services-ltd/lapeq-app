@@ -7,30 +7,66 @@ import {
     StyleSheet,
     ScrollView,
     Image,
+    ImageBackground,
     Modal,
     Animated,
     Alert,
     Platform,
+    Dimensions,
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTheme } from "@/context/ThemeContext";
-import { ChevronLeft, Calendar, Check } from "lucide-react-native";
+import {
+    ChevronLeft,
+    Calendar,
+    Check,
+    ArrowRight,
+    ArrowLeft,
+    Shield,
+    Sliders,
+    Palette,
+    Users,
+    Sparkles,
+    MessageSquare,
+    Compass,
+    Smartphone,
+    Info,
+} from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import VoiceInput from "@/components/VoiceInput";
 import * as Haptics from "expo-haptics";
+import { LinearGradient } from "expo-linear-gradient";
 
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const GOLD = "#c9a84c";
 
-const EVENT_TYPES = ["Wedding", "Corporate Summit", "Birthday / Gala", "Concert / Show", "Exhibition", "Other Private Event"];
-const FEATURE_OPTIONS = [
-    { id: "rsvp", label: "RSVP & Guest Tracker" },
-    { id: "travel", label: "Guest Travel & Aviation" },
-    { id: "protocol", label: "VIP Airport Protocol" },
-    { id: "chat", label: "Direct Concierge Chat" },
-    { id: "custom_tabs", label: "Custom Customization Tabs" },
+const EVENT_TYPES = [
+    { name: "Wedding", desc: "Celebrate union in bespoke style", img: require("@/assets/images/beautiful-scenery.webp") },
+    { name: "Corporate Summit", desc: "For keynotes, networking & brands", img: require("@/assets/images/lagos-hotel.jpg") },
+    { name: "Gala / Birthday", desc: "Milestone banquets & private galas", img: require("@/assets/images/lagos-rooftop.jpg") },
+    { name: "Concert / Show", desc: "Live audience & stage setup", img: require("@/assets/events/awe-lagos.jpeg") },
+    { name: "Exhibition / Summit", desc: "Art, summits, trade & fashion fairs", img: require("@/assets/events/coresphere.jpeg") },
+    { name: "Other Occasion", desc: "Custom designed event layout", img: require("@/assets/images/exterior-luxury.jpg") },
 ];
+
+const FEATURE_OPTIONS = [
+    { id: "rsvp", label: "RSVP & Guest Tracker", desc: "Let guests confirm and track attendance", icon: Users },
+    { id: "travel", label: "Guest Travel & Aviation", desc: "Manage delegate flight & private jet bookings", icon: Compass },
+    { id: "protocol", label: "VIP Airport Protocol", desc: "Airport arrivals, customs clearance & escorts", icon: Shield },
+    { id: "chat", label: "Personal Butler Chat", desc: "Dedicated concierge channel for guests", icon: MessageSquare },
+    { id: "custom_tabs", label: "Custom Tabs", desc: "Branded itinerary and event schedules", icon: Sliders },
+];
+
+const PRESET_PALETTES = [
+    { name: "Midnight Gold", colors: ["#000000", "#c9a84c"] },
+    { name: "Rose & Pearl", colors: ["#F9E5E6", "#D3C3B0"] },
+    { name: "Emerald & Brass", colors: ["#0B3C2D", "#c9a84c"] },
+    { name: "Sapphire & Silver", colors: ["#0F2537", "#C0C0C0"] },
+];
+
+const GUEST_PRESETS = ["50", "150", "300", "500", "1000+"];
 
 export default function LapeqCoBrandScreen() {
     const router = useRouter();
@@ -38,12 +74,15 @@ export default function LapeqCoBrandScreen() {
     const s = useMemo(() => getStyles(C, theme), [C, theme]);
     const isDark = theme === "dark";
 
+    // Step state: 1: Event Info, 2: Place & Guests, 3: Branding & Palette, 4: Features & Submission
+    const [step, setStep] = useState(1);
+
     // Form States
     const [eventName, setEventName] = useState("");
     const [eventType, setEventType] = useState("");
     const [eventLocation, setEventLocation] = useState("");
     const [guestCount, setGuestCount] = useState("");
-    const [themeColors, setThemeColors] = useState("");
+    const [themeColors, setThemeColors] = useState("Midnight Gold");
     const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
     const [additionalNotes, setAdditionalNotes] = useState("");
 
@@ -51,9 +90,15 @@ export default function LapeqCoBrandScreen() {
     const [eventDate, setEventDate] = useState<Date | null>(null);
     const [showDatePicker, setShowDatePicker] = useState(false);
 
+    // Input focus states for premium glow borders
+    const [focusedInput, setFocusedInput] = useState<string | null>(null);
+
     // Submission states
     const [loading, setLoading] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
+
+    // Animated values for transition steps
+    const stepAnim = useRef(new Animated.Value(1)).current;
     const alertOpacity = useRef(new Animated.Value(0)).current;
     const alertScale = useRef(new Animated.Value(0.9)).current;
     const scrollRef = useRef<ScrollView>(null);
@@ -61,11 +106,38 @@ export default function LapeqCoBrandScreen() {
     const fmtDate = (d: Date | null) =>
         d ? d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : null;
 
+    const navigateStep = (targetStep: number) => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        Animated.timing(stepAnim, {
+            toValue: 0,
+            duration: 150,
+            useNativeDriver: true,
+        }).start(() => {
+            setStep(targetStep);
+            scrollRef.current?.scrollTo({ y: 0, animated: false });
+            Animated.timing(stepAnim, {
+                toValue: 1,
+                duration: 200,
+                useNativeDriver: true,
+            }).start();
+        });
+    };
+
     const toggleFeature = (id: string) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         setSelectedFeatures(prev =>
             prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
         );
+    };
+
+    const selectPresetColors = (paletteName: string) => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setThemeColors(paletteName);
+    };
+
+    const handleSelectGuestPreset = (val: string) => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setGuestCount(val);
     };
 
     const handleSubmit = async () => {
@@ -110,145 +182,386 @@ export default function LapeqCoBrandScreen() {
         }
     };
 
+    // Computes the active colors for live mockup preview
+    const mockupColors = useMemo(() => {
+        const activePalette = PRESET_PALETTES.find(p => p.name === themeColors);
+        if (activePalette) {
+            return {
+                bg: activePalette.colors[0],
+                accent: activePalette.colors[1],
+                isLightBg: activePalette.name === "Rose & Pearl",
+            };
+        }
+        // Custom colors fallback
+        return {
+            bg: isDark ? "#121212" : "#ffffff",
+            accent: GOLD,
+            isLightBg: !isDark,
+        };
+    }, [themeColors, isDark]);
+
     return (
         <SafeAreaView style={s.root} edges={["top"]}>
-            <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 60 }}>
-                {/* Hero */}
-                <View style={s.hero}>
-                    <Image source={require("@/assets/images/app-collab.png")} style={s.heroImg} resizeMode="cover" />
-                    <View style={s.heroScrim} />
-                    <View style={s.heroTopRow}>
-                        <TouchableOpacity style={s.backBtn} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.back(); }}>
-                            <ChevronLeft size={22} color="#fff" />
-                        </TouchableOpacity>
-                    </View>
-                    <View style={s.heroContent}>
-                        <Text style={s.heroEyebrow}>EVENT APP CURATION</Text>
-                        <Text style={s.heroTitle}>Lapeq Co-Brand</Text>
-                        <Text style={s.heroDesc}>
-                            Your event runs on Lapeq. Request a fully customized white-label app experience for your guests.
-                        </Text>
+            <LinearGradient colors={isDark ? ["#060606", "#14110e", "#0a0a0b"] : ["#fdfbf7", "#f8f5f0", "#ffffff"]} style={StyleSheet.absoluteFillObject} />
+
+            {/* Premium Header */}
+            <View style={s.stickyHeader}>
+                <TouchableOpacity style={s.backBtn} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.back(); }}>
+                    <ChevronLeft size={22} color={C.text} />
+                </TouchableOpacity>
+                <View style={s.stepProgressContainer}>
+                    <Text style={s.stepText}>STEP {step} OF 4</Text>
+                    <View style={s.progressBarBackground}>
+                        <Animated.View style={[s.progressBarFill, { width: `${(step / 4) * 100}%` }]} />
                     </View>
                 </View>
+                <View style={{ width: 40 }} />
+            </View>
 
-                {/* Form Fields */}
-                <View style={s.section}>
-                    <Text style={s.sectionLabel}>Event Name</Text>
-                    <TextInput
-                        style={s.input}
-                        placeholder="e.g., The Adeleke Wedding / Summit 2026"
-                        placeholderTextColor={isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.3)"}
-                        value={eventName}
-                        onChangeText={setEventName}
-                    />
-                </View>
+            <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 120 }}>
+                
+                {/* Steps container */}
+                <Animated.View style={{ opacity: stepAnim, transform: [{ translateY: stepAnim.interpolate({ inputRange: [0, 1], outputRange: [15, 0] }) }] }}>
+                    
+                    {step === 1 && (
+                        /* STEP 1: EVENT IDENTITY */
+                        <View style={s.stepWrap}>
+                            {/* Premium Welcome Hero Card */}
+                            <View style={s.heroCard}>
+                                <ImageBackground
+                                    source={require("@/assets/images/app-collab.png")}
+                                    style={s.heroBg}
+                                    imageStyle={{ borderRadius: 20 }}
+                                    resizeMode="cover"
+                                >
+                                    <LinearGradient
+                                        colors={["transparent", "rgba(6, 6, 6, 0.95)"]}
+                                        style={s.heroGradient}
+                                    >
+                                        <View style={s.heroBadge}>
+                                            <Sparkles size={12} color={GOLD} />
+                                            <Text style={s.heroBadgeText}>LAPEQ × CO-BRAND</Text>
+                                        </View>
+                                        <Text style={s.heroTitle}>Your Event Runs On Lapeq</Text>
+                                        <Text style={s.heroSubtitle}>We will customize the full app layout, colors, and guest portal for your brand.</Text>
+                                    </LinearGradient>
+                                </ImageBackground>
+                            </View>
 
-                <View style={s.section}>
-                    <Text style={s.sectionLabel}>Event Type</Text>
-                    <View style={s.wrapRow}>
-                        {EVENT_TYPES.map(t => (
+                            <View style={s.formSection}>
+                                <Text style={s.label}>What is your event called?</Text>
+                                <TextInput
+                                    style={[s.input, focusedInput === "eventName" && s.inputFocused]}
+                                    placeholder="e.g., Adeleke Wedding / Summit 2026"
+                                    placeholderTextColor={isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.35)"}
+                                    value={eventName}
+                                    onChangeText={setEventName}
+                                    onFocus={() => setFocusedInput("eventName")}
+                                    onBlur={() => setFocusedInput(null)}
+                                />
+                            </View>
+
+                            <View style={s.formSection}>
+                                <Text style={s.label}>What type of occasion is it?</Text>
+                                <View style={s.gridRow}>
+                                    {EVENT_TYPES.map(t => {
+                                        const isSelected = eventType === t.name;
+                                        return (
+                                            <TouchableOpacity
+                                                key={t.name}
+                                                style={[s.eventCard, isSelected && s.eventCardActive]}
+                                                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setEventType(t.name); }}
+                                                activeOpacity={0.9}
+                                            >
+                                                <ImageBackground
+                                                    source={t.img}
+                                                    style={StyleSheet.absoluteFillObject}
+                                                    imageStyle={{ borderRadius: 16 }}
+                                                    resizeMode="cover"
+                                                >
+                                                    <LinearGradient
+                                                        colors={["rgba(0,0,0,0.3)", "rgba(0,0,0,0.85)"]}
+                                                        style={s.eventCardGradient}
+                                                    >
+                                                        <View style={[s.checkboxCircle, isSelected && s.checkboxCircleActive]}>
+                                                            {isSelected && <Check size={10} color="#000" strokeWidth={4} />}
+                                                        </View>
+                                                        <View style={{ marginTop: "auto" }}>
+                                                            <Text style={s.eventName}>{t.name}</Text>
+                                                            <Text style={s.eventDesc}>{t.desc}</Text>
+                                                        </View>
+                                                    </LinearGradient>
+                                                </ImageBackground>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+                            </View>
+
                             <TouchableOpacity
-                                key={t}
-                                style={[s.chip, eventType === t && s.chipActive]}
-                                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setEventType(t); }}
-                                activeOpacity={0.8}
+                                style={[s.primaryBtn, (!eventName.trim() || !eventType) && s.disabledBtn]}
+                                onPress={() => eventName.trim() && eventType && navigateStep(2)}
+                                disabled={!eventName.trim() || !eventType}
                             >
-                                <Text style={[s.chipText, eventType === t && s.chipTextActive]}>{t}</Text>
+                                <Text style={s.primaryBtnText}>CONTINUE TO DETAILS</Text>
+                                <ArrowRight size={16} color="#0a0a0a" />
                             </TouchableOpacity>
-                        ))}
-                    </View>
-                </View>
-
-                <View style={s.section}>
-                    <Text style={s.sectionLabel}>Event Date</Text>
-                    <TouchableOpacity
-                        style={[s.dateCard, eventDate && { borderColor: GOLD }]}
-                        onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowDatePicker(true); }}
-                    >
-                        <Calendar size={16} color={eventDate ? GOLD : C.muted} />
-                        <View>
-                            <Text style={s.dateCardLabel}>Date</Text>
-                            <Text style={[s.dateCardValue, { color: eventDate ? C.text : C.muted }]}>
-                                {fmtDate(eventDate) ?? "Select date"}
-                            </Text>
                         </View>
-                    </TouchableOpacity>
-                </View>
+                    )}
 
-                <View style={s.section}>
-                    <Text style={s.sectionLabel}>Location / Venue</Text>
-                    <TextInput
-                        style={s.input}
-                        placeholder="e.g., Eko Hotel Grand Ballroom, Lagos"
-                        placeholderTextColor={isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.3)"}
-                        value={eventLocation}
-                        onChangeText={setEventLocation}
-                    />
-                </View>
+                    {step === 2 && (
+                        /* STEP 2: PLACE & TIME */
+                        <View style={s.stepWrap}>
+                            <View style={s.stepIntro}>
+                                <Calendar size={28} color={GOLD} />
+                                <Text style={s.stepHeaderTitle}>When & where?</Text>
+                                <Text style={s.stepHeaderSubtitle}>Provide scheduling and venue guidelines to structure your app itinerary.</Text>
+                            </View>
 
-                <View style={s.section}>
-                    <Text style={s.sectionLabel}>Estimated Guest Count</Text>
-                    <TextInput
-                        style={s.input}
-                        keyboardType="numeric"
-                        placeholder="e.g., 350"
-                        placeholderTextColor={isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.3)"}
-                        value={guestCount}
-                        onChangeText={setGuestCount}
-                    />
-                </View>
-
-                <View style={s.section}>
-                    <Text style={s.sectionLabel}>Theme Colors / Aesthetic</Text>
-                    <TextInput
-                        style={s.input}
-                        placeholder="e.g., Emerald Green & Champagne Gold"
-                        placeholderTextColor={isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.3)"}
-                        value={themeColors}
-                        onChangeText={setThemeColors}
-                    />
-                </View>
-
-                <View style={s.section}>
-                    <Text style={s.sectionLabel}>Requested Features</Text>
-                    <Text style={s.sectionSub}>Select the Lapeq features you want customized for your event.</Text>
-                    <View style={s.wrapRow}>
-                        {FEATURE_OPTIONS.map(opt => {
-                            const active = selectedFeatures.includes(opt.id);
-                            return (
+                            <View style={s.formSection}>
+                                <Text style={s.label}>Event Date</Text>
                                 <TouchableOpacity
-                                    key={opt.id}
-                                    style={[s.chip, active && s.chipActive]}
-                                    onPress={() => toggleFeature(opt.id)}
+                                    style={[s.customDatePickerCard, eventDate && s.customDatePickerCardActive]}
+                                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowDatePicker(true); }}
                                     activeOpacity={0.8}
                                 >
-                                    {active && <Check size={12} color="#0a0a0a" style={{ marginRight: 4 }} />}
-                                    <Text style={[s.chipText, active && s.chipTextActive]}>{opt.label}</Text>
+                                    <Calendar size={20} color={eventDate ? GOLD : C.muted} />
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={s.dateCardLabel}>Selected Date</Text>
+                                        <Text style={[s.dateCardValue, { color: eventDate ? C.text : C.muted }]}>
+                                            {fmtDate(eventDate) ?? "Select occasion date"}
+                                        </Text>
+                                    </View>
+                                    <Text style={s.dateChangeAction}>{eventDate ? "CHANGE" : "SELECT"}</Text>
                                 </TouchableOpacity>
-                            );
-                        })}
-                    </View>
-                </View>
+                            </View>
 
-                <View style={s.section}>
-                    <Text style={s.sectionLabel}>Additional Curation Requests</Text>
-                    <Text style={s.sectionSub}>Describe custom slides, branding materials, or specialized needs.</Text>
-                    <VoiceInput
-                        placeholder="e.g., We need custom welcome banners showing the couple's picture and a specific flight tracking list for international delegates..."
-                        value={additionalNotes}
-                        onChange={setAdditionalNotes}
-                        accent={GOLD}
-                        textColor={C.text}
-                        border={isDark ? "#2a2a2a" : "#e0dbd2"}
-                        inputBg={C.surface}
-                    />
-                </View>
+                            <View style={s.formSection}>
+                                <Text style={s.label}>Location / Venue</Text>
+                                <TextInput
+                                    style={[s.input, focusedInput === "eventLocation" && s.inputFocused]}
+                                    placeholder="e.g., Eko Hotel Grand Ballroom, Lagos"
+                                    placeholderTextColor={isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.35)"}
+                                    value={eventLocation}
+                                    onChangeText={setEventLocation}
+                                    onFocus={() => setFocusedInput("eventLocation")}
+                                    onBlur={() => setFocusedInput(null)}
+                                />
+                            </View>
 
-                <View style={{ paddingHorizontal: 24, marginTop: 32 }}>
-                    <TouchableOpacity style={s.submitBtn} onPress={handleSubmit} activeOpacity={0.8} disabled={loading}>
-                        <Text style={s.submitText}>{loading ? "SUBMITTING..." : "REQUEST CO-BRAND APP"}</Text>
-                    </TouchableOpacity>
-                </View>
+                            <View style={s.formSection}>
+                                <Text style={s.label}>Estimated Guest Count</Text>
+                                <TextInput
+                                    style={[s.input, focusedInput === "guestCount" && s.inputFocused, { marginBottom: 12 }]}
+                                    keyboardType="numeric"
+                                    placeholder="e.g., 350"
+                                    placeholderTextColor={isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.35)"}
+                                    value={guestCount}
+                                    onChangeText={setGuestCount}
+                                    onFocus={() => setFocusedInput("guestCount")}
+                                    onBlur={() => setFocusedInput(null)}
+                                />
+                                <View style={s.presetRow}>
+                                    {GUEST_PRESETS.map(p => (
+                                        <TouchableOpacity
+                                            key={p}
+                                            style={[s.presetChip, guestCount === p && s.presetChipActive]}
+                                            onPress={() => handleSelectGuestPreset(p)}
+                                        >
+                                            <Text style={[s.presetChipText, guestCount === p && s.presetChipTextActive]}>{p}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            </View>
+
+                            <View style={s.navRow}>
+                                <TouchableOpacity style={s.secondaryBtn} onPress={() => navigateStep(1)}>
+                                    <ArrowLeft size={16} color={C.text} />
+                                    <Text style={[s.secondaryBtnText, { color: C.text }]}>BACK</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[s.primaryBtn, { flex: 1 }, (!eventLocation.trim() || !eventDate) && s.disabledBtn]}
+                                    onPress={() => eventLocation.trim() && eventDate && navigateStep(3)}
+                                    disabled={!eventLocation.trim() || !eventDate}
+                                >
+                                    <Text style={s.primaryBtnText}>AESTHETICS</Text>
+                                    <ArrowRight size={16} color="#0a0a0a" />
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    )}
+
+                    {step === 3 && (
+                        /* STEP 3: BRANDING & COLORS */
+                        <View style={s.stepWrap}>
+                            <View style={s.stepIntro}>
+                                <Palette size={28} color={GOLD} />
+                                <Text style={s.stepHeaderTitle}>App Curation Theme</Text>
+                                <Text style={s.stepHeaderSubtitle}>Choose pre-designed luxurious color accents or supply your custom brand colors.</Text>
+                            </View>
+
+                            {/* Two-column styled section: inputs on left/top, real-time live mockup preview below */}
+                            <View style={s.themeConfigContainer}>
+                                <View style={s.formSection}>
+                                    <Text style={s.label}>Preset Palettes</Text>
+                                    <View style={s.paletteGrid}>
+                                        {PRESET_PALETTES.map(p => {
+                                            const isActive = themeColors === p.name;
+                                            return (
+                                                <TouchableOpacity
+                                                    key={p.name}
+                                                    style={[s.paletteCard, isActive && s.paletteCardActive]}
+                                                    onPress={() => selectPresetColors(p.name)}
+                                                    activeOpacity={0.8}
+                                                >
+                                                    <View style={s.colorRow}>
+                                                        {p.colors.map((col, idx) => (
+                                                            <View key={idx} style={[s.colorCircle, { backgroundColor: col }]} />
+                                                        ))}
+                                                    </View>
+                                                    <Text style={[s.paletteName, isActive && { color: GOLD }]}>{p.name}</Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </View>
+                                </View>
+
+                                <View style={s.formSection}>
+                                    <Text style={s.label}>Or describe custom brand colors</Text>
+                                    <TextInput
+                                        style={[s.input, focusedInput === "themeColors" && s.inputFocused]}
+                                        placeholder="e.g., Emerald Green, Gold & White"
+                                        placeholderTextColor={isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.35)"}
+                                        value={themeColors}
+                                        onChangeText={setThemeColors}
+                                        onFocus={() => setFocusedInput("themeColors")}
+                                        onBlur={() => setFocusedInput(null)}
+                                    />
+                                </View>
+
+                                {/* Live Mockup Preview Card */}
+                                <View style={s.mockupSection}>
+                                    <Text style={s.mockupHeaderLabel}>LIVE PREVIEW</Text>
+                                    <View style={[s.phoneMockup, { backgroundColor: mockupColors.bg, borderColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)" }]}>
+                                        {/* Phone Notch/Header line */}
+                                        <View style={s.phoneCamera} />
+                                        <View style={s.phoneScreen}>
+                                            <View style={s.mockStatusBar}>
+                                                <Text style={[s.mockStatusBarText, { color: mockupColors.isLightBg ? "#333" : "#888" }]}>9:41</Text>
+                                                <View style={s.mockStatusBarIcons}>
+                                                    <View style={[s.mockIconSignal, { backgroundColor: mockupColors.isLightBg ? "#333" : "#888" }]} />
+                                                    <View style={[s.mockIconBattery, { borderColor: mockupColors.isLightBg ? "#333" : "#888" }]} />
+                                                </View>
+                                            </View>
+                                            
+                                            {/* Micro event screen */}
+                                            <View style={s.mockAppContent}>
+                                                <Image
+                                                    source={require("@/assets/images/app-collab.png")}
+                                                    style={s.mockHeroImg}
+                                                    resizeMode="cover"
+                                                />
+                                                <View style={s.mockAppMeta}>
+                                                    <Text style={[s.mockEventTitle, { color: mockupColors.isLightBg ? "#1a1a1a" : "#ffffff" }]}>
+                                                        {eventName.trim() ? eventName : "YOUR EVENT APP"}
+                                                    </Text>
+                                                    <Text style={[s.mockEventTag, { color: mockupColors.accent }]}>
+                                                        {eventType || "Occasion Curation"}
+                                                    </Text>
+                                                    <View style={[s.mockButton, { backgroundColor: mockupColors.accent }]}>
+                                                        <Text style={[s.mockButtonText, { color: mockupColors.accent === "#ffffff" || mockupColors.isLightBg ? "#000" : "#fff" }]}>RSVP PASS</Text>
+                                                    </View>
+                                                </View>
+                                            </View>
+                                        </View>
+                                    </View>
+                                </View>
+                            </View>
+
+                            <View style={s.navRow}>
+                                <TouchableOpacity style={s.secondaryBtn} onPress={() => navigateStep(2)}>
+                                    <ArrowLeft size={16} color={C.text} />
+                                    <Text style={[s.secondaryBtnText, { color: C.text }]}>BACK</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[s.primaryBtn, { flex: 1 }]}
+                                    onPress={() => navigateStep(4)}
+                                >
+                                    <Text style={s.primaryBtnText}>CHOOSE MODULES</Text>
+                                    <ArrowRight size={16} color="#0a0a0a" />
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    )}
+
+                    {step === 4 && (
+                        /* STEP 4: FEATURES & SUBMISSION */
+                        <View style={s.stepWrap}>
+                            <View style={s.stepIntro}>
+                                <Sliders size={28} color={GOLD} />
+                                <Text style={s.stepHeaderTitle}>App Capabilities</Text>
+                                <Text style={s.stepHeaderSubtitle}>Toggle guest management features compiled natively inside your custom app environment.</Text>
+                            </View>
+
+                            <View style={s.formSection}>
+                                <Text style={s.label}>Select Enabled Modules</Text>
+                                {FEATURE_OPTIONS.map(opt => {
+                                    const isActive = selectedFeatures.includes(opt.id);
+                                    const IconComp = opt.icon;
+                                    return (
+                                        <TouchableOpacity
+                                            key={opt.id}
+                                            style={[s.featureCard, isActive && s.featureCardActive]}
+                                            onPress={() => toggleFeature(opt.id)}
+                                            activeOpacity={0.85}
+                                        >
+                                            <View style={[s.featureIconContainer, isActive && { backgroundColor: `${GOLD}18` }]}>
+                                                <IconComp size={20} color={isActive ? GOLD : C.muted} />
+                                            </View>
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={[s.featureLabel, isActive && { color: GOLD }]}>{opt.label}</Text>
+                                                <Text style={s.featureDescText}>{opt.desc}</Text>
+                                            </View>
+                                            <View style={[s.featureCheckbox, isActive && s.featureCheckboxActive]}>
+                                                {isActive && <Check size={10} color="#0a0a0a" strokeWidth={4} />}
+                                            </View>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
+
+                            <View style={s.formSection}>
+                                <Text style={s.label}>Bespoke Demands & Guidelines</Text>
+                                <Text style={s.sectionSub}>Describe custom flight coordination guidelines, layout adjustments, or welcome rules.</Text>
+                                <VoiceInput
+                                    placeholder="e.g., We require custom greeting screens and airport VIP greetings..."
+                                    value={additionalNotes}
+                                    onChange={setAdditionalNotes}
+                                    accent={GOLD}
+                                    textColor={C.text}
+                                    border={isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}
+                                    inputBg={isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.01)"}
+                                />
+                            </View>
+
+                            <View style={s.navRow}>
+                                <TouchableOpacity style={s.secondaryBtn} onPress={() => navigateStep(3)}>
+                                    <ArrowLeft size={16} color={C.text} />
+                                    <Text style={[s.secondaryBtnText, { color: C.text }]}>BACK</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[s.submitBtn, loading && { opacity: 0.7 }]}
+                                    onPress={handleSubmit}
+                                    activeOpacity={0.8}
+                                    disabled={loading}
+                                >
+                                    <Text style={s.submitText}>{loading ? "COMPILING..." : "SUBMIT APP REQUEST"}</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    )}
+
+                </Animated.View>
             </ScrollView>
 
             {/* Date Picker Modal */}
@@ -322,54 +635,532 @@ export default function LapeqCoBrandScreen() {
     );
 }
 
-const getStyles = (C: any, theme: string) => StyleSheet.create({
-    root: { flex: 1, backgroundColor: C.background },
-    hero: { height: 300, position: "relative" },
-    heroImg: { width: "100%", height: "100%", position: "absolute" },
-    heroScrim: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.65)" },
-    heroTopRow: { position: "absolute", top: 16, left: 20, right: 20 },
-    backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" },
-    heroContent: { position: "absolute", bottom: 28, left: 24, right: 24 },
-    heroEyebrow: { fontSize: 10, fontWeight: "800", color: GOLD, letterSpacing: 3, marginBottom: 8 },
-    heroTitle: { fontSize: 32, fontWeight: "800", color: "#fff", letterSpacing: -0.5, marginBottom: 6 },
-    heroDesc: { fontSize: 13, color: "rgba(255,255,255,0.75)", lineHeight: 19 },
+const getStyles = (C: any, theme: string) => {
+    const isDark = theme === "dark";
+    return StyleSheet.create({
+        root: { flex: 1 },
+        stickyHeader: {
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            paddingHorizontal: 20,
+            paddingVertical: 14,
+            borderBottomWidth: 1,
+            borderColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.06)",
+            zIndex: 50,
+        },
+        backBtn: {
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            borderWidth: 1,
+            borderColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.01)",
+        },
+        stepProgressContainer: {
+            alignItems: "center",
+        },
+        stepText: {
+            fontSize: 9,
+            fontWeight: "800",
+            color: GOLD,
+            letterSpacing: 2,
+            marginBottom: 6,
+        },
+        progressBarBackground: {
+            width: 140,
+            height: 4,
+            borderRadius: 2,
+            backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
+            overflow: "hidden",
+        },
+        progressBarFill: {
+            height: "100%",
+            backgroundColor: GOLD,
+            borderRadius: 2,
+        },
 
-    section: { paddingHorizontal: 24, paddingTop: 28 },
-    sectionLabel: { fontSize: 11, fontWeight: "800", color: C.muted, letterSpacing: 2.5, textTransform: "uppercase", marginBottom: 12 },
-    sectionSub: { fontSize: 13, color: C.muted, lineHeight: 18, marginBottom: 12 },
+        stepWrap: {
+            paddingHorizontal: 24,
+            paddingTop: 16,
+        },
+        heroCard: {
+            height: 220,
+            width: "100%",
+            borderRadius: 20,
+            overflow: "hidden",
+            marginBottom: 24,
+            borderWidth: 1,
+            borderColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
+        },
+        heroBg: {
+            flex: 1,
+            justifyContent: "flex-end",
+        },
+        heroGradient: {
+            padding: 20,
+            paddingTop: 40,
+        },
+        heroBadge: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+            alignSelf: "flex-start",
+            backgroundColor: "rgba(6, 6, 6, 0.6)",
+            paddingVertical: 4,
+            paddingHorizontal: 8,
+            borderRadius: 8,
+            marginBottom: 10,
+            borderWidth: 1,
+            borderColor: "rgba(201, 168, 76, 0.2)",
+        },
+        heroBadgeText: {
+            color: GOLD,
+            fontSize: 9,
+            fontWeight: "800",
+            letterSpacing: 1.5,
+        },
+        heroTitle: {
+            fontSize: 22,
+            fontWeight: "800",
+            color: "#ffffff",
+            marginBottom: 6,
+            letterSpacing: -0.5,
+        },
+        heroSubtitle: {
+            fontSize: 12,
+            color: "rgba(255,255,255,0.7)",
+            lineHeight: 17,
+        },
 
-    input: {
-        backgroundColor: C.surface,
-        borderRadius: 14,
-        paddingHorizontal: 16,
-        paddingVertical: 14,
-        fontSize: 15,
-        color: C.text,
-        borderWidth: 1,
-        borderColor: theme === "dark" ? "#2a2a2a" : "#e0dbd2",
-    },
+        stepIntro: {
+            alignItems: "center",
+            marginBottom: 24,
+        },
+        stepHeaderTitle: {
+            fontSize: 24,
+            fontWeight: "800",
+            color: C.text,
+            textAlign: "center",
+            marginTop: 12,
+            marginBottom: 6,
+        },
+        stepHeaderSubtitle: {
+            fontSize: 13,
+            color: C.muted,
+            textAlign: "center",
+            lineHeight: 19,
+            paddingHorizontal: 12,
+        },
 
-    wrapRow: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-    chip: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, borderWidth: 1, borderColor: theme === "dark" ? "#2a2a2a" : "#e0dbd2", backgroundColor: C.surface },
-    chipActive: { backgroundColor: GOLD, borderColor: GOLD },
-    chipText: { fontSize: 13, fontWeight: "600", color: C.muted },
-    chipTextActive: { color: "#0a0a0a", fontWeight: "700" },
+        formSection: {
+            marginBottom: 24,
+        },
+        label: {
+            fontSize: 11,
+            fontWeight: "800",
+            color: C.muted,
+            letterSpacing: 2,
+            textTransform: "uppercase",
+            marginBottom: 12,
+        },
+        sectionSub: {
+            fontSize: 12,
+            color: C.muted,
+            lineHeight: 18,
+            marginBottom: 12,
+        },
+        input: {
+            backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
+            borderRadius: 14,
+            paddingHorizontal: 18,
+            paddingVertical: 15,
+            fontSize: 15,
+            color: C.text,
+            borderWidth: 1,
+            borderColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.1)",
+        },
+        inputFocused: {
+            borderColor: GOLD,
+            backgroundColor: isDark ? "rgba(201,168,76,0.03)" : "rgba(201,168,76,0.01)",
+        },
 
-    dateCard: { flexDirection: "row", alignItems: "center", gap: 10, padding: 14, borderRadius: 14, borderWidth: 1, borderColor: theme === "dark" ? "#2a2a2a" : "#e0dbd2", backgroundColor: C.surface },
-    dateCardLabel: { fontSize: 10, fontWeight: "700", color: C.muted, letterSpacing: 1, textTransform: "uppercase", marginBottom: 2 },
-    dateCardValue: { fontSize: 13, fontWeight: "600" },
+        gridRow: {
+            flexDirection: "row",
+            flexWrap: "wrap",
+            gap: 12,
+        },
+        eventCard: {
+            width: (SCREEN_WIDTH - 48 - 12) / 2,
+            height: 140,
+            borderRadius: 16,
+            overflow: "hidden",
+            borderWidth: 1.5,
+            borderColor: "transparent",
+        },
+        eventCardActive: {
+            borderColor: GOLD,
+        },
+        eventCardGradient: {
+            flex: 1,
+            padding: 12,
+            justifyContent: "space-between",
+        },
+        checkboxCircle: {
+            width: 18,
+            height: 18,
+            borderRadius: 9,
+            borderWidth: 1.5,
+            borderColor: "rgba(255,255,255,0.4)",
+            alignSelf: "flex-end",
+            alignItems: "center",
+            justifyContent: "center",
+        },
+        checkboxCircleActive: {
+            backgroundColor: GOLD,
+            borderColor: GOLD,
+        },
+        eventName: {
+            fontSize: 13,
+            fontWeight: "800",
+            color: "#ffffff",
+            marginBottom: 2,
+        },
+        eventDesc: {
+            fontSize: 10,
+            color: "rgba(255,255,255,0.6)",
+            lineHeight: 13,
+        },
 
-    submitBtn: { backgroundColor: GOLD, borderRadius: 16, paddingVertical: 18, alignItems: "center" },
-    submitText: { color: "#0a0a0a", fontSize: 15, fontWeight: "800", letterSpacing: 0.3 },
+        customDatePickerCard: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 12,
+            padding: 16,
+            borderRadius: 14,
+            borderWidth: 1,
+            borderColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.1)",
+            backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
+        },
+        customDatePickerCardActive: {
+            borderColor: GOLD,
+            backgroundColor: isDark ? "rgba(201,168,76,0.03)" : "rgba(201,168,76,0.01)",
+        },
+        dateCardLabel: {
+            fontSize: 9,
+            fontWeight: "700",
+            color: C.muted,
+            letterSpacing: 1,
+            textTransform: "uppercase",
+            marginBottom: 2,
+        },
+        dateCardValue: {
+            fontSize: 14,
+            fontWeight: "600",
+        },
+        dateChangeAction: {
+            fontSize: 11,
+            fontWeight: "800",
+            color: GOLD,
+            letterSpacing: 1,
+        },
 
-    pickerSheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 32 },
-    pickerHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 20, borderBottomWidth: 1, borderBottomColor: "rgba(128,128,128,0.15)" },
+        presetRow: {
+            flexDirection: "row",
+            gap: 8,
+            flexWrap: "wrap",
+        },
+        presetChip: {
+            paddingVertical: 8,
+            paddingHorizontal: 16,
+            borderRadius: 10,
+            backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
+            borderWidth: 1,
+            borderColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)",
+        },
+        presetChipActive: {
+            borderColor: GOLD,
+            backgroundColor: "rgba(201,168,76,0.08)",
+        },
+        presetChipText: {
+            fontSize: 12,
+            fontWeight: "700",
+            color: C.muted,
+        },
+        presetChipTextActive: {
+            color: GOLD,
+        },
 
-    overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 24 },
-    modalBox: { width: "100%", backgroundColor: C.surface, borderRadius: 24, padding: 32, alignItems: "center" },
-    modalIcon: { width: 64, height: 64, borderRadius: 32, justifyContent: "center", alignItems: "center", marginBottom: 24 },
-    modalTitle: { color: C.text, fontSize: 24, fontWeight: "800", marginBottom: 12 },
-    modalBody: { color: C.muted, fontSize: 14, textAlign: "center", lineHeight: 22, marginBottom: 32 },
-    modalBtnPri: { width: "100%", paddingVertical: 16, borderRadius: 14, backgroundColor: GOLD, alignItems: "center" },
-    modalBtnTxPri: { color: "#0a0a0a", fontSize: 15, fontWeight: "700" },
-});
+        themeConfigContainer: {
+            marginBottom: 12,
+        },
+        paletteGrid: {
+            flexDirection: "row",
+            flexWrap: "wrap",
+            gap: 10,
+        },
+        paletteCard: {
+            width: (SCREEN_WIDTH - 48 - 10) / 2,
+            backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
+            borderRadius: 14,
+            padding: 14,
+            borderWidth: 1.5,
+            borderColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)",
+            alignItems: "center",
+            gap: 8,
+        },
+        paletteCardActive: {
+            borderColor: GOLD,
+            backgroundColor: "rgba(201,168,76,0.06)",
+        },
+        colorRow: {
+            flexDirection: "row",
+            gap: 6,
+        },
+        colorCircle: {
+            width: 20,
+            height: 20,
+            borderRadius: 10,
+            borderWidth: 1.5,
+            borderColor: "rgba(255,255,255,0.25)",
+        },
+        paletteName: {
+            fontSize: 12,
+            fontWeight: "700",
+            color: C.text,
+        },
+
+        mockupSection: {
+            marginTop: 12,
+            alignItems: "center",
+            padding: 24,
+            backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.01)",
+            borderRadius: 20,
+            borderWidth: 1,
+            borderColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)",
+        },
+        mockupHeaderLabel: {
+            fontSize: 10,
+            fontWeight: "900",
+            color: GOLD,
+            letterSpacing: 2,
+            marginBottom: 16,
+        },
+        phoneMockup: {
+            width: 190,
+            height: 310,
+            borderRadius: 30,
+            borderWidth: 5,
+            padding: 4,
+            overflow: "hidden",
+            elevation: 4,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.25,
+            shadowRadius: 8,
+        },
+        phoneCamera: {
+            width: 50,
+            height: 12,
+            backgroundColor: "#000",
+            borderRadius: 6,
+            position: "absolute",
+            top: 2,
+            alignSelf: "center",
+            zIndex: 10,
+        },
+        phoneScreen: {
+            flex: 1,
+            borderRadius: 24,
+            overflow: "hidden",
+            paddingTop: 10,
+        },
+        mockStatusBar: {
+            flexDirection: "row",
+            justifyContent: "space-between",
+            paddingHorizontal: 12,
+            alignItems: "center",
+            height: 16,
+        },
+        mockStatusBarText: {
+            fontSize: 9,
+            fontWeight: "600",
+        },
+        mockStatusBarIcons: {
+            flexDirection: "row",
+            gap: 4,
+            alignItems: "center",
+        },
+        mockIconSignal: {
+            width: 8,
+            height: 8,
+            borderRadius: 2,
+        },
+        mockIconBattery: {
+            width: 14,
+            height: 8,
+            borderWidth: 1,
+            borderRadius: 1.5,
+        },
+        mockAppContent: {
+            flex: 1,
+            padding: 8,
+        },
+        mockHeroImg: {
+            height: 90,
+            width: "100%",
+            borderRadius: 12,
+            marginBottom: 10,
+        },
+        mockAppMeta: {
+            alignItems: "center",
+            flex: 1,
+            justifyContent: "center",
+        },
+        mockEventTitle: {
+            fontSize: 10,
+            fontWeight: "900",
+            textAlign: "center",
+            letterSpacing: 0.5,
+            marginBottom: 4,
+        },
+        mockEventTag: {
+            fontSize: 8,
+            fontWeight: "700",
+            textTransform: "uppercase",
+            letterSpacing: 1,
+            marginBottom: 14,
+        },
+        mockButton: {
+            paddingVertical: 6,
+            paddingHorizontal: 16,
+            borderRadius: 8,
+            width: "100%",
+            alignItems: "center",
+        },
+        mockButtonText: {
+            fontSize: 8,
+            fontWeight: "900",
+            letterSpacing: 1,
+        },
+
+        featureCard: {
+            flexDirection: "row",
+            gap: 12,
+            padding: 16,
+            borderRadius: 16,
+            borderWidth: 1.5,
+            borderColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)",
+            backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
+            marginBottom: 12,
+            alignItems: "center",
+        },
+        featureCardActive: {
+            borderColor: GOLD,
+            backgroundColor: "rgba(201,168,76,0.06)",
+        },
+        featureIconContainer: {
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)",
+        },
+        featureCheckbox: {
+            width: 18,
+            height: 18,
+            borderRadius: 5,
+            borderWidth: 1.5,
+            borderColor: C.muted,
+            alignItems: "center",
+            justifyContent: "center",
+        },
+        featureCheckboxActive: {
+            backgroundColor: GOLD,
+            borderColor: GOLD,
+        },
+        featureLabel: {
+            fontSize: 14,
+            fontWeight: "800",
+            color: C.text,
+            marginBottom: 2,
+        },
+        featureDescText: {
+            fontSize: 11,
+            color: C.muted,
+            lineHeight: 15,
+        },
+
+        navRow: {
+            flexDirection: "row",
+            gap: 12,
+            marginTop: 16,
+        },
+        primaryBtn: {
+            flexDirection: "row",
+            backgroundColor: GOLD,
+            borderRadius: 14,
+            paddingVertical: 16,
+            paddingHorizontal: 20,
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+        },
+        primaryBtnText: {
+            color: "#0a0a0a",
+            fontSize: 13,
+            fontWeight: "800",
+            letterSpacing: 0.5,
+        },
+        disabledBtn: {
+            opacity: 0.4,
+        },
+        secondaryBtn: {
+            flexDirection: "row",
+            borderRadius: 14,
+            borderWidth: 1,
+            borderColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)",
+            backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)",
+            paddingVertical: 16,
+            paddingHorizontal: 20,
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+        },
+        secondaryBtnText: {
+            fontSize: 13,
+            fontWeight: "800",
+            letterSpacing: 0.5,
+        },
+
+        submitBtn: {
+            flex: 1,
+            backgroundColor: GOLD,
+            borderRadius: 14,
+            paddingVertical: 16,
+            alignItems: "center",
+            justifyContent: "center",
+        },
+        submitText: {
+            color: "#0a0a0a",
+            fontSize: 13,
+            fontWeight: "800",
+            letterSpacing: 0.5,
+        },
+
+        pickerSheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 32 },
+        pickerHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 20, borderBottomWidth: 1, borderBottomColor: "rgba(128,128,128,0.15)" },
+
+        overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.65)", justifyContent: "center", alignItems: "center", padding: 24 },
+        modalBox: { width: "100%", backgroundColor: C.surface, borderRadius: 24, padding: 32, alignItems: "center" },
+        modalIcon: { width: 64, height: 64, borderRadius: 32, justifyContent: "center", alignItems: "center", marginBottom: 24 },
+        modalTitle: { color: C.text, fontSize: 24, fontWeight: "800", marginBottom: 12 },
+        modalBody: { color: C.muted, fontSize: 14, textAlign: "center", lineHeight: 22, marginBottom: 32 },
+        modalBtnPri: { width: "100%", paddingVertical: 16, borderRadius: 14, backgroundColor: GOLD, alignItems: "center" },
+        modalBtnTxPri: { color: "#0a0a0a", fontSize: 15, fontWeight: "700" },
+    });
+};
+
