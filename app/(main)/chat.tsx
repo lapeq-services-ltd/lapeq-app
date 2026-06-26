@@ -1,11 +1,10 @@
 import React, { useState, useRef, useMemo, useEffect } from "react";
-import {
-    View, Text, TextInput, TouchableOpacity, StyleSheet,
-    FlatList, KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView
+import { View, Text, TextInput, TouchableOpacity, StyleSheet,
+    FlatList, KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView, Image
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { ChevronLeft, ChevronRight, Send, Crown, HelpCircle, MessageCircle, X, ChevronDown, ChevronUp } from "lucide-react-native";
+import { ChevronLeft, ChevronRight, Send, HelpCircle, MessageCircle, X, ChevronDown, ChevronUp } from "lucide-react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { supabase } from "@/lib/supabase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -304,7 +303,11 @@ export default function ConciergeChatScreen() {
                             <Text style={s.onlineText}>Available 24/7</Text>
                         </View>
                     </View>
-                    <Crown size={24} color={C.primary} />
+                    <Image
+                        source={require("@/assets/logo/Gemini_Generated_Image_ht0yyyht0yyyht0y-removebg-preview.png")}
+                        style={{ width: 36, height: 36, opacity: 0.95 }}
+                        resizeMode="contain"
+                    />
                 </View>
 
                 <View style={s.modeContainer}>
@@ -408,7 +411,11 @@ export default function ConciergeChatScreen() {
                         <Text style={s.onlineText}>Available 24/7</Text>
                     </View>
                 </View>
-                <Crown size={24} color={C.primary} />
+                <Image
+                    source={require("@/assets/logo/Gemini_Generated_Image_ht0yyyht0yyyht0y-removebg-preview.png")}
+                    style={{ width: 36, height: 36, opacity: 0.95 }}
+                    resizeMode="contain"
+                />
             </View>
 
             {refPackage && (
@@ -500,7 +507,10 @@ export default function ConciergeChatScreen() {
                                     <TouchableOpacity
                                         key={q}
                                         style={[s.quickQ, { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 20 }]}
-                                        onPress={() => sendMessage(q)}
+                                        onPress={() => {
+                                            sendMessage(q);
+                                            setShowQuickQuestions(false);
+                                        }}
                                         disabled={sending}
                                     >
                                         <Text style={s.quickQText}>{q}</Text>
