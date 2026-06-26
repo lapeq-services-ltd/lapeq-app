@@ -227,7 +227,7 @@ export default function HomeScreen() {
 
         supabase
             .from("content")
-            .select("id, title, body, image_url, tag, city, category")
+            .select("id, title, body, image_url, tag, city, category, venue_id, address")
             .eq("type", "pick")
             .eq("published", true)
             .is("deleted_at", null)
@@ -526,7 +526,7 @@ export default function HomeScreen() {
                     {loopedPicks.length > 0 ? (
                         <Animated.View style={{ flexDirection: "row", transform: [{ translateX }], paddingLeft: 20 }}>
                             {loopedPicks.map((card, i) => {
-                                const venueId = getVenueIdForCard(card.title, card.city || "");
+                                const venueId = card.venue_id || getVenueIdForCard(card.title, card.city || "");
                                 return (
                                     <TouchableOpacity
                                         key={i}

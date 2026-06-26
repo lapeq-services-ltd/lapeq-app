@@ -31,7 +31,7 @@ export default function MonthlyPicksScreen() {
 
         supabase
             .from("content")
-            .select("id, title, body, image_url, tag, city, category")
+            .select("id, title, body, image_url, tag, city, category, venue_id, address")
             .eq("type", "pick")
             .eq("published", true)
             .is("deleted_at", null)
@@ -197,7 +197,7 @@ export default function MonthlyPicksScreen() {
                         <Text style={{ color: C.muted, fontSize: 15 }}>No picks for this filter yet.</Text>
                     </View>
                 ) : filtered.map((pick, i) => {
-                    const venueId = getVenueIdForCard(pick.title, pick.city || "");
+                    const venueId = pick.venue_id || getVenueIdForCard(pick.title, pick.city || "");
                     return (
                         <TouchableOpacity
                             key={i}
