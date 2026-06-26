@@ -10,7 +10,6 @@ import { Eye, EyeOff, ChevronLeft, ChevronDown } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { COUNTRIES, STATES_BY_COUNTRY } from "@/constants/location";
 import Svg, { Path } from "react-native-svg";
-import { GoogleSignin, statusCodes } from "@react-native-google-signin/google-signin";
 import Constants from "expo-constants";
 
 const GOLD = "#c9a84c";
@@ -134,6 +133,20 @@ export default function RegisterScreen() {
             Animated.timing(opacity, { toValue: 1, duration: 800, useNativeDriver: true }),
             Animated.timing(slideUp, { toValue: 0, duration: 700, useNativeDriver: true }),
         ]).start();
+
+        const isExpoGo = Constants.executionEnvironment === "storeClient";
+        if (!isExpoGo) {
+            try {
+                const { GoogleSignin } = require("@react-native-google-signin/google-signin");
+                GoogleSignin.configure({
+                    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+                    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+                    scopes: ["profile", "email"],
+                });
+            } catch (err) {
+                console.warn("Failed to load Google Sign-In", err);
+            }
+        }
     }, []);
 
     useEffect(() => {
@@ -204,6 +217,8 @@ export default function RegisterScreen() {
             );
             return;
         }
+
+        const { GoogleSignin, statusCodes } = require("@react-native-google-signin/google-signin");
 
         try {
             await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });

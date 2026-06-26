@@ -12,15 +12,7 @@ const isAndroid = Platform.OS === "android";
 import Svg, { Path } from "react-native-svg";
 import { supabase } from "@/lib/supabase";
 import * as AppleAuthentication from "expo-apple-authentication";
-import { GoogleSignin, statusCodes } from "@react-native-google-signin/google-signin";
 import Constants from "expo-constants";
-
-// Configure native Google Sign-In (credentials set in .env.local)
-GoogleSignin.configure({
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-    scopes: ["profile", "email"],
-});
 
 const GOLD = "#c9a84c";
 const DARK = "#0a0a0a";
@@ -77,6 +69,20 @@ export default function LoginScreen() {
 
     useEffect(() => {
         AppleAuthentication.isAvailableAsync().then(setAppleAuthAvailable);
+
+        const isExpoGo = Constants.executionEnvironment === "storeClient";
+        if (!isExpoGo) {
+            try {
+                const { GoogleSignin } = require("@react-native-google-signin/google-signin");
+                GoogleSignin.configure({
+                    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+                    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+                    scopes: ["profile", "email"],
+                });
+            } catch (err) {
+                console.warn("Failed to load Google Sign-In", err);
+            }
+        }
     }, []);
     const [alertType, setAlertType] = useState<"denied" | "unconfirmed">("denied");
 
@@ -148,6 +154,8 @@ export default function LoginScreen() {
             );
             return;
         }
+
+        const { GoogleSignin, statusCodes } = require("@react-native-google-signin/google-signin");
 
         setLoading(true);
         try {
