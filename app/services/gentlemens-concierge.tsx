@@ -5,7 +5,6 @@ import { useRouter } from "expo-router";
 import { ChevronLeft, ChevronRight, CheckCircle2, X } from "lucide-react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { supabase } from "@/lib/supabase";
-import VoiceInput from "@/components/VoiceInput";
 
 type Service = {
     title: string;
@@ -133,14 +132,15 @@ export default function GentlemensConciergeScreen() {
                         <View style={s.divider} />
 
                         <Text style={s.sheetFormLabel}>Tell us what you need</Text>
-                        <VoiceInput
+                        <TextInput
+                            style={s.textarea}
                             placeholder={`Describe your ${selected?.title.toLowerCase()} request in as much detail as you'd like...`}
+                            placeholderTextColor={C.muted}
                             value={notes}
-                            onChange={setNotes}
-                            accent={C.primary}
-                            textColor={C.text}
-                            border={theme === "dark" ? "#2a2a2a" : "#d8d3ca"}
-                            inputBg={C.surface}
+                            onChangeText={setNotes}
+                            multiline
+                            numberOfLines={5}
+                            textAlignVertical="top"
                         />
 
                         <TouchableOpacity style={[s.submitBtn, loading && { opacity: 0.6 }]} onPress={handleSubmit} disabled={loading}>

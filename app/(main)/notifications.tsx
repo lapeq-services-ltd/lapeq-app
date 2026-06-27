@@ -2,7 +2,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator }
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@/context/ThemeContext";
 import { useMemo, useEffect, useState, useCallback } from "react";
-import { Bell, ChevronLeft, Calendar } from "lucide-react-native";
+import { Bell, ChevronLeft, Calendar, Trash2 } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { supabase } from "@/lib/supabase";
 
@@ -72,6 +72,11 @@ export default function NotificationsScreen() {
     }, []);
 
     useEffect(() => { load(); }, [load]);
+
+    const deleteNotif = async (id: string) => {
+        setNotifications(prev => prev.filter(n => n.id !== id));
+        await supabase.from("notifications").delete().eq("id", id);
+    };
 
     const markAllRead = async () => {
         if (!userId) return;
@@ -164,6 +169,13 @@ export default function NotificationsScreen() {
                                     </View>
                                     <Text style={s.message}>{item.body}</Text>
                                 </View>
+                                <TouchableOpacity
+                                    onPress={() => deleteNotif(item.id)}
+                                    style={s.deleteBtn}
+                                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                >
+                                    <Trash2 size={15} color={C.muted} />
+                                </TouchableOpacity>
                             </TouchableOpacity>
                         );
                     }}
@@ -195,4 +207,5 @@ const getStyles = (C: any) => StyleSheet.create({
     title: { fontSize: 15, fontWeight: "500", color: C.text, flex: 1 },
     time: { fontSize: 11, color: C.muted, fontWeight: "500" },
     message: { fontSize: 13, color: C.muted, lineHeight: 18, paddingRight: 4 },
+    deleteBtn: { paddingLeft: 8, paddingTop: 2, alignSelf: "flex-start" },
 });

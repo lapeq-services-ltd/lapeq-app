@@ -110,7 +110,7 @@ const QUESTIONS: Question[] = [
 
 const CARD_W = Math.min(width * 0.68, 260);
 const CARD_H = Math.round(CARD_W / 1.7);
-const CARD_CYCLE = 9000;
+const CARD_CYCLE = 4200;
 const N_CARDS = 3;
 const CARD_STAGGER = Math.round(CARD_CYCLE / N_CARDS); // cards spaced exactly CARD_W apart - flush together
 
@@ -221,9 +221,9 @@ export default function OnboardingScreen() {
                         , 900) as unknown as number;
                     timers.push(t1, t2);
                 }
-            }, 80);
+            }, 55);
             timers.push(iv as any);
-        }, 900) as unknown as number;
+        }, 300) as unknown as number;
         timers.push(typeStart);
 
         return () => {

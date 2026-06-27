@@ -1,15 +1,73 @@
-import { useMemo } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from "react-native";
+import { useMemo, useState } from "react";
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, Modal, TextInput, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ChevronLeft, Lock, Eye, Trash2, ShieldCheck } from "lucide-react-native";
+import { ChevronLeft, Lock, Eye, Trash2, ShieldCheck, X } from "lucide-react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { supabase } from "@/lib/supabase";
+
+const DELETE_REASONS = [
+    "I'm not using it anymore",
+    "I found a better service",
+    "Too expensive",
+    "Privacy concerns",
+    "Technical issues",
+    "Other",
+];
 
 export default function PrivacyScreen() {
     const router = useRouter();
     const { C, theme } = useTheme();
     const s = useMemo(() => getStyles(C, theme), [C, theme]);
+
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [reason, setReason] = useState("");
+    const [password, setPassword] = useState("");
+    const [confirm, setConfirm] = useState("");
+    const [deleting, setDeleting] = useState(false);
+    const [isOAuth, setIsOAuth] = useState(false);
+    const [userName, setUserName] = useState("");
+
+    const openDeleteModal = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const provider = user.app_metadata?.provider ?? "email";
+        setIsOAuth(provider !== "email");
+        const name = user.user_metadata?.full_name?.split(" ")[0] || user.user_metadata?.first_name || "";
+        setUserName(name);
+        setReason("");
+        setPassword("");
+        setConfirm("");
+        setShowDeleteModal(true);
+    };
+
+    const handleDelete = async () => {
+        if (!reason) { Alert.alert("Please select a reason"); return; }
+        if (confirm !== "DELETE") { Alert.alert("Type DELETE exactly to confirm"); return; }
+
+        if (!isOAuth && !password) { Alert.alert("Please enter your password"); return; }
+
+        setDeleting(true);
+        try {
+            if (!isOAuth) {
+                const { data: { user } } = await supabase.auth.getUser();
+                const email = user?.email ?? "";
+                const { error: authErr } = await supabase.auth.signInWithPassword({ email, password });
+                if (authErr) { Alert.alert("Wrong password", "Please try again."); setDeleting(false); return; }
+            }
+
+            const { error } = await supabase.rpc("delete_user");
+            if (error) throw error;
+
+            await supabase.auth.signOut();
+            setShowDeleteModal(false);
+            router.replace("/(auth)/sign-in" as any);
+        } catch (err: any) {
+            Alert.alert("Error", err.message || "Something went wrong. Please contact support.");
+        } finally {
+            setDeleting(false);
+        }
+    };
 
     const handleChangePassword = async () => {
         const { data: { user } } = await supabase.auth.getUser();
@@ -20,14 +78,6 @@ export default function PrivacyScreen() {
         } else {
             Alert.alert("Password Reset Sent", "Check your email for a link to reset your password.");
         }
-    };
-
-    const handleDeleteAccount = () => {
-        Alert.alert(
-            "Delete Account",
-            "To delete your account, please contact support at lapeqconceirge@gmail.com. This action is irreversible.",
-            [{ text: "OK" }]
-        );
     };
 
     const sections = [
@@ -64,7 +114,7 @@ export default function PrivacyScreen() {
                     icon: Trash2,
                     label: "Delete Account",
                     desc: "Permanently remove your account and all associated data.",
-                    action: handleDeleteAccount,
+                    action: openDeleteModal,
                     danger: true,
                 },
             ],
@@ -109,6 +159,76 @@ export default function PrivacyScreen() {
                     </View>
                 ))}
             </ScrollView>
+
+            {/* Delete Account Modal */}
+            <Modal visible={showDeleteModal} transparent animationType="slide">
+                <View style={s.modalOverlay}>
+                    <View style={s.modalSheet}>
+                        <TouchableOpacity style={s.modalClose} onPress={() => setShowDeleteModal(false)}>
+                            <X size={20} color={C.muted} />
+                        </TouchableOpacity>
+
+                        <Text style={s.sorryTitle}>
+                            Sorry to see you go{userName ? `, ${userName}` : ""}
+                        </Text>
+                        <Text style={s.sorrySub}>
+                            This will permanently delete your account and all your data. This cannot be undone.
+                        </Text>
+
+                        <Text style={s.fieldLabel}>Why are you leaving?</Text>
+                        <View style={s.reasonGrid}>
+                            {DELETE_REASONS.map(r => (
+                                <TouchableOpacity
+                                    key={r}
+                                    style={[s.reasonChip, reason === r && s.reasonChipActive]}
+                                    onPress={() => setReason(r)}
+                                >
+                                    <Text style={[s.reasonChipText, reason === r && s.reasonChipTextActive]}>{r}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+
+                        {!isOAuth && (
+                            <>
+                                <Text style={s.fieldLabel}>Confirm your password</Text>
+                                <TextInput
+                                    style={s.input}
+                                    placeholder="Enter your password"
+                                    placeholderTextColor={C.muted}
+                                    secureTextEntry
+                                    value={password}
+                                    onChangeText={setPassword}
+                                />
+                            </>
+                        )}
+
+                        <Text style={s.fieldLabel}>Type <Text style={{ color: "#ef4444", fontWeight: "700" }}>DELETE</Text> to confirm</Text>
+                        <TextInput
+                            style={s.input}
+                            placeholder="DELETE"
+                            placeholderTextColor={C.muted}
+                            autoCapitalize="characters"
+                            value={confirm}
+                            onChangeText={setConfirm}
+                        />
+
+                        <TouchableOpacity
+                            style={[s.deleteBtn, (confirm !== "DELETE" || deleting) && { opacity: 0.5 }]}
+                            onPress={handleDelete}
+                            disabled={confirm !== "DELETE" || deleting}
+                        >
+                            {deleting
+                                ? <ActivityIndicator color="#fff" />
+                                : <Text style={s.deleteBtnText}>Delete My Account</Text>
+                            }
+                        </TouchableOpacity>
+
+                        <TouchableOpacity onPress={() => setShowDeleteModal(false)} style={{ marginTop: 12, alignItems: "center" }}>
+                            <Text style={{ fontSize: 14, color: C.muted }}>Actually, keep my account</Text>
+        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }
@@ -126,4 +246,23 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     iconBoxDanger: { backgroundColor: "#fef2f2" },
     rowLabel: { fontSize: 15, fontWeight: "600", color: C.text, marginBottom: 3 },
     rowDesc: { fontSize: 13, color: C.muted, lineHeight: 19 },
+
+    modalOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.5)" },
+    modalSheet: { backgroundColor: C.background, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 28, paddingBottom: 48 },
+    modalClose: { position: "absolute", top: 20, right: 20, width: 32, height: 32, borderRadius: 16, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" },
+
+    sorryTitle: { fontSize: 22, fontWeight: "700", color: C.text, textAlign: "center", marginBottom: 8 },
+    sorrySub: { fontSize: 13, color: C.muted, textAlign: "center", lineHeight: 20, marginBottom: 24 },
+
+    fieldLabel: { fontSize: 13, fontWeight: "600", color: C.text, marginBottom: 10 },
+    reasonGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 20 },
+    reasonChip: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border },
+    reasonChipActive: { backgroundColor: `${"#ef4444"}18`, borderColor: "#ef4444" },
+    reasonChipText: { fontSize: 13, color: C.muted },
+    reasonChipTextActive: { color: "#ef4444", fontWeight: "600" },
+
+    input: { backgroundColor: C.surface, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, fontSize: 15, color: C.text, borderWidth: 1, borderColor: C.border, marginBottom: 20 },
+
+    deleteBtn: { backgroundColor: "#ef4444", borderRadius: 16, paddingVertical: 16, alignItems: "center", marginTop: 4 },
+    deleteBtnText: { fontSize: 16, fontWeight: "700", color: "#fff" },
 });

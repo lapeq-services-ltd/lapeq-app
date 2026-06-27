@@ -234,8 +234,27 @@ export default function HomeScreen() {
             .is("deleted_at", null)
             .order("created_at", { ascending: false })
             .limit(10)
-            .then(({ data }) => {
-                if (data) setPicks(data);
+            .then(({ data, error }) => {
+                if (error) {
+                    console.warn("Picks query failed, trying fallback without venue_id/address columns:", error.message);
+                    supabase
+                        .from("content")
+                        .select("id, title, body, image_url, tag, city, category")
+                        .eq("type", "pick")
+                        .eq("published", true)
+                        .is("deleted_at", null)
+                        .order("created_at", { ascending: false })
+                        .limit(10)
+                        .then(({ data: fallbackData, error: fallbackError }) => {
+                            if (fallbackError) {
+                                console.error("Fallback picks query failed:", fallbackError.message);
+                            } else if (fallbackData) {
+                                setPicks(fallbackData);
+                            }
+                        });
+                } else if (data) {
+                    setPicks(data);
+                }
             });
     }, []);
 
@@ -384,8 +403,11 @@ export default function HomeScreen() {
                         <Text style={s.diasporaEyebrow}>GLOBAL SERVICE</Text>
                         <Text style={s.diasporaTitle}>Diaspora Support</Text>
                         <Text style={s.diasporaSub}>On-ground support for Nigerians abroad</Text>
+                        <View style={s.diasporaCta}>
+                            <Text style={s.diasporaCtaText}>Get Support Now</Text>
+                            <ChevronRight size={11} color={C.primary} />
+                        </View>
                     </View>
-                    <ChevronRight size={20} color="rgba(255,255,255,0.7)" style={{ marginRight: 16 }} />
                 </TouchableOpacity>
 
                 <View style={s.quickGrid}>
@@ -393,8 +415,8 @@ export default function HomeScreen() {
                         { label: "Lifestyle", sub: "Curated itineraries", img: require("@/assets/icons/clink.png"), route: "/(main)/experiences" as const },
                         { label: "Make a Request", sub: "Bespoke activity & travel plans", img: require("@/assets/icons/request.png"), route: "/services/lifestyle-travel" as const },
                         { label: "Elite Transit", sub: "Drive & Flights/Jets", img: require("@/assets/icons/elite.png"), route: "/services/driving" as const },
-                        { label: "Lapeq Co-Brand", sub: "Your brand on our platform", img: require("@/assets/icons/brush.png"), route: "/services/lifestyle" as const },
-                    ].map(({ label, sub, img, route }) => (
+                        { label: "Customize Lapeq", sub: "Brand your experience", img: require("@/assets/icons/cobrand.png"), route: "/services/lifestyle" as const, isCustomSize: true },
+                    ].map(({ label, sub, img, route, isCustomSize }) => (
                         <TouchableOpacity
                             key={label}
                             style={s.quickCard}
@@ -404,8 +426,12 @@ export default function HomeScreen() {
                             }}
                             activeOpacity={0.8}
                         >
-                            <View style={s.quickCardIcon}>
-                                <Image source={img} style={{ width: "100%", height: "100%", borderRadius: 12 }} resizeMode="cover" />
+                            <View style={[s.quickCardIcon, isCustomSize && { width: 48, height: 48, borderRadius: 12 }]}>
+                                <Image 
+                                    source={img} 
+                                    style={{ width: "100%", height: "100%", borderRadius: 12 }} 
+                                    resizeMode={isCustomSize ? "contain" : "cover"} 
+                                />
                             </View>
                             <Text style={s.quickCardLabel}>{label}</Text>
                             <Text style={s.quickCardSub}>{sub}</Text>
@@ -714,7 +740,9 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     diasporaContent: { flex: 1, paddingLeft: 20 },
     diasporaEyebrow: { fontSize: 10, fontWeight: "800", color: C.primary, letterSpacing: 2.5, marginBottom: 4 },
     diasporaTitle: { fontSize: 18, fontWeight: "700", color: "#fff", marginBottom: 3 },
-    diasporaSub: { fontSize: 12, color: "rgba(255,255,255,0.65)" },
+    diasporaSub: { fontSize: 12, color: "rgba(255,255,255,0.65)", marginBottom: 6 },
+    diasporaCta: { flexDirection: "row", alignItems: "center", gap: 2 },
+    diasporaCtaText: { fontSize: 11, fontWeight: "700", color: C.primary, letterSpacing: 0.3 },
     quickCard: {
         width: (SCREEN_WIDTH - 40 - 12) / 2,
         backgroundColor: C.surface,

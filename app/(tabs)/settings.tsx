@@ -85,7 +85,7 @@ export default function SettingsScreen() {
                                                 activeOpacity={0.8}
                                             >
                                                 <Text style={[s.pillText, { color: themeMode === mode ? "#0a0a0a" : C.muted }]}>
-                                                    {mode === "light" ? "Light" : mode === "auto" ? "Auto" : "Dark"}
+                                                    {mode === "light" ? "Light" : mode === "auto" ? "System" : "Dark"}
                                                 </Text>
                                             </TouchableOpacity>
                                         ))}
