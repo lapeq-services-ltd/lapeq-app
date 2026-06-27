@@ -391,6 +391,19 @@ export default function MembershipScreen() {
     const listRef = useRef<FlatList>(null);
     const scrollX = useRef(new Animated.Value(0)).current;
 
+    const tabWidth = (W - 48) / 4;
+    const translateX = scrollX.interpolate({
+        inputRange: [0, W, W * 2, W * 3],
+        outputRange: [0, tabWidth, tabWidth * 2, tabWidth * 3],
+        extrapolate: "clamp",
+    });
+
+    const indicatorBgColor = scrollX.interpolate({
+        inputRange: [0, W, W * 2, W * 3],
+        outputRange: [TIERS[0].accent, TIERS[1].accent, TIERS[2].accent, TIERS[3].accent],
+        extrapolate: "clamp",
+    });
+
     const [userName, setUserName] = useState("");
     const [userTier, setUserTier] = useState("free");
     const [memberSince, setMemberSince] = useState("");
@@ -473,15 +486,24 @@ export default function MembershipScreen() {
                 </View>
                 {/* Segmented Tier Selector */}
                 <View style={s.tierPillContainer}>
+                    <Animated.View
+                        style={{
+                            position: "absolute",
+                            top: 4,
+                            bottom: 4,
+                            left: 4,
+                            width: tabWidth,
+                            borderRadius: 10,
+                            backgroundColor: indicatorBgColor,
+                            transform: [{ translateX }],
+                        }}
+                    />
                     {TIERS.map((tier, i) => {
                         const active = i === activeIndex;
                         return (
                             <TouchableOpacity
                                 key={tier.id}
-                                style={[
-                                    s.tierPillButton,
-                                    active && { backgroundColor: currentTier.accent }
-                                ]}
+                                style={s.tierPillButton}
                                 onPress={() => listRef.current?.scrollToIndex({ index: i, animated: true })}
                                 activeOpacity={0.8}
                             >
