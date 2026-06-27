@@ -49,7 +49,8 @@ export default function DrivingServiceScreen() {
     const { eventTag, eventDate, tab } = useLocalSearchParams<{ eventTag?: string; eventDate?: string; tab?: string }>();
 
     // Tab control
-    const [activeTab, setActiveTab] = useState<"car" | "plane" | "commercial">(tab === "plane" ? "plane" : "car");
+    const [activeTab, setActiveTab] = useState<"car" | "plane">(tab === "plane" ? "plane" : "car");
+    const [flightMode, setFlightMode] = useState<"private" | "commercial">("private");
 
     // CAR STATES (Original Chauffeur)
     const [pickup, setPickup] = useState("");
@@ -332,15 +333,7 @@ export default function DrivingServiceScreen() {
                             activeOpacity={0.8}
                         >
                             <Plane size={16} color={activeTab === "plane" ? C.black : C.muted} style={{ transform: [{ rotate: "45deg" }] }} />
-                            <Text style={[s.tabButtonText, { color: activeTab === "plane" ? C.black : C.muted }]}>Private Jets</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[s.tabButton, activeTab === "commercial" && s.tabButtonActive]}
-                            onPress={() => setActiveTab("commercial")}
-                            activeOpacity={0.8}
-                        >
-                            <Plane size={16} color={activeTab === "commercial" ? C.black : C.muted} />
-                            <Text style={[s.tabButtonText, { color: activeTab === "commercial" ? C.black : C.muted }]}>Flights</Text>
+                            <Text style={[s.tabButtonText, { color: activeTab === "plane" ? C.black : C.muted }]}>Flights & Jets</Text>
                         </TouchableOpacity>
                     </View>
 
@@ -503,403 +496,268 @@ export default function DrivingServiceScreen() {
                         </View>
                     )}
                     {activeTab === "plane" && (
-                        /* ── PRIVATE FLIGHTS & JETS FLOW ── */
+                        /* ── FLIGHTS & JETS FLOW ── */
                         <View>
-                            {/* Aviation Hero — jet.jpg banner */}
+                            {/* Shared Aviation Hero — jet.jpg */}
                             <ImageBackground
                                 source={require("@/assets/images/jet.jpg")}
                                 style={[s.hero, { overflow: "hidden" }]}
                                 resizeMode="cover"
                             >
-                                <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.48)" }]} />
+                                <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.5)" }]} />
                                 <View style={{ position: "absolute", bottom: 24, left: 24, right: 24 }}>
                                     <Text style={s.heroEyebrow}>ANYWHERE · ANY TIME</Text>
                                     <Text style={s.heroTitle}>{"The sky has\nno waiting room."}</Text>
                                 </View>
                             </ImageBackground>
 
-                            <View style={{ paddingHorizontal: 20 }}>
-                                {/* Aircraft Type Selection */}
-                                <Text style={[s.label, { color: C.text }]}>Aircraft Type</Text>
-                                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingBottom: 16 }}>
-                                    {AIRCRAFT.map(a => {
-                                        const active = jetAircraft === a.id;
-                                        return (
-                                            <TouchableOpacity
-                                                key={a.id}
-                                                onPress={() => {
-                                                    setJetAircraft(a.id);
-                                                    setJetPassengers(p => Math.min(p, a.capacity));
-                                                }}
-                                                style={[
-                                                    s.aircraftCard,
-                                                    {
-                                                        borderColor: active ? GOLD : border,
-                                                        backgroundColor: active ? `${GOLD}10` : C.surface,
-                                                    },
-                                                ]}
-                                                activeOpacity={0.8}
-                                            >
-                                                <Plane
-                                                    size={22}
-                                                    color={active ? GOLD : C.muted}
-                                                    style={{ transform: [{ rotate: "42deg" }] }}
-                                                />
-                                                <Text style={[s.aircraftName, { color: active ? GOLD : C.text }]}>{a.name}</Text>
-                                                <Text style={[s.aircraftCap, { color: C.muted }]}>Up to {a.capacity} pax</Text>
-                                                <Text style={[s.aircraftRange, { color: active ? `${GOLD}AA` : C.muted }]}>{a.range}</Text>
-                                            </TouchableOpacity>
-                                        );
-                                    })}
-                                </ScrollView>
-                                <Text style={[s.aircraftNote, { color: C.muted }]}>{selectedAircraftObj.note}</Text>
-
-                                {/* Trip Type Selection */}
-                                <Text style={[s.label, { color: C.text, marginTop: 12 }]}>Trip Type</Text>
-                                <View style={{ flexDirection: "row", gap: 10, marginBottom: 20 }}>
-                                    {(["one-way", "return"] as const).map(type => {
-                                        const active = jetTripType === type;
-                                        return (
-                                            <TouchableOpacity
-                                                key={type}
-                                                onPress={() => setJetTripType(type)}
-                                                style={{
-                                                    flex: 1, paddingVertical: 13, borderRadius: 12,
-                                                    alignItems: "center", borderWidth: 1,
-                                                    borderColor: active ? GOLD : border,
-                                                    backgroundColor: active ? `${GOLD}12` : C.surface,
-                                                }}
-                                                activeOpacity={0.8}
-                                            >
-                                                <Text style={{ fontWeight: "600", fontSize: 14, color: active ? GOLD : C.muted }}>
-                                                    {type === "one-way" ? "One Way" : "Return Flight"}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        );
-                                    })}
-                                </View>
-
-                                {/* Departure and Destination Routes */}
-                                <Text style={[s.label, { color: C.text }]}>Route</Text>
-                                <View style={{ gap: 8, marginBottom: 20 }}>
-                                    <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                                        <View style={[s.routeDot, { backgroundColor: GOLD }]} />
-                                        <View style={{ flex: 1 }}>
-                                            <LocationSearch
-                                                value={jetDeparture}
-                                                onChangeText={setJetDeparture}
-                                                placeholder="Departure city or airport..."
-                                                onSelect={setJetDeparture}
-                                            />
-                                        </View>
-                                    </View>
-                                    <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                                        <View style={[s.routeLine, { backgroundColor: border }]} />
-                                    </View>
-                                    <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                                        <View style={[s.routeDot, { backgroundColor: C.muted, opacity: 0.35 }]} />
-                                        <View style={{ flex: 1 }}>
-                                            <LocationSearch
-                                                value={jetDestination}
-                                                onChangeText={setJetDestination}
-                                                placeholder="Destination city or airport..."
-                                                onSelect={setJetDestination}
-                                            />
-                                        </View>
-                                    </View>
-                                </View>
-
-                                {/* Schedule dates for flight */}
-                                <View style={s.dtRow}>
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={[s.label, { color: C.text }]}>Departure Date *</Text>
-                                        <TouchableOpacity
-                                            style={[s.inputRow, { backgroundColor: C.surface, borderColor: border }]}
-                                            onPress={() => { Keyboard.dismiss(); setShowJetDepDate(true); }}
-                                        >
-                                            <Clock size={18} color={GOLD} style={{ marginRight: 8 }} />
-                                            <Text style={{ color: C.text, fontSize: 14 }}>{formattedJetDepDate}</Text>
-                                        </TouchableOpacity>
-                                    </View>
-
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={[s.label, { color: C.text }]}>Time *</Text>
-                                        <TouchableOpacity
-                                            style={[s.inputRow, { backgroundColor: C.surface, borderColor: border }]}
-                                            onPress={() => { Keyboard.dismiss(); setShowJetDepTime(true); }}
-                                        >
-                                            <Clock size={18} color={GOLD} style={{ marginRight: 8 }} />
-                                            <Text style={{ color: C.text, fontSize: 14 }}>{formattedJetDepTime}</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                </View>
-
-                                {jetTripType === "return" && (
-                                    <View style={{ width: "100%" }}>
-                                        <Text style={[s.label, { color: C.text }]}>Return Date *</Text>
-                                        <TouchableOpacity
-                                            style={[s.inputRow, { backgroundColor: C.surface, borderColor: border }]}
-                                            onPress={() => { Keyboard.dismiss(); setShowJetRetDate(true); }}
-                                        >
-                                            <Clock size={18} color={GOLD} style={{ marginRight: 8 }} />
-                                            <Text style={{ color: C.text, fontSize: 14 }}>{formattedJetRetDate}</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                )}
-
-                                {/* Passengers */}
-                                <Text style={[s.label, { color: C.text }]}>Passengers</Text>
-                                <View style={[s.stepperRow, { backgroundColor: C.surface, borderColor: border }]}>
-                                    <Users size={18} color={GOLD} />
-                                    <TouchableOpacity
-                                        style={[s.stepperBtn, { borderColor: border }]}
-                                        onPress={() => setJetPassengers(p => Math.max(1, p - 1))}
-                                    >
-                                        <Minus size={16} color={C.text} />
-                                    </TouchableOpacity>
-                                    <Text style={[s.stepperVal, { color: C.text }]}>{jetPassengers}</Text>
-                                    <TouchableOpacity
-                                        style={[s.stepperBtn, { borderColor: border }]}
-                                        onPress={() => setJetPassengers(p => Math.min(selectedAircraftObj.capacity, p + 1))}
-                                    >
-                                        <Plus size={16} color={C.text} />
-                                    </TouchableOpacity>
-                                    <Text style={{ color: C.muted, fontSize: 13, marginLeft: 4 }}>
-                                        {`of max ${selectedAircraftObj.capacity}`}
-                                    </Text>
-                                </View>
-
-                                {/* Catering Selection */}
-                                <Text style={[s.label, { color: C.text }]}>In-Flight Catering</Text>
-                                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 20 }}>
-                                    {["Standard", "Premium Selection", "Custom Menu"].map(opt => {
-                                        const active = jetCatering === opt;
-                                        return (
-                                            <TouchableOpacity
-                                                key={opt}
-                                                onPress={() => setJetCatering(jetCatering === opt ? "" : opt)}
-                                                style={{
-                                                    paddingHorizontal: 16, paddingVertical: 10,
-                                                    borderRadius: 8, borderWidth: 1,
-                                                    borderColor: active ? GOLD : border,
-                                                    backgroundColor: active ? `${GOLD}12` : C.surface,
-                                                }}
-                                                activeOpacity={0.8}
-                                            >
-                                                <Text style={{ fontWeight: "500", fontSize: 13, color: active ? GOLD : C.muted }}>
-                                                    {opt}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        );
-                                    })}
-                                </View>
-
-                                {/* Ground Transfer Toggle */}
-                                <View style={[s.toggleRow, { borderColor: border, backgroundColor: C.surface, marginBottom: 20 }]}>
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={[s.toggleLabel, { color: C.text }]}>Onward Ground Transfer</Text>
-                                        <Text style={[s.toggleSub, { color: C.muted }]}>Arrange a chauffeur at your destination</Text>
-                                    </View>
-                                    <Switch
-                                        value={jetGroundTransfer}
-                                        onValueChange={setJetGroundTransfer}
-                                        trackColor={{ false: border, true: `${GOLD}80` }}
-                                        thumbColor={jetGroundTransfer ? GOLD : "#888"}
-                                    />
-                                </View>
-
-                                {/* Special Requests */}
-                                <Text style={[s.label, { color: C.text }]}>Special Requests</Text>
-                                <VoiceInput
-                                    placeholder="Dietary requirements, preferred airports, onboard requests..."
-                                    value={jetNotes}
-                                    onChange={setJetNotes}
-                                    accent={GOLD}
-                                    textColor={C.text}
-                                    border={border}
-                                    inputBg={C.surface}
-                                />
+                            {/* Flight Mode Sub-Picker */}
+                            <View style={{ flexDirection: "row", marginHorizontal: 20, marginTop: 20, marginBottom: 4, borderRadius: 14, backgroundColor: C.surface, borderWidth: 1, borderColor: border, overflow: "hidden" }}>
+                                <TouchableOpacity
+                                    style={[{ flex: 1, paddingVertical: 13, alignItems: "center" }, flightMode === "private" && { backgroundColor: GOLD }]}
+                                    onPress={() => setFlightMode("private")}
+                                    activeOpacity={0.8}
+                                >
+                                    <Text style={{ fontSize: 13, fontWeight: "700", color: flightMode === "private" ? "#000" : C.muted }}>Private Jet</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[{ flex: 1, paddingVertical: 13, alignItems: "center" }, flightMode === "commercial" && { backgroundColor: GOLD }]}
+                                    onPress={() => setFlightMode("commercial")}
+                                    activeOpacity={0.8}
+                                >
+                                    <Text style={{ fontSize: 13, fontWeight: "700", color: flightMode === "commercial" ? "#000" : C.muted }}>Commercial Flight</Text>
+                                </TouchableOpacity>
                             </View>
-                        </View>
-                    )}
-                    {activeTab === "commercial" && (
-                        /* ── COMMERCIAL FLIGHTS FLOW ── */
-                        <View>
-                            {/* Commercial Flights Hero — jet.jpg banner */}
-                            <ImageBackground
-                                source={require("@/assets/images/jet.jpg")}
-                                style={[s.hero, { overflow: "hidden", height: 200, marginHorizontal: 20, borderRadius: 20 }]}
-                                resizeMode="cover"
-                            >
-                                <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.42)" }]} />
-                                <View style={{ position: "absolute", bottom: 20, left: 20, right: 20 }}>
-                                    <Text style={s.heroEyebrow}>ECONOMY · BUSINESS · FIRST CLASS</Text>
-                                    <Text style={s.heroTitle}>{"Commercial\nFlights"}</Text>
-                                </View>
-                            </ImageBackground>
 
-                            <View style={{ paddingHorizontal: 20, marginTop: 20 }}>
+                            {/* ——— PRIVATE JET FORM ——— */}
+                            {flightMode === "private" && (
+                                <View style={{ paddingHorizontal: 20, marginTop: 16 }}>
+                                    {/* Aircraft Type */}
+                                    <Text style={[s.label, { color: C.text }]}>Aircraft Type</Text>
+                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingBottom: 16 }}>
+                                        {AIRCRAFT.map(a => {
+                                            const active = jetAircraft === a.id;
+                                            return (
+                                                <TouchableOpacity
+                                                    key={a.id}
+                                                    onPress={() => {
+                                                        setJetAircraft(a.id);
+                                                        setJetPassengers(p => Math.min(p, a.capacity));
+                                                    }}
+                                                    style={[s.aircraftCard, { borderColor: active ? GOLD : border, backgroundColor: active ? `${GOLD}10` : C.surface }]}
+                                                    activeOpacity={0.8}
+                                                >
+                                                    <Plane size={22} color={active ? GOLD : C.muted} style={{ transform: [{ rotate: "42deg" }] }} />
+                                                    <Text style={[s.aircraftName, { color: active ? GOLD : C.text }]}>{a.name}</Text>
+                                                    <Text style={[s.aircraftCap, { color: C.muted }]}>Up to {a.capacity} pax</Text>
+                                                    <Text style={[s.aircraftRange, { color: active ? `${GOLD}AA` : C.muted }]}>{a.range}</Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </ScrollView>
+                                    <Text style={[s.aircraftNote, { color: C.muted }]}>{selectedAircraftObj.note}</Text>
 
-                                {/* Trip Type Tabs — Round Trip / One Way / Multiple Trip */}
-                                <View style={{ flexDirection: "row", gap: 8, marginBottom: 20 }}>
-                                    {(["round", "oneway", "multi"] as const).map(type => {
-                                        const active = comTripType === type;
-                                        const labels = { round: "Round Trip", oneway: "One Way", multi: "Multi-City" } as { [k: string]: string };
-                                        return (
-                                            <TouchableOpacity
-                                                key={type}
-                                                onPress={() => setComTripType(type)}
-                                                style={{
-                                                    flex: 1, paddingVertical: 10, borderRadius: 10,
-                                                    alignItems: "center", borderWidth: 1,
-                                                    borderColor: active ? GOLD : border,
-                                                    backgroundColor: active ? `${GOLD}14` : C.surface,
-                                                }}
-                                                activeOpacity={0.8}
-                                            >
-                                                <Text style={{ fontSize: 12, fontWeight: "700", color: active ? GOLD : C.muted }}>
-                                                    {labels[type]}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        );
-                                    })}
-                                </View>
+                                    {/* Trip Type */}
+                                    <Text style={[s.label, { color: C.text, marginTop: 12 }]}>Trip Type</Text>
+                                    <View style={{ flexDirection: "row", gap: 10, marginBottom: 20 }}>
+                                        {(["one-way", "return"] as const).map(type => {
+                                            const active = jetTripType === type;
+                                            return (
+                                                <TouchableOpacity
+                                                    key={type}
+                                                    onPress={() => setJetTripType(type)}
+                                                    style={{ flex: 1, paddingVertical: 13, borderRadius: 12, alignItems: "center", borderWidth: 1, borderColor: active ? GOLD : border, backgroundColor: active ? `${GOLD}12` : C.surface }}
+                                                    activeOpacity={0.8}
+                                                >
+                                                    <Text style={{ fontWeight: "600", fontSize: 14, color: active ? GOLD : C.muted }}>
+                                                        {type === "one-way" ? "One Way" : "Return Flight"}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </View>
 
-                                {/* From / To Card */}
-                                <View style={{ backgroundColor: C.surface, borderRadius: 16, borderWidth: 1, borderColor: border, marginBottom: 16, overflow: "hidden" }}>
-                                    {/* From */}
-                                    <View style={{ padding: 16, borderBottomWidth: 1, borderBottomColor: border }}>
-                                        <Text style={{ fontSize: 10, fontWeight: "700", color: C.muted, letterSpacing: 1.5, marginBottom: 6 }}>FROM</Text>
-                                        <LocationSearch
-                                            value={comFrom}
-                                            onChangeText={setComFrom}
-                                            placeholder="Departure city or airport..."
-                                            onSelect={setComFrom}
-                                        />
+                                    {/* Route */}
+                                    <Text style={[s.label, { color: C.text }]}>Route</Text>
+                                    <View style={{ gap: 8, marginBottom: 20 }}>
+                                        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                                            <View style={[s.routeDot, { backgroundColor: GOLD }]} />
+                                            <View style={{ flex: 1 }}>
+                                                <LocationSearch value={jetDeparture} onChangeText={setJetDeparture} placeholder="Departure city or airport..." onSelect={setJetDeparture} />
+                                            </View>
+                                        </View>
+                                        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                                            <View style={[s.routeLine, { backgroundColor: border }]} />
+                                        </View>
+                                        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                                            <View style={[s.routeDot, { backgroundColor: C.muted, opacity: 0.35 }]} />
+                                            <View style={{ flex: 1 }}>
+                                                <LocationSearch value={jetDestination} onChangeText={setJetDestination} placeholder="Destination city or airport..." onSelect={setJetDestination} />
+                                            </View>
+                                        </View>
                                     </View>
-                                    {/* Swap icon */}
-                                    <View style={{ position: "absolute", right: 20, top: "50%", marginTop: -18, zIndex: 2 }}>
-                                        <TouchableOpacity
-                                            onPress={() => { const t = comFrom; setComFrom(comTo); setComTo(t); }}
-                                            style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: C.background, borderWidth: 1, borderColor: border, alignItems: "center", justifyContent: "center" }}
-                                        >
-                                            <Plane size={16} color={GOLD} style={{ transform: [{ rotate: "90deg" }] }} />
-                                        </TouchableOpacity>
-                                    </View>
-                                    {/* To */}
-                                    <View style={{ padding: 16 }}>
-                                        <Text style={{ fontSize: 10, fontWeight: "700", color: C.muted, letterSpacing: 1.5, marginBottom: 6 }}>TO</Text>
-                                        <LocationSearch
-                                            value={comTo}
-                                            onChangeText={setComTo}
-                                            placeholder="Destination city or airport..."
-                                            onSelect={setComTo}
-                                        />
-                                    </View>
-                                </View>
 
-                                {/* Dates Row */}
-                                <View style={s.dtRow}>
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={[s.label, { color: C.text }]}>Departure *</Text>
-                                        <TouchableOpacity
-                                            style={[s.inputRow, { backgroundColor: C.surface, borderColor: border }]}
-                                            onPress={() => { Keyboard.dismiss(); setShowComDepDate(true); }}
-                                        >
-                                            <Clock size={18} color={GOLD} style={{ marginRight: 8 }} />
-                                            <Text style={{ color: C.text, fontSize: 14 }}>
-                                                {comDepDate.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                    {comTripType === "round" && (
+                                    {/* Dates */}
+                                    <View style={s.dtRow}>
                                         <View style={{ flex: 1 }}>
-                                            <Text style={[s.label, { color: C.text }]}>Return *</Text>
-                                            <TouchableOpacity
-                                                style={[s.inputRow, { backgroundColor: C.surface, borderColor: border }]}
-                                                onPress={() => { Keyboard.dismiss(); setShowComRetDate(true); }}
-                                            >
+                                            <Text style={[s.label, { color: C.text }]}>Departure Date *</Text>
+                                            <TouchableOpacity style={[s.inputRow, { backgroundColor: C.surface, borderColor: border }]} onPress={() => { Keyboard.dismiss(); setShowJetDepDate(true); }}>
                                                 <Clock size={18} color={GOLD} style={{ marginRight: 8 }} />
-                                                <Text style={{ color: C.text, fontSize: 14 }}>
-                                                    {comRetDate.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
-                                                </Text>
+                                                <Text style={{ color: C.text, fontSize: 14 }}>{formattedJetDepDate}</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={[s.label, { color: C.text }]}>Time *</Text>
+                                            <TouchableOpacity style={[s.inputRow, { backgroundColor: C.surface, borderColor: border }]} onPress={() => { Keyboard.dismiss(); setShowJetDepTime(true); }}>
+                                                <Clock size={18} color={GOLD} style={{ marginRight: 8 }} />
+                                                <Text style={{ color: C.text, fontSize: 14 }}>{formattedJetDepTime}</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                    {jetTripType === "return" && (
+                                        <View style={{ width: "100%" }}>
+                                            <Text style={[s.label, { color: C.text }]}>Return Date *</Text>
+                                            <TouchableOpacity style={[s.inputRow, { backgroundColor: C.surface, borderColor: border }]} onPress={() => { Keyboard.dismiss(); setShowJetRetDate(true); }}>
+                                                <Clock size={18} color={GOLD} style={{ marginRight: 8 }} />
+                                                <Text style={{ color: C.text, fontSize: 14 }}>{formattedJetRetDate}</Text>
                                             </TouchableOpacity>
                                         </View>
                                     )}
+                                    {showJetDepDate && <DateTimePicker mode="date" value={jetDepDate} minimumDate={new Date()} onChange={onJetDepDateChange} />}
+                                    {showJetDepTime && <DateTimePicker mode="time" value={jetDepTime} onChange={onJetDepTimeChange} />}
+                                    {showJetRetDate && <DateTimePicker mode="date" value={jetRetDate} minimumDate={jetDepDate} onChange={onJetRetDateChange} />}
+
+                                    {/* Passengers */}
+                                    <Text style={[s.label, { color: C.text }]}>Passengers</Text>
+                                    <View style={[s.stepperRow, { backgroundColor: C.surface, borderColor: border }]}>
+                                        <Users size={18} color={GOLD} />
+                                        <TouchableOpacity style={[s.stepperBtn, { borderColor: border }]} onPress={() => setJetPassengers(p => Math.max(1, p - 1))}>
+                                            <Minus size={16} color={C.text} />
+                                        </TouchableOpacity>
+                                        <Text style={[s.stepperVal, { color: C.text }]}>{jetPassengers}</Text>
+                                        <TouchableOpacity style={[s.stepperBtn, { borderColor: border }]} onPress={() => setJetPassengers(p => Math.min(selectedAircraftObj.capacity, p + 1))}>
+                                            <Plus size={16} color={C.text} />
+                                        </TouchableOpacity>
+                                        <Text style={{ color: C.muted, fontSize: 13, marginLeft: 4 }}>max {selectedAircraftObj.capacity}</Text>
+                                    </View>
+
+                                    {/* Catering */}
+                                    <Text style={[s.label, { color: C.text }]}>Catering Preferences</Text>
+                                    <VoiceInput placeholder="Dietary requirements, preferred meals..." value={jetCatering} onChange={setJetCatering} accent={GOLD} textColor={C.text} border={border} inputBg={C.surface} />
+
+                                    {/* Ground Transfer */}
+                                    <View style={[s.toggleRow, { borderColor: border }]}>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={[s.toggleLabel, { color: C.text }]}>Ground Transfer</Text>
+                                            <Text style={[s.toggleSub, { color: C.muted }]}>Arrange a chauffeur at your destination</Text>
+                                        </View>
+                                        <Switch value={jetGroundTransfer} onValueChange={setJetGroundTransfer} trackColor={{ false: border, true: `${GOLD}80` }} thumbColor={jetGroundTransfer ? GOLD : "#888"} />
+                                    </View>
+
+                                    {/* Notes */}
+                                    <Text style={[s.label, { color: C.text }]}>Special Requests</Text>
+                                    <VoiceInput placeholder="Preferred airports, onboard requests..." value={jetNotes} onChange={setJetNotes} accent={GOLD} textColor={C.text} border={border} inputBg={C.surface} />
                                 </View>
+                            )}
 
-                                {showComDepDate && (
-                                    <DateTimePicker mode="date" value={comDepDate} minimumDate={new Date()}
-                                        onChange={(_, d) => { if (d) setComDepDate(d); if (Platform.OS === "android") setShowComDepDate(false); }}
-                                    />
-                                )}
-                                {showComRetDate && (
-                                    <DateTimePicker mode="date" value={comRetDate} minimumDate={comDepDate}
-                                        onChange={(_, d) => { if (d) setComRetDate(d); if (Platform.OS === "android") setShowComRetDate(false); }}
-                                    />
-                                )}
+                            {/* ——— COMMERCIAL FLIGHT FORM ——— */}
+                            {flightMode === "commercial" && (
+                                <View style={{ paddingHorizontal: 20, marginTop: 16 }}>
 
-                                {/* Passengers Stepper */}
-                                <Text style={[s.label, { color: C.text }]}>Passengers</Text>
-                                <View style={[s.stepperRow, { backgroundColor: C.surface, borderColor: border, marginBottom: 20 }]}>
-                                    <Users size={18} color={GOLD} />
-                                    <TouchableOpacity
-                                        style={[s.stepperBtn, { borderColor: border }]}
-                                        onPress={() => setComPassengers(p => Math.max(1, p - 1))}
-                                    >
-                                        <Minus size={16} color={C.text} />
-                                    </TouchableOpacity>
-                                    <Text style={[s.stepperVal, { color: C.text }]}>{comPassengers}</Text>
-                                    <TouchableOpacity
-                                        style={[s.stepperBtn, { borderColor: border }]}
-                                        onPress={() => setComPassengers(p => p + 1)}
-                                    >
-                                        <Plus size={16} color={C.text} />
-                                    </TouchableOpacity>
-                                    <Text style={{ flex: 1, textAlign: "right", color: C.muted, fontSize: 13 }}>
-                                        {comPassengers === 1 ? "1 Passenger" : `${comPassengers} Passengers`}
-                                    </Text>
-                                </View>
+                                    {/* Trip Type Pills */}
+                                    <View style={{ flexDirection: "row", gap: 8, marginBottom: 20 }}>
+                                        {(["round", "oneway", "multi"] as const).map(type => {
+                                            const active = comTripType === type;
+                                            const labels = { round: "Round Trip", oneway: "One Way", multi: "Multi-City" } as { [k: string]: string };
+                                            return (
+                                                <TouchableOpacity
+                                                    key={type}
+                                                    onPress={() => setComTripType(type)}
+                                                    style={{ flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: "center", borderWidth: 1, borderColor: active ? GOLD : border, backgroundColor: active ? `${GOLD}14` : C.surface }}
+                                                    activeOpacity={0.8}
+                                                >
+                                                    <Text style={{ fontSize: 12, fontWeight: "700", color: active ? GOLD : C.muted }}>{labels[type]}</Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </View>
 
-                                {/* Cabin Class */}
-                                <Text style={[s.label, { color: C.text }]}>Cabin Class</Text>
-                                <View style={{ flexDirection: "row", gap: 10, marginBottom: 20 }}>
-                                    {(["economy", "business", "first"] as const).map(cls => {
-                                        const active = comCabin === cls;
-                                        const icons = { economy: "✈️", business: "💼", first: "👑" } as { [k: string]: string };
-                                        const labels = { economy: "Economy", business: "Business", first: "First Class" } as { [k: string]: string };
-                                        return (
+                                    {/* From / To Card */}
+                                    <View style={{ backgroundColor: C.surface, borderRadius: 16, borderWidth: 1, borderColor: border, marginBottom: 16, overflow: "hidden" }}>
+                                        <View style={{ padding: 16, borderBottomWidth: 1, borderBottomColor: border }}>
+                                            <Text style={{ fontSize: 10, fontWeight: "700", color: C.muted, letterSpacing: 1.5, marginBottom: 6 }}>FROM</Text>
+                                            <LocationSearch value={comFrom} onChangeText={setComFrom} placeholder="Departure city or airport..." onSelect={setComFrom} />
+                                        </View>
+                                        <View style={{ position: "absolute", right: 20, top: "50%", marginTop: -18, zIndex: 2 }}>
                                             <TouchableOpacity
-                                                key={cls}
-                                                onPress={() => setComCabin(cls)}
-                                                style={{
-                                                    flex: 1, paddingVertical: 14, borderRadius: 14, alignItems: "center", gap: 4,
-                                                    borderWidth: 1, borderColor: active ? GOLD : border,
-                                                    backgroundColor: active ? `${GOLD}12` : C.surface,
-                                                }}
-                                                activeOpacity={0.8}
+                                                onPress={() => { const t = comFrom; setComFrom(comTo); setComTo(t); }}
+                                                style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: C.background, borderWidth: 1, borderColor: border, alignItems: "center", justifyContent: "center" }}
                                             >
-                                                <Text style={{ fontSize: 18 }}>{icons[cls]}</Text>
-                                                <Text style={{ fontSize: 11, fontWeight: "700", color: active ? GOLD : C.muted }}>
-                                                    {labels[cls]}
-                                                </Text>
+                                                <Plane size={16} color={GOLD} style={{ transform: [{ rotate: "90deg" }] }} />
                                             </TouchableOpacity>
-                                        );
-                                    })}
-                                </View>
+                                        </View>
+                                        <View style={{ padding: 16 }}>
+                                            <Text style={{ fontSize: 10, fontWeight: "700", color: C.muted, letterSpacing: 1.5, marginBottom: 6 }}>TO</Text>
+                                            <LocationSearch value={comTo} onChangeText={setComTo} placeholder="Destination city or airport..." onSelect={setComTo} />
+                                        </View>
+                                    </View>
 
-                                {/* Special Requests */}
-                                <Text style={[s.label, { color: C.text }]}>Special Requests</Text>
-                                <VoiceInput
-                                    placeholder="Meal preference, seat preference, special assistance..."
-                                    value={comNotes}
-                                    onChange={setComNotes}
-                                    accent={GOLD}
-                                    textColor={C.text}
-                                    border={border}
-                                    inputBg={C.surface}
-                                />
-                            </View>
+                                    {/* Dates */}
+                                    <View style={s.dtRow}>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={[s.label, { color: C.text }]}>Departure *</Text>
+                                            <TouchableOpacity style={[s.inputRow, { backgroundColor: C.surface, borderColor: border }]} onPress={() => { Keyboard.dismiss(); setShowComDepDate(true); }}>
+                                                <Clock size={18} color={GOLD} style={{ marginRight: 8 }} />
+                                                <Text style={{ color: C.text, fontSize: 14 }}>{comDepDate.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                        {comTripType === "round" && (
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={[s.label, { color: C.text }]}>Return *</Text>
+                                                <TouchableOpacity style={[s.inputRow, { backgroundColor: C.surface, borderColor: border }]} onPress={() => { Keyboard.dismiss(); setShowComRetDate(true); }}>
+                                                    <Clock size={18} color={GOLD} style={{ marginRight: 8 }} />
+                                                    <Text style={{ color: C.text, fontSize: 14 }}>{comRetDate.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        )}
+                                    </View>
+                                    {showComDepDate && <DateTimePicker mode="date" value={comDepDate} minimumDate={new Date()} onChange={(_, d) => { if (d) setComDepDate(d); if (Platform.OS === "android") setShowComDepDate(false); }} />}
+                                    {showComRetDate && <DateTimePicker mode="date" value={comRetDate} minimumDate={comDepDate} onChange={(_, d) => { if (d) setComRetDate(d); if (Platform.OS === "android") setShowComRetDate(false); }} />}
+
+                                    {/* Passengers */}
+                                    <Text style={[s.label, { color: C.text }]}>Passengers</Text>
+                                    <View style={[s.stepperRow, { backgroundColor: C.surface, borderColor: border, marginBottom: 20 }]}>
+                                        <Users size={18} color={GOLD} />
+                                        <TouchableOpacity style={[s.stepperBtn, { borderColor: border }]} onPress={() => setComPassengers(p => Math.max(1, p - 1))}><Minus size={16} color={C.text} /></TouchableOpacity>
+                                        <Text style={[s.stepperVal, { color: C.text }]}>{comPassengers}</Text>
+                                        <TouchableOpacity style={[s.stepperBtn, { borderColor: border }]} onPress={() => setComPassengers(p => p + 1)}><Plus size={16} color={C.text} /></TouchableOpacity>
+                                        <Text style={{ flex: 1, textAlign: "right", color: C.muted, fontSize: 13 }}>{comPassengers === 1 ? "1 Passenger" : `${comPassengers} Passengers`}</Text>
+                                    </View>
+
+                                    {/* Cabin Class */}
+                                    <Text style={[s.label, { color: C.text }]}>Cabin Class</Text>
+                                    <View style={{ flexDirection: "row", gap: 10, marginBottom: 20 }}>
+                                        {(["economy", "business", "first"] as const).map(cls => {
+                                            const active = comCabin === cls;
+                                            const labels = { economy: "Economy", business: "Business", first: "First Class" } as { [k: string]: string };
+                                            return (
+                                                <TouchableOpacity
+                                                    key={cls}
+                                                    onPress={() => setComCabin(cls)}
+                                                    style={{ flex: 1, paddingVertical: 16, borderRadius: 14, alignItems: "center", borderWidth: 1, borderColor: active ? GOLD : border, backgroundColor: active ? `${GOLD}12` : C.surface }}
+                                                    activeOpacity={0.8}
+                                                >
+                                                    <Text style={{ fontSize: 13, fontWeight: "700", color: active ? GOLD : C.muted }}>{labels[cls]}</Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </View>
+
+                                    {/* Special Requests */}
+                                    <Text style={[s.label, { color: C.text }]}>Special Requests</Text>
+                                    <VoiceInput placeholder="Meal preference, seat preference, special assistance..." value={comNotes} onChange={setComNotes} accent={GOLD} textColor={C.text} border={border} inputBg={C.surface} />
+                                </View>
+                            )}
                         </View>
                     )}
 
@@ -911,12 +769,12 @@ export default function DrivingServiceScreen() {
                             disabled={loading}
                         >
                             <Text style={[s.btnText, { color: C.black }]}>
-                                {loading ? "Submitting..." : activeTab === "car" ? "Submit Request" : activeTab === "commercial" ? "Search & Request Flights" : "Submit Enquiry"}
+                                {loading ? "Submitting..." : activeTab === "car" ? "Submit Request" : flightMode === "commercial" ? "Search & Request Flights" : "Submit Enquiry"}
                             </Text>
                         </TouchableOpacity>
-                        {(activeTab === "plane" || activeTab === "commercial") && (
+                        {activeTab === "plane" && (
                             <Text style={{ fontSize: 12, color: C.muted, textAlign: "center", marginTop: 10 }}>
-                                {activeTab === "commercial"
+                                {flightMode === "commercial"
                                     ? "A Lapeq travel advisor will source the best fares and confirm within 4 hours."
                                     : "A Lapeq aviation advisor will respond within 2 hours."}
                             </Text>
