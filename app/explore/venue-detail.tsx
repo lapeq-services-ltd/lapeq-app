@@ -6,6 +6,8 @@ import { ChevronLeft, MapPin, Heart, ArrowRight, ExternalLink } from "lucide-rea
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
 
+const GOLD = "#c9a84c";
+
 type Venue = {
     id: string;
     name: string;
@@ -16,6 +18,8 @@ type Venue = {
     image_url: string | null;
     lat: number | null;
     lng: number | null;
+    perks: string | null;
+    menu: string | null;
 };
 
 type VenueImage = { id: string; url: string; sort_order: number };
@@ -24,6 +28,7 @@ const { width: SW } = Dimensions.get("window");
 const MAP_W = SW - 48;
 const MAP_H = 180;
 const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN;
+const GOLD = "#c9a84c";
 
 const PLACEHOLDER_IMAGES: Record<string, any> = {
     restaurant: require("@/assets/images/lagos-restaurant.jpg"),
@@ -34,11 +39,11 @@ const PLACEHOLDER_IMAGES: Record<string, any> = {
 };
 
 const VENUE_SERVICE_TYPE: Record<string, string> = {
-    restaurant: "Restaurant Reservation",
-    lounge: "Restaurant Reservation",
-    club: "Event Access",
-    hotel: "Hotel & Accommodation",
-    spa: "Spa & Wellness",
+    restaurant: "Private Dining",
+    lounge: "Private Dining",
+    club: "VIP Protocol",
+    hotel: "Stays & Accommodations",
+    spa: "Recreational Activities",
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -192,19 +197,35 @@ export default function VenueDetailScreen() {
                         <TouchableOpacity style={s.actionBtn} onPress={() => router.back()}>
                             <ChevronLeft size={22} color="#fff" />
                         </TouchableOpacity>
-                        <TouchableOpacity style={s.actionBtn} onPress={toggleFavorite}>
-                            <Heart size={20} color={isFav ? "#c9a84c" : "#fff"} fill={isFav ? "#c9a84c" : "transparent"} strokeWidth={2} />
-                        </TouchableOpacity>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                            <TouchableOpacity
+                                style={s.headerCurateBtn}
+                                onPress={() => router.push({
+                                    pathname: "/services/lifestyle-travel" as any,
+                                    params: {
+                                        prefillType: VENUE_SERVICE_TYPE[venue.category] ?? "",
+                                        prefillVenue: venue.name,
+                                        prefillCity: venue.city,
+                                    }
+                                })}
+                                activeOpacity={0.8}
+                            >
+                                <Text style={s.headerCurateText}>Curate This</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={s.actionBtn} onPress={toggleFavorite}>
+                                <Heart size={20} color={isFav ? "#c9a84c" : "#fff"} fill={isFav ? "#c9a84c" : "transparent"} strokeWidth={2} />
+                            </TouchableOpacity>
+                        </View>
                     </SafeAreaView>
 
                     <View style={s.heroContent}>
                         <View style={[s.categoryPill, { backgroundColor: "rgba(201,168,76,0.85)" }]}>
                             <Text style={s.categoryPillText}>{CATEGORY_LABELS[venue.category] ?? venue.category}</Text>
                         </View>
-                        <Text style={s.heroName}>{venue.name}</Text>
+                        <Text style={s.heroName}>{`Curated ${CATEGORY_LABELS[venue.category] ?? "Partner"} · ${venue.city}`}</Text>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
                             <MapPin size={13} color="rgba(255,255,255,0.7)" />
-                            <Text style={s.heroAddress}>{venue.city}{venue.address ? ` · ${venue.address}` : ""}</Text>
+                            <Text style={s.heroAddress}>{venue.city}</Text>
                         </View>
                     </View>
                 </View>
@@ -218,53 +239,49 @@ export default function VenueDetailScreen() {
                         </Text>
                     </View>
 
-                    {/* Location */}
-                    <View style={s.section}>
-                        <Text style={s.sectionLabel}>LOCATION</Text>
+                    {/* Perks */}
+                    {venue.perks && (
+                        <View style={s.section}>
+                            <Text style={s.sectionLabel}>MEMBER PERKS</Text>
+                            <View style={s.perksCard}>
+                                {venue.perks.split("\n").map((perk, i) => {
+                                    const p = perk.trim();
+                                    if (!p) return null;
+                                    return (
+                                        <View key={i} style={s.perkRow}>
+                                            <View style={s.starIconWrap}>
+                                                <Text style={s.starIcon}>✦</Text>
+                                            </View>
+                                            <Text style={s.perkText}>{p}</Text>
+                                        </View>
+                                    );
+                                })}
+                            </View>
+                        </View>
+                    )}
 
-                        {/* Address row */}
-                        <TouchableOpacity style={s.addressRow} onPress={openMaps} activeOpacity={0.75}>
-                            <MapPin size={16} color={C.primary} />
-                            <Text style={s.locationText}>{venue.address ?? venue.city}</Text>
-                            <ExternalLink size={14} color={C.muted} />
-                        </TouchableOpacity>
-
-                        {/* Map */}
-                        <TouchableOpacity
-                            style={s.mapWrap}
-                            onPress={openMaps}
-                            activeOpacity={0.9}
-                        >
-                            {mapLoading && (
-                                <View style={[s.mapWrap, s.mapPlaceholder]}>
-                                    <ActivityIndicator color={C.primary} />
-                                </View>
-                            )}
-                            {mapUrl && !mapLoading && (
-                                <>
-                                    <Image
-                                        source={{ uri: mapUrl }}
-                                        style={s.mapImg}
-                                        resizeMode="cover"
-                                    />
-                                    <View style={s.mapOpenHint}>
-                                        <ExternalLink size={12} color="#fff" />
-                                        <Text style={s.mapOpenText}>Open in Maps</Text>
-                                    </View>
-                                </>
-                            )}
-                            {!mapUrl && !mapLoading && (
-                                <View style={[s.mapWrap, s.mapPlaceholder]}>
-                                    <MapPin size={24} color={C.border} />
-                                    <Text style={{ color: C.muted, fontSize: 13, marginTop: 8 }}>Map unavailable</Text>
-                                </View>
-                            )}
-                        </TouchableOpacity>
-                    </View>
+                    {/* Menu highlights */}
+                    {venue.menu && (
+                        <View style={s.section}>
+                            <Text style={s.sectionLabel}>CURATED MENU HIGHLIGHTS</Text>
+                            <View style={s.menuCard}>
+                                {venue.menu.split("\n").map((menuItem, i) => {
+                                    const m = menuItem.trim();
+                                    if (!m) return null;
+                                    return (
+                                        <View key={i} style={s.menuRow}>
+                                            <Text style={s.menuBullet}>◈</Text>
+                                            <Text style={s.menuItemText}>{m}</Text>
+                                        </View>
+                                    );
+                                })}
+                            </View>
+                        </View>
+                    )}
                 </View>
             </ScrollView>
 
-            {/* CTA */}
+            {/* Bottom CTA */}
             <View style={s.cta}>
                 <TouchableOpacity
                     style={s.ctaBtn}
@@ -273,12 +290,12 @@ export default function VenueDetailScreen() {
                         params: {
                             prefillType: VENUE_SERVICE_TYPE[venue.category] ?? "",
                             prefillVenue: venue.name,
-                            prefillCity: venue.address ?? venue.city,
+                            prefillCity: venue.city,
                         }
                     })}
                     activeOpacity={0.85}
                 >
-                    <Text style={s.ctaBtnText}>Request via Lapeq</Text>
+                    <Text style={s.ctaBtnText}>Curate This For Me</Text>
                     <ArrowRight size={18} color={C.background} strokeWidth={2.5} />
                 </TouchableOpacity>
             </View>
@@ -286,35 +303,42 @@ export default function VenueDetailScreen() {
     );
 }
 
-const getStyles = (C: any, theme: string) => StyleSheet.create({
-    hero: { height: 380, position: "relative" },
-    heroImg: { width: SW, height: 380 },
-    heroOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.45)" },
-    heroActions: { position: "absolute", top: 0, left: 0, right: 0, flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 20 },
-    dots: { position: "absolute", bottom: 72, left: 0, right: 0, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 5 },
-    dot: { height: 6, borderRadius: 3, transition: "width 0.2s" } as any,
-    actionBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(0,0,0,0.35)", alignItems: "center", justifyContent: "center" },
-    heroContent: { position: "absolute", bottom: 28, left: 20, right: 20 },
-    categoryPill: { alignSelf: "flex-start", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginBottom: 10 },
-    categoryPillText: { fontSize: 10, fontWeight: "800", color: "#fff", letterSpacing: 1 },
-    heroName: { fontSize: 30, fontWeight: "700", color: "#fff", marginBottom: 8, lineHeight: 36 },
-    heroAddress: { fontSize: 13, color: "rgba(255,255,255,0.7)" },
+const getStyles = (C: any, theme: string) => {
+    const isDark = theme === "dark";
+    return StyleSheet.create({
+        hero: { height: 380, position: "relative" },
+        heroImg: { width: SW, height: 380 },
+        heroOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.45)" },
+        heroActions: { position: "absolute", top: 0, left: 0, right: 0, flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 20 },
+        dots: { position: "absolute", bottom: 72, left: 0, right: 0, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 5 },
+        dot: { height: 6, borderRadius: 3 } as any,
+        actionBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(0,0,0,0.35)", alignItems: "center", justifyContent: "center" },
+        headerCurateBtn: { backgroundColor: GOLD, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, justifyContent: "center", alignItems: "center" },
+        headerCurateText: { color: "#000", fontSize: 11, fontWeight: "800", letterSpacing: 0.5 },
+        heroContent: { position: "absolute", bottom: 28, left: 20, right: 20 },
+        categoryPill: { alignSelf: "flex-start", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginBottom: 10 },
+        categoryPillText: { fontSize: 10, fontWeight: "800", color: "#fff", letterSpacing: 1 },
+        heroName: { fontSize: 30, fontWeight: "700", color: "#fff", marginBottom: 8, lineHeight: 36 },
+        heroAddress: { fontSize: 13, color: "rgba(255,255,255,0.7)" },
 
-    body: { padding: 24, gap: 28 },
-    section: { gap: 12 },
-    sectionLabel: { fontSize: 10, fontWeight: "800", color: C.primary, letterSpacing: 2 },
-    description: { fontSize: 15, color: C.muted, lineHeight: 24 },
+        body: { padding: 24, gap: 28 },
+        section: { gap: 12 },
+        sectionLabel: { fontSize: 10, fontWeight: "800", color: GOLD, letterSpacing: 2 },
+        description: { fontSize: 15, color: C.muted, lineHeight: 24 },
 
-    addressRow: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: C.surface, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: C.border },
-    locationText: { fontSize: 14, color: C.text, flex: 1 },
+        perksCard: { backgroundColor: isDark ? "rgba(201,168,76,0.06)" : "#fdfbfa", borderWidth: 1, borderColor: `${GOLD}20`, borderRadius: 16, padding: 18, gap: 12 },
+        perkRow: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+        starIconWrap: { width: 16, height: 16, borderRadius: 8, backgroundColor: `${GOLD}20`, alignItems: "center", justifyContent: "center", marginTop: 2 },
+        starIcon: { fontSize: 10, color: GOLD, fontWeight: "900" },
+        perkText: { fontSize: 14, lineHeight: 20, color: C.text },
 
-    mapWrap: { borderRadius: 16, overflow: "hidden", height: MAP_H, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border },
-    mapImg: { width: "100%", height: "100%" },
-    mapPlaceholder: { justifyContent: "center", alignItems: "center" },
-    mapOpenHint: { position: "absolute", bottom: 10, right: 10, flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "rgba(0,0,0,0.55)", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
-    mapOpenText: { fontSize: 11, color: "#fff", fontWeight: "600" },
+        menuCard: { backgroundColor: isDark ? "#111" : "#fbfbfb", borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 18, gap: 12 },
+        menuRow: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+        menuBullet: { fontSize: 12, color: GOLD, marginTop: 2 },
+        menuItemText: { fontSize: 14, fontWeight: "600", lineHeight: 20, color: C.text },
 
-    cta: { padding: 20, paddingBottom: 36, backgroundColor: C.background, borderTopWidth: 1, borderTopColor: C.border },
-    ctaBtn: { backgroundColor: C.primary, borderRadius: 14, padding: 16, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
-    ctaBtnText: { color: C.background, fontSize: 16, fontWeight: "700" },
-});
+        cta: { padding: 20, paddingBottom: 36, backgroundColor: C.background, borderTopWidth: 1, borderTopColor: C.border },
+        ctaBtn: { backgroundColor: GOLD, borderRadius: 14, padding: 16, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
+        ctaBtnText: { color: "#000", fontSize: 16, fontWeight: "700" },
+    });
+};

@@ -55,7 +55,7 @@ function VenueCard({ venue, height, router }: { venue: Venue; height: number; ro
         <TouchableOpacity
             style={[s.venueCard, { height }]}
             activeOpacity={0.88}
-            onPress={() => router.push({ pathname: "/services/request-package", params: { category: venue.category, city: venue.city } })}
+            onPress={() => router.push({ pathname: "/explore/venue-detail", params: { id: venue.id } })}
         >
             <Image source={img} style={s.venueImg} resizeMode="cover" />
             <View style={s.venueScrim} />

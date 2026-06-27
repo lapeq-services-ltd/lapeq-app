@@ -471,7 +471,31 @@ export default function MembershipScreen() {
                     <Text style={s.headerTitle}>Membership</Text>
                     <View style={{ width: 44 }} />
                 </View>
-
+                {/* Segmented Tier Selector */}
+                <View style={s.tierPillContainer}>
+                    {TIERS.map((tier, i) => {
+                        const active = i === activeIndex;
+                        return (
+                            <TouchableOpacity
+                                key={tier.id}
+                                style={[
+                                    s.tierPillButton,
+                                    active && { backgroundColor: currentTier.accent }
+                                ]}
+                                onPress={() => listRef.current?.scrollToIndex({ index: i, animated: true })}
+                                activeOpacity={0.8}
+                            >
+                                <Text style={[
+                                    s.tierPillText,
+                                    { color: active ? "#000" : "rgba(255,255,255,0.6)" },
+                                    active && { fontWeight: "700" }
+                                ]}>
+                                    {tier.name}
+                                </Text>
+                            </TouchableOpacity>
+                        );
+                    })}
+                </View>
                 <Animated.FlatList
                     ref={listRef}
                     data={TIERS}
@@ -509,6 +533,28 @@ export default function MembershipScreen() {
 const s = StyleSheet.create({
     root: { flex: 1 },
     header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingVertical: 12 },
+    tierPillContainer: {
+        flexDirection: "row",
+        backgroundColor: "rgba(255,255,255,0.05)",
+        borderRadius: 14,
+        padding: 4,
+        marginHorizontal: 20,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: "rgba(255,255,255,0.08)",
+    },
+    tierPillButton: {
+        flex: 1,
+        paddingVertical: 10,
+        borderRadius: 10,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    tierPillText: {
+        fontSize: 12,
+        fontWeight: "600",
+        letterSpacing: 0.2,
+    },
     backBtn: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
     headerTitle: { fontSize: 18, fontWeight: "700", color: "#fff", letterSpacing: 0.5 },
 

@@ -1,11 +1,11 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import {
     Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
     View, Platform, Image, Modal, Animated, Alert, Dimensions, Switch,
 } from "react-native";
 import LocationSearch from "@/components/LocationSearch";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
@@ -87,11 +87,34 @@ function BudgetStepper({ value, onChange, min, step, label, C, theme }: {
 
 export default function LifestyleTravelScreen() {
     const router = useRouter();
+    const params = useLocalSearchParams<{ prefillType?: string; prefillVenue?: string; prefillCity?: string }>();
     const { C, theme } = useTheme();
     const s = useMemo(() => getStyles(C, theme), [C, theme]);
     const isDark = theme === "dark";
 
     const [serviceType, setServiceType] = useState(SERVICE_TYPES[0].id);
+
+    // Prefill logic
+    useEffect(() => {
+        if (params.prefillType) {
+            setServiceType(params.prefillType);
+        }
+        if (params.prefillCity) {
+            setDiningCity(params.prefillCity);
+            setStayDest(params.prefillCity);
+            setDestination(params.prefillCity);
+        }
+        if (params.prefillVenue) {
+            if (params.prefillType === "Private Dining") {
+                setDiningVenue("Restaurant");
+                setDiningNotes(`Requested curation for Curated Partner Venue (Ref: ${params.prefillVenue}). Please coordinate reservations and benefits.`);
+            } else if (params.prefillType === "Stays & Accommodations") {
+                setStayNotes(`Requested curation for Curated Partner Venue (Ref: ${params.prefillVenue}). Please coordinate stays and benefits.`);
+            } else {
+                setPreferences(`Requested curation for Curated Partner Venue (Ref: ${params.prefillVenue}).`);
+            }
+        }
+    }, [params]);
 
     // Shared date/time state
     const [dateFromObj, setDateFromObj]   = useState<Date | null>(null);
@@ -197,15 +220,18 @@ export default function LifestyleTravelScreen() {
         const ref = (isJets ? "JET-" : "LPQ-") + Date.now().toString(36).toUpperCase().slice(-5);
         const details = isJets
             ? { aircraft: selectedAircraft.name, tripType, departure: jetDeparture, destination: jetDestination, depDate: fmtDate(depDate), depTime: fmtTime(depTime), retDate: tripType === "return" ? fmtDate(retDate) : null, passengers, catering, groundTransfer, specialRequests }
-            : isStays
-            ? { serviceType, stayType, destination: stayDest, checkIn: fmtDate(dateFromObj), checkOut: fmtDate(dateToObj), guests: stayGuests, dailyBudget, amenities: stayAmenities, activities: stayActivities, notes: stayNotes }
-            : isPrivateDining
-            ? { serviceType, occasion: diningOccasion, venueType: diningVenue, city: diningCity, guests: diningGuests, date: fmtDate(dateFromObj), time: fmtTime(eventTime), cuisine: diningCuisine, setup: diningSetup, budget: diningBudget, notes: diningNotes }
-            : isVIPProtocol
-            ? { serviceType, protocolType, city: protocolCity, date: fmtDate(dateFromObj), time: fmtTime(eventTime), persons: protocolPersons, requirements: protocolReqs }
-            : isLifestyleService
-            ? { serviceType, city: destination, date: fmtDate(dateFromObj), budget: curatedBudget, description: preferences }
-            : { serviceType, mood, destination, dateFrom: fmtDate(dateFromObj), dateTo: fmtDate(dateToObj), budget: curatedBudget, preferences };
+            : {
+                ...(isStays
+                    ? { serviceType, stayType, destination: stayDest, checkIn: fmtDate(dateFromObj), checkOut: fmtDate(dateToObj), guests: stayGuests, dailyBudget, amenities: stayAmenities, activities: stayActivities, notes: stayNotes }
+                    : isPrivateDining
+                    ? { serviceType, occasion: diningOccasion, venueType: diningVenue, city: diningCity, guests: diningGuests, date: fmtDate(dateFromObj), time: fmtTime(eventTime), cuisine: diningCuisine, setup: diningSetup, budget: diningBudget, notes: diningNotes }
+                    : isVIPProtocol
+                    ? { serviceType, protocolType, city: protocolCity, date: fmtDate(dateFromObj), time: fmtTime(eventTime), persons: protocolPersons, requirements: protocolReqs }
+                    : isLifestyleService
+                    ? { serviceType, city: destination, date: fmtDate(dateFromObj), budget: curatedBudget, description: preferences }
+                    : { serviceType, mood, destination, dateFrom: fmtDate(dateFromObj), dateTo: fmtDate(dateToObj), budget: curatedBudget, preferences }),
+                targetVenue: params.prefillVenue || null
+              };
         const { error } = await supabase.from("requests").insert({
             user_id: user?.id,
             service_type: isJets ? "private-jet" : "lifestyle-travel",
