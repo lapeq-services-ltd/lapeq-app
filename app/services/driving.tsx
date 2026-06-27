@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import {
     View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
     Platform, Keyboard, KeyboardAvoidingView, Image, ActivityIndicator,
-    Modal, Animated, Alert, Switch
+    Modal, Animated, Alert, Switch, ImageBackground
 } from "react-native";
 import LocationSearch, { reverseGeocodeWithMapbox } from "@/components/LocationSearch";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -49,7 +49,7 @@ export default function DrivingServiceScreen() {
     const { eventTag, eventDate, tab } = useLocalSearchParams<{ eventTag?: string; eventDate?: string; tab?: string }>();
 
     // Tab control
-    const [activeTab, setActiveTab] = useState<"car" | "plane">(tab === "plane" ? "plane" : "car");
+    const [activeTab, setActiveTab] = useState<"car" | "plane" | "commercial">(tab === "plane" ? "plane" : "car");
 
     // CAR STATES (Original Chauffeur)
     const [pickup, setPickup] = useState("");
@@ -81,6 +81,18 @@ export default function DrivingServiceScreen() {
     const [jetCatering, setJetCatering] = useState("");
     const [jetGroundTransfer, setJetGroundTransfer] = useState(false);
     const [jetNotes, setJetNotes] = useState("");
+
+    // COMMERCIAL FLIGHT STATES
+    const [comTripType, setComTripType] = useState<"round" | "oneway" | "multi">("round");
+    const [comFrom, setComFrom] = useState("");
+    const [comTo, setComTo] = useState("");
+    const [comDepDate, setComDepDate] = useState(new Date());
+    const [comRetDate, setComRetDate] = useState(new Date(Date.now() + 7 * 86400000));
+    const [showComDepDate, setShowComDepDate] = useState(false);
+    const [showComRetDate, setShowComRetDate] = useState(false);
+    const [comPassengers, setComPassengers] = useState(1);
+    const [comCabin, setComCabin] = useState<"economy" | "business" | "first">("economy");
+    const [comNotes, setComNotes] = useState("");
 
     // Shared UI states
     const [loading, setLoading] = useState(false);
@@ -320,7 +332,15 @@ export default function DrivingServiceScreen() {
                             activeOpacity={0.8}
                         >
                             <Plane size={16} color={activeTab === "plane" ? C.black : C.muted} style={{ transform: [{ rotate: "45deg" }] }} />
-                            <Text style={[s.tabButtonText, { color: activeTab === "plane" ? C.black : C.muted }]}>Flights & Jets</Text>
+                            <Text style={[s.tabButtonText, { color: activeTab === "plane" ? C.black : C.muted }]}>Private Jets</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[s.tabButton, activeTab === "commercial" && s.tabButtonActive]}
+                            onPress={() => setActiveTab("commercial")}
+                            activeOpacity={0.8}
+                        >
+                            <Plane size={16} color={activeTab === "commercial" ? C.black : C.muted} />
+                            <Text style={[s.tabButtonText, { color: activeTab === "commercial" ? C.black : C.muted }]}>Flights</Text>
                         </TouchableOpacity>
                     </View>
 
@@ -484,29 +504,18 @@ export default function DrivingServiceScreen() {
                     ) : (
                         /* ── PRIVATE FLIGHTS & JETS FLOW ── */
                         <View>
-                            {/* Aviation Hero */}
-                            <View style={[s.hero, { backgroundColor: isDark ? "#060810" : "#0a0c14" }]}>
-                                <View style={StyleSheet.absoluteFill}>
-                                    {Array.from({ length: 80 }).map((_, i) => (
-                                        <View
-                                            key={i}
-                                            style={{
-                                                position: "absolute",
-                                                width: 2, height: 2, borderRadius: 1,
-                                                backgroundColor: "#fff",
-                                                opacity: 0.04,
-                                                left: (i % 10) * 38 + 12,
-                                                top: Math.floor(i / 10) * 28 + 12,
-                                            }}
-                                        />
-                                    ))}
-                                </View>
-                                <Plane size={72} color={GOLD} style={{ opacity: 0.12, transform: [{ rotate: "42deg" }] }} />
+                            {/* Aviation Hero — jet.jpg banner */}
+                            <ImageBackground
+                                source={require("@/assets/images/jet.jpg")}
+                                style={[s.hero, { overflow: "hidden" }]}
+                                resizeMode="cover"
+                            >
+                                <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.48)" }]} />
                                 <View style={{ position: "absolute", bottom: 24, left: 24, right: 24 }}>
                                     <Text style={s.heroEyebrow}>ANYWHERE · ANY TIME</Text>
-                                    <Text style={s.heroTitle}>The sky has{"\n"}no waiting room.</Text>
+                                    <Text style={s.heroTitle}>{"The sky has\nno waiting room."}</Text>
                                 </View>
-                            </View>
+                            </ImageBackground>
 
                             <View style={{ paddingHorizontal: 20 }}>
                                 {/* Aircraft Type Selection */}
@@ -711,7 +720,186 @@ export default function DrivingServiceScreen() {
                                 />
                             </View>
                         </View>
-                    )}
+                    ) : activeTab === "commercial" ? (
+                        /* ── COMMERCIAL FLIGHTS FLOW ── */
+                        <View>
+                            {/* Commercial Flights Hero — jet.jpg banner */}
+                            <ImageBackground
+                                source={require("@/assets/images/jet.jpg")}
+                                style={[s.hero, { overflow: "hidden", height: 200, marginHorizontal: 20, borderRadius: 20 }]}
+                                resizeMode="cover"
+                            >
+                                <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.42)" }]} />
+                                <View style={{ position: "absolute", bottom: 20, left: 20, right: 20 }}>
+                                    <Text style={s.heroEyebrow}>ECONOMY · BUSINESS · FIRST CLASS</Text>
+                                    <Text style={s.heroTitle}>{"Commercial\nFlights"}</Text>
+                                </View>
+                            </ImageBackground>
+
+                            <View style={{ paddingHorizontal: 20, marginTop: 20 }}>
+
+                                {/* Trip Type Tabs — Round Trip / One Way / Multiple Trip */}
+                                <View style={{ flexDirection: "row", gap: 8, marginBottom: 20 }}>
+                                    {(["round", "oneway", "multi"] as const).map(type => {
+                                        const active = comTripType === type;
+                                        const labels: Record<string, string> = { round: "Round Trip", oneway: "One Way", multi: "Multi-City" };
+                                        return (
+                                            <TouchableOpacity
+                                                key={type}
+                                                onPress={() => setComTripType(type)}
+                                                style={{
+                                                    flex: 1, paddingVertical: 10, borderRadius: 10,
+                                                    alignItems: "center", borderWidth: 1,
+                                                    borderColor: active ? GOLD : border,
+                                                    backgroundColor: active ? `${GOLD}14` : C.surface,
+                                                }}
+                                                activeOpacity={0.8}
+                                            >
+                                                <Text style={{ fontSize: 12, fontWeight: "700", color: active ? GOLD : C.muted }}>
+                                                    {labels[type]}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+
+                                {/* From / To Card */}
+                                <View style={{ backgroundColor: C.surface, borderRadius: 16, borderWidth: 1, borderColor: border, marginBottom: 16, overflow: "hidden" }}>
+                                    {/* From */}
+                                    <View style={{ padding: 16, borderBottomWidth: 1, borderBottomColor: border }}>
+                                        <Text style={{ fontSize: 10, fontWeight: "700", color: C.muted, letterSpacing: 1.5, marginBottom: 6 }}>FROM</Text>
+                                        <LocationSearch
+                                            value={comFrom}
+                                            onChangeText={setComFrom}
+                                            placeholder="Departure city or airport..."
+                                            onSelect={setComFrom}
+                                        />
+                                    </View>
+                                    {/* Swap icon */}
+                                    <View style={{ position: "absolute", right: 20, top: "50%", marginTop: -18, zIndex: 2 }}>
+                                        <TouchableOpacity
+                                            onPress={() => { const t = comFrom; setComFrom(comTo); setComTo(t); }}
+                                            style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: C.background, borderWidth: 1, borderColor: border, alignItems: "center", justifyContent: "center" }}
+                                        >
+                                            <Plane size={16} color={GOLD} style={{ transform: [{ rotate: "90deg" }] }} />
+                                        </TouchableOpacity>
+                                    </View>
+                                    {/* To */}
+                                    <View style={{ padding: 16 }}>
+                                        <Text style={{ fontSize: 10, fontWeight: "700", color: C.muted, letterSpacing: 1.5, marginBottom: 6 }}>TO</Text>
+                                        <LocationSearch
+                                            value={comTo}
+                                            onChangeText={setComTo}
+                                            placeholder="Destination city or airport..."
+                                            onSelect={setComTo}
+                                        />
+                                    </View>
+                                </View>
+
+                                {/* Dates Row */}
+                                <View style={s.dtRow}>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={[s.label, { color: C.text }]}>Departure *</Text>
+                                        <TouchableOpacity
+                                            style={[s.inputRow, { backgroundColor: C.surface, borderColor: border }]}
+                                            onPress={() => { Keyboard.dismiss(); setShowComDepDate(true); }}
+                                        >
+                                            <Clock size={18} color={GOLD} style={{ marginRight: 8 }} />
+                                            <Text style={{ color: C.text, fontSize: 14 }}>
+                                                {comDepDate.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                    {comTripType === "round" && (
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={[s.label, { color: C.text }]}>Return *</Text>
+                                            <TouchableOpacity
+                                                style={[s.inputRow, { backgroundColor: C.surface, borderColor: border }]}
+                                                onPress={() => { Keyboard.dismiss(); setShowComRetDate(true); }}
+                                            >
+                                                <Clock size={18} color={GOLD} style={{ marginRight: 8 }} />
+                                                <Text style={{ color: C.text, fontSize: 14 }}>
+                                                    {comRetDate.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    )}
+                                </View>
+
+                                {showComDepDate && (
+                                    <DateTimePicker mode="date" value={comDepDate} minimumDate={new Date()}
+                                        onChange={(_, d) => { if (d) setComDepDate(d); if (Platform.OS === "android") setShowComDepDate(false); }}
+                                    />
+                                )}
+                                {showComRetDate && (
+                                    <DateTimePicker mode="date" value={comRetDate} minimumDate={comDepDate}
+                                        onChange={(_, d) => { if (d) setComRetDate(d); if (Platform.OS === "android") setShowComRetDate(false); }}
+                                    />
+                                )}
+
+                                {/* Passengers Stepper */}
+                                <Text style={[s.label, { color: C.text }]}>Passengers</Text>
+                                <View style={[s.stepperRow, { backgroundColor: C.surface, borderColor: border, marginBottom: 20 }]}>
+                                    <Users size={18} color={GOLD} />
+                                    <TouchableOpacity
+                                        style={[s.stepperBtn, { borderColor: border }]}
+                                        onPress={() => setComPassengers(p => Math.max(1, p - 1))}
+                                    >
+                                        <Minus size={16} color={C.text} />
+                                    </TouchableOpacity>
+                                    <Text style={[s.stepperVal, { color: C.text }]}>{comPassengers}</Text>
+                                    <TouchableOpacity
+                                        style={[s.stepperBtn, { borderColor: border }]}
+                                        onPress={() => setComPassengers(p => p + 1)}
+                                    >
+                                        <Plus size={16} color={C.text} />
+                                    </TouchableOpacity>
+                                    <Text style={{ flex: 1, textAlign: "right", color: C.muted, fontSize: 13 }}>
+                                        {comPassengers === 1 ? "1 Passenger" : `${comPassengers} Passengers`}
+                                    </Text>
+                                </View>
+
+                                {/* Cabin Class */}
+                                <Text style={[s.label, { color: C.text }]}>Cabin Class</Text>
+                                <View style={{ flexDirection: "row", gap: 10, marginBottom: 20 }}>
+                                    {(["economy", "business", "first"] as const).map(cls => {
+                                        const active = comCabin === cls;
+                                        const icons: Record<string, string> = { economy: "✈️", business: "💼", first: "👑" };
+                                        const labels: Record<string, string> = { economy: "Economy", business: "Business", first: "First Class" };
+                                        return (
+                                            <TouchableOpacity
+                                                key={cls}
+                                                onPress={() => setComCabin(cls)}
+                                                style={{
+                                                    flex: 1, paddingVertical: 14, borderRadius: 14, alignItems: "center", gap: 4,
+                                                    borderWidth: 1, borderColor: active ? GOLD : border,
+                                                    backgroundColor: active ? `${GOLD}12` : C.surface,
+                                                }}
+                                                activeOpacity={0.8}
+                                            >
+                                                <Text style={{ fontSize: 18 }}>{icons[cls]}</Text>
+                                                <Text style={{ fontSize: 11, fontWeight: "700", color: active ? GOLD : C.muted }}>
+                                                    {labels[cls]}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+
+                                {/* Special Requests */}
+                                <Text style={[s.label, { color: C.text }]}>Special Requests</Text>
+                                <VoiceInput
+                                    placeholder="Meal preference, seat preference, special assistance..."
+                                    value={comNotes}
+                                    onChange={setComNotes}
+                                    accent={GOLD}
+                                    textColor={C.text}
+                                    border={border}
+                                    inputBg={C.surface}
+                                />
+                            </View>
+                        </View>
+                    ) : null}
 
                     {/* Submit Button */}
                     <View style={{ paddingHorizontal: 20, marginTop: 12 }}>
@@ -721,12 +909,14 @@ export default function DrivingServiceScreen() {
                             disabled={loading}
                         >
                             <Text style={[s.btnText, { color: C.black }]}>
-                                {loading ? "Submitting..." : activeTab === "car" ? "Submit Request" : "Submit Enquiry"}
+                                {loading ? "Submitting..." : activeTab === "car" ? "Submit Request" : activeTab === "commercial" ? "Search & Request Flights" : "Submit Enquiry"}
                             </Text>
                         </TouchableOpacity>
-                        {activeTab === "plane" && (
+                        {(activeTab === "plane" || activeTab === "commercial") && (
                             <Text style={{ fontSize: 12, color: C.muted, textAlign: "center", marginTop: 10 }}>
-                                A Lapeq aviation advisor will respond within 2 hours.
+                                {activeTab === "commercial"
+                                    ? "A Lapeq travel advisor will source the best fares and confirm within 4 hours."
+                                    : "A Lapeq aviation advisor will respond within 2 hours."}
                             </Text>
                         )}
                     </View>
