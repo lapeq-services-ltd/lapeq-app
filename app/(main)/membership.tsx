@@ -390,6 +390,7 @@ export default function MembershipScreen() {
     const insets = useSafeAreaInsets();
     const listRef = useRef<FlatList>(null);
     const scrollX = useRef(new Animated.Value(0)).current;
+    const isTappingTab = useRef(false);
 
     const tabWidth = (W - 48) / 4;
     const translateX = scrollX.interpolate({
@@ -453,6 +454,7 @@ export default function MembershipScreen() {
     };
 
     const onViewableItemsChanged = useCallback(({ viewableItems }: any) => {
+        if (isTappingTab.current) return;
         if (viewableItems.length > 0) setActiveIndex(viewableItems[0].index ?? 0);
     }, []);
 
@@ -504,7 +506,11 @@ export default function MembershipScreen() {
                             <TouchableOpacity
                                 key={tier.id}
                                 style={s.tierPillButton}
-                                onPress={() => listRef.current?.scrollToIndex({ index: i, animated: true })}
+                                onPress={() => {
+                                    isTappingTab.current = true;
+                                    setActiveIndex(i);
+                                    listRef.current?.scrollToIndex({ index: i, animated: true });
+                                }}
                                 activeOpacity={0.8}
                             >
                                 <Text style={[
@@ -526,6 +532,9 @@ export default function MembershipScreen() {
                     pagingEnabled
                     showsHorizontalScrollIndicator={false}
                     onScroll={Animated.event([{ nativeEvent: { contentOffset: { x: scrollX } } }], { useNativeDriver: false })}
+                    onMomentumScrollEnd={() => {
+                        isTappingTab.current = false;
+                    }}
                     onViewableItemsChanged={onViewableItemsChanged}
                     viewabilityConfig={viewabilityConfig}
                     renderItem={renderPage}
