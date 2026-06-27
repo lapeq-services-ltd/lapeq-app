@@ -28,7 +28,6 @@ const { width: SW } = Dimensions.get("window");
 const MAP_W = SW - 48;
 const MAP_H = 180;
 const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN;
-const GOLD = "#c9a84c";
 
 const PLACEHOLDER_IMAGES: Record<string, any> = {
     restaurant: require("@/assets/images/lagos-restaurant.jpg"),
