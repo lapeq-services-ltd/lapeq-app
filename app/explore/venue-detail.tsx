@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image, Dimensions, Linking, NativeSyntheticEvent, NativeScrollEvent } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronLeft, MapPin, Heart, ArrowRight, ExternalLink } from "lucide-react-native";
+import { ChevronLeft, ChevronRight, MapPin, Heart, ArrowRight, ExternalLink } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
 
@@ -23,6 +23,13 @@ type Venue = {
 };
 
 type VenueImage = { id: string; url: string; sort_order: number };
+
+type VenueMenuItem = {
+    id: string;
+    image_url: string;
+    name: string;
+    description: string | null;
+};
 
 const { width: SW } = Dimensions.get("window");
 const MAP_W = SW - 48;
@@ -88,6 +95,8 @@ export default function VenueDetailScreen() {
     const [venueImages, setVenueImages] = useState<VenueImage[]>([]);
     const [activeSlide, setActiveSlide] = useState(0);
     const carouselRef = useRef<ScrollView>(null);
+    const [menuItems, setMenuItems] = useState<VenueMenuItem[]>([]);
+    const [activeDishIndex, setActiveDishIndex] = useState(0);
 
     useEffect(() => { init(); }, [id]);
 
@@ -108,6 +117,14 @@ export default function VenueDetailScreen() {
                 .eq("venue_id", id)
                 .order("sort_order");
             setVenueImages((imgs as VenueImage[]) ?? []);
+            
+            // Fetch curated menu dishes
+            const { data: menuData } = await supabase
+                .from("venue_menu_items")
+                .select("id, image_url, name, description")
+                .eq("venue_id", id)
+                .order("sort_order");
+            setMenuItems((menuData as VenueMenuItem[]) ?? []);
             // Use stored coords or geocode
             if (data.lat && data.lng) {
                 setCoords({ lat: data.lat, lng: data.lng });
@@ -259,6 +276,64 @@ export default function VenueDetailScreen() {
                         </View>
                     )}
 
+                    {/* Curated Menu Swipe Carousel */}
+                    {menuItems.length > 0 && (
+                        <View style={s.section}>
+                            <Text style={s.sectionLabel}>CURATED SIGNATURE DISHES</Text>
+                            
+                            <View style={s.dishCarouselContainer}>
+                                {menuItems.length > 1 && (
+                                    <TouchableOpacity
+                                        style={[s.navArrow, s.navArrowLeft]}
+                                        onPress={() => setActiveDishIndex(prev => (prev === 0 ? menuItems.length - 1 : prev - 1))}
+                                        hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                                    >
+                                        <ChevronLeft size={20} color="#fff" />
+                                    </TouchableOpacity>
+                                )}
+
+                                <View style={s.dishImageFrame}>
+                                    <Image
+                                        source={{ uri: menuItems[activeDishIndex].image_url }}
+                                        style={s.dishImage}
+                                        resizeMode="contain"
+                                    />
+                                </View>
+
+                                {menuItems.length > 1 && (
+                                    <TouchableOpacity
+                                        style={[s.navArrow, s.navArrowRight]}
+                                        onPress={() => setActiveDishIndex(prev => (prev === menuItems.length - 1 ? 0 : prev + 1))}
+                                        hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                                    >
+                                        <ChevronRight size={20} color="#fff" />
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+
+                            <View style={s.dishMeta}>
+                                <Text style={s.dishNameText}>{menuItems[activeDishIndex].name}</Text>
+                                {menuItems[activeDishIndex].description ? (
+                                    <Text style={s.dishDescText}>{menuItems[activeDishIndex].description}</Text>
+                                ) : null}
+                                
+                                {menuItems.length > 1 && (
+                                    <View style={s.dishIndicators}>
+                                        {menuItems.map((_, idx) => (
+                                            <View
+                                                key={idx}
+                                                style={[
+                                                    s.dishIndicatorDot,
+                                                    idx === activeDishIndex && s.dishIndicatorDotActive
+                                                ]}
+                                            />
+                                        ))}
+                                    </View>
+                                )}
+                            </View>
+                        </View>
+                    )}
+
                     {/* Menu highlights */}
                     {venue.menu && (
                         <View style={s.section}>
@@ -330,6 +405,20 @@ const getStyles = (C: any, theme: string) => {
         starIconWrap: { width: 16, height: 16, borderRadius: 8, backgroundColor: `${GOLD}20`, alignItems: "center", justifyContent: "center", marginTop: 2 },
         starIcon: { fontSize: 10, color: GOLD, fontWeight: "900" },
         perkText: { fontSize: 14, lineHeight: 20, color: C.text },
+
+        dishCarouselContainer: { flexDirection: "row", alignItems: "center", justifyContent: "center", position: "relative", height: 260, backgroundColor: isDark ? "#0f0f0f" : "#fafafa", borderRadius: 24, borderWidth: 1, borderColor: C.border, overflow: "hidden" },
+        dishImageFrame: { width: 220, height: 220, justifyContent: "center", alignItems: "center" },
+        dishImage: { width: "100%", height: "100%" },
+        navArrow: { width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center", position: "absolute", zIndex: 10 },
+        navArrowLeft: { left: 16 },
+        navArrowRight: { right: 16 },
+
+        dishMeta: { alignItems: "center", gap: 6, paddingTop: 12, paddingHorizontal: 16 },
+        dishNameText: { fontSize: 16, fontWeight: "700", color: GOLD, textTransform: "uppercase", letterSpacing: 0.5, textAlign: "center" },
+        dishDescText: { fontSize: 13, color: C.muted, textAlign: "center", lineHeight: 18, paddingHorizontal: 10 },
+        dishIndicators: { flexDirection: "row", justifyContent: "center", gap: 6, marginTop: 12 },
+        dishIndicatorDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.15)" },
+        dishIndicatorDotActive: { backgroundColor: GOLD, width: 12 },
 
         menuCard: { backgroundColor: isDark ? "#111" : "#fbfbfb", borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 18, gap: 12 },
         menuRow: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
