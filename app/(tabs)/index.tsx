@@ -392,8 +392,8 @@ export default function HomeScreen() {
                     {[
                         { label: "Lifestyle", sub: "Curated itineraries", img: require("@/assets/icons/clink.png"), route: "/(main)/experiences" as const },
                         { label: "Make a Request", sub: "Bespoke activity & travel plans", img: require("@/assets/icons/request.png"), route: "/services/lifestyle-travel" as const },
-                        { label: "Elite Transit", sub: "Drive & Flights/Jets", img: require("@/assets/images/carsabuja.jpg"), route: "/services/driving" as const },
-                        { label: "Lapeq Co-Brand", sub: "Your brand on our platform", img: require("@/assets/images/app-collab.png"), route: "/services/lifestyle" as const },
+                        { label: "Elite Transit", sub: "Drive & Flights/Jets", img: require("@/assets/icons/elite.png"), route: "/services/driving" as const },
+                        { label: "Lapeq Co-Brand", sub: "Your brand on our platform", img: require("@/assets/icons/brush.png"), route: "/services/lifestyle" as const },
                     ].map(({ label, sub, img, route }) => (
                         <TouchableOpacity
                             key={label}
@@ -642,7 +642,7 @@ export default function HomeScreen() {
                             { img: require("@/assets/icons/request.png"), label: "Make a Request", sub: "Bespoke activity & travel plans", route: "/services/lifestyle-travel" },
                             { img: require("@/assets/images/gents (1).jpg"), label: "My Concierge", sub: "Chat with your concierge", route: "/chat" },
                             { img: require("@/assets/images/lagos-rooftop.jpg"), label: "My Requests", sub: "Track and manage bookings", route: "/requests" },
-                            { img: require("@/assets/images/carsabuja.jpg"), label: "Elite Transit & Aviation", sub: "Car & Private Aviation", route: "/services/driving" },
+                            { img: require("@/assets/icons/elite.png"), label: "Elite Transit & Aviation", sub: "Car & Private Aviation", route: "/services/driving" },
                         ].map(({ img, label, sub, route }) => (
                             <TouchableOpacity
                                 key={label}
@@ -705,7 +705,7 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
         fontWeight: "800",
         textAlign: "center"
     },
-    crownBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: `${C.primary}18`, borderWidth: 1, borderColor: C.primary, alignItems: "center", justifyContent: "center" },
+    crownBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: "transparent", borderWidth: 1, borderColor: C.border, alignItems: "center", justifyContent: "center" },
     greetSub: { fontSize: 18, color: C.muted },
     greetName: { fontSize: 28, fontWeight: "700", color: C.text },
     quickGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 28 },
@@ -727,14 +727,14 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
         width: 44,
         height: 44,
         borderRadius: 12,
-        backgroundColor: `${C.primary}15`,
+        backgroundColor: "transparent",
         alignItems: "center",
         justifyContent: "center",
     },
     quickCardLabel: { fontSize: 15, fontWeight: "700", color: C.text, letterSpacing: -0.2 },
     quickCardSub: { fontSize: 12, color: C.muted },
     banner: { borderRadius: 16, backgroundColor: C.surface, padding: 20, marginBottom: 28, flexDirection: "row", alignItems: "center", gap: 16 },
-    bannerIcon: { width: 52, height: 52, borderRadius: 26, backgroundColor: `${C.primary}33`, alignItems: "center", justifyContent: "center" },
+    bannerIcon: { width: 52, height: 52, borderRadius: 26, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, alignItems: "center", justifyContent: "center" },
     bannerTitle: { fontSize: 16, fontWeight: "600", color: C.text },
     bannerSub: { fontSize: 13, color: `${C.text}99` },
     sectionRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
