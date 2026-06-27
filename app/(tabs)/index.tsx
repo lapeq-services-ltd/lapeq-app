@@ -23,7 +23,7 @@ import * as Haptics from "expo-haptics";
 let trialPopupShown = false;
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Bell, Crown, ChevronRight, Calendar, Plane, Car, HelpCircle, MessageCircle, LayoutGrid, Plus, Headphones, ClipboardList, Sparkles } from "lucide-react-native";
+import { Bell, Crown, ChevronRight, Calendar, Plane, Car, HelpCircle, MessageCircle, LayoutGrid, Plus, Headphones, ClipboardList, Sparkles, Settings, FileText } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
 
@@ -639,11 +639,10 @@ export default function HomeScreen() {
                     <Animated.View style={[s.quickDropdown, { opacity: dropdownOpacity, transform: [{ scale: dropdownScale }] }]}>
                         <Text style={s.quickDropdownHeading}>Quick Actions</Text>
                         {[
-                            { img: require("@/assets/icons/request.png"), label: "Make a Request", sub: "Bespoke activity & travel plans", route: "/services/lifestyle-travel" },
-                            { img: require("@/assets/images/gents (1).jpg"), label: "My Concierge", sub: "Chat with your concierge", route: "/chat" },
-                            { img: require("@/assets/images/lagos-rooftop.jpg"), label: "My Requests", sub: "Track and manage bookings", route: "/requests" },
-                            { img: require("@/assets/icons/elite.png"), label: "Elite Transit & Aviation", sub: "Car & Private Aviation", route: "/services/driving" },
-                        ].map(({ img, label, sub, route }) => (
+                            { icon: ClipboardList, label: "Make a Request", sub: "Bespoke plans", route: "/services/lifestyle-travel" },
+                            { icon: FileText, label: "My Requests", sub: "Track bookings", route: "/requests" },
+                            { icon: Settings, label: "Settings", sub: "App preferences", route: "/settings" },
+                        ].map(({ icon: Icon, label, sub, route }) => (
                             <TouchableOpacity
                                 key={label}
                                 style={s.quickDropdownItem}
@@ -653,14 +652,14 @@ export default function HomeScreen() {
                                     router.push(route as any);
                                 }}
                             >
-                                <View style={s.quickDropdownIcon}>
-                                    <Image source={img} style={{ width: "100%", height: "100%", borderRadius: 10 }} resizeMode="cover" />
+                                <View style={[s.quickDropdownIcon, { backgroundColor: `${C.primary}15` }]}>
+                                    <Icon size={16} color={C.primary} />
                                 </View>
                                 <View style={{ flex: 1 }}>
                                     <Text style={[s.quickDropdownLabel, { color: C.text }]}>{label}</Text>
                                     <Text style={[s.quickDropdownSub, { color: C.muted }]}>{sub}</Text>
                                 </View>
-                                <ChevronRight size={14} color={C.muted} />
+                                <ChevronRight size={12} color={C.muted} />
                             </TouchableOpacity>
                         ))}
                     </Animated.View>
@@ -774,47 +773,47 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
         bottom: 176,
         right: 16,
         zIndex: 30,
-        backgroundColor: C.surface,
+        backgroundColor: theme === "dark" ? "rgba(18, 18, 18, 0.76)" : "rgba(255, 255, 255, 0.8)",
         borderRadius: 20,
-        padding: 8,
-        width: 280,
+        padding: 6,
+        width: 210,
         borderWidth: 1,
-        borderColor: theme === "dark" ? "#2a2a2a" : "#d8d3ca",
+        borderColor: theme === "dark" ? "rgba(255, 255, 255, 0.12)" : "rgba(0, 0, 0, 0.08)",
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.2,
-        shadowRadius: 24,
+        shadowOpacity: 0.22,
+        shadowRadius: 18,
         elevation: 12,
     },
     quickDropdownHeading: {
-        fontSize: 11,
+        fontSize: 10,
         fontWeight: "700",
         color: C.muted,
         letterSpacing: 1.5,
         textTransform: "uppercase",
-        paddingHorizontal: 14,
-        paddingVertical: 10,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
     },
     quickDropdownItem: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 12,
-        padding: 12,
+        gap: 10,
+        padding: 10,
         borderRadius: 14,
     },
     quickDropdownIcon: {
-        width: 38,
-        height: 38,
-        borderRadius: 10,
+        width: 32,
+        height: 32,
+        borderRadius: 8,
         alignItems: "center",
         justifyContent: "center",
     },
     quickDropdownLabel: {
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: "600",
     },
     quickDropdownSub: {
-        fontSize: 12,
+        fontSize: 10.5,
         marginTop: 1,
     },
     emptyEvents: { padding: 24, borderRadius: 16, backgroundColor: C.surface, alignItems: "center" },
