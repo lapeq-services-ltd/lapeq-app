@@ -345,7 +345,7 @@ export default function DrivingServiceScreen() {
                     </View>
 
                     {/* ──── TAB CONTENT ──── */}
-                    {activeTab === "car" ? (
+                    {activeTab === "car" && (
                         /* ── CHAUFFEUR DRIVE FLOW ── */
                         <View style={{ paddingHorizontal: 20 }}>
                             <Text style={[s.label, { color: C.text }]}>Vehicle Class</Text>
@@ -501,7 +501,8 @@ export default function DrivingServiceScreen() {
                                 inputBg={C.surface}
                             />
                         </View>
-                    ) : (
+                    )}
+                    {activeTab === "plane" && (
                         /* ── PRIVATE FLIGHTS & JETS FLOW ── */
                         <View>
                             {/* Aviation Hero — jet.jpg banner */}
@@ -720,7 +721,8 @@ export default function DrivingServiceScreen() {
                                 />
                             </View>
                         </View>
-                    ) : activeTab === "commercial" ? (
+                    )}
+                    {activeTab === "commercial" && (
                         /* ── COMMERCIAL FLIGHTS FLOW ── */
                         <View>
                             {/* Commercial Flights Hero — jet.jpg banner */}
@@ -742,7 +744,7 @@ export default function DrivingServiceScreen() {
                                 <View style={{ flexDirection: "row", gap: 8, marginBottom: 20 }}>
                                     {(["round", "oneway", "multi"] as const).map(type => {
                                         const active = comTripType === type;
-                                        const labels: Record<string, string> = { round: "Round Trip", oneway: "One Way", multi: "Multi-City" };
+                                        const labels = { round: "Round Trip", oneway: "One Way", multi: "Multi-City" } as { [k: string]: string };
                                         return (
                                             <TouchableOpacity
                                                 key={type}
@@ -864,8 +866,8 @@ export default function DrivingServiceScreen() {
                                 <View style={{ flexDirection: "row", gap: 10, marginBottom: 20 }}>
                                     {(["economy", "business", "first"] as const).map(cls => {
                                         const active = comCabin === cls;
-                                        const icons: Record<string, string> = { economy: "✈️", business: "💼", first: "👑" };
-                                        const labels: Record<string, string> = { economy: "Economy", business: "Business", first: "First Class" };
+                                        const icons = { economy: "✈️", business: "💼", first: "👑" } as { [k: string]: string };
+                                        const labels = { economy: "Economy", business: "Business", first: "First Class" } as { [k: string]: string };
                                         return (
                                             <TouchableOpacity
                                                 key={cls}
@@ -899,7 +901,7 @@ export default function DrivingServiceScreen() {
                                 />
                             </View>
                         </View>
-                    ) : null}
+                    )}
 
                     {/* Submit Button */}
                     <View style={{ paddingHorizontal: 20, marginTop: 12 }}>
