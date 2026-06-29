@@ -38,7 +38,7 @@ const PARTNER_IMGS: Record<string, any> = {
     spa: require("@/assets/images/lagos-restaurant.jpg"),
 };
 
-type Partner = { id: string; name: string; category: string; city: string; image_url: string | null; venue_id?: string | null };
+type Partner = { id: string; name: string; category: string; city: string; image_url: string | null; venue_id?: string | null; body?: string | null };
 
 const ADS = [
     {
@@ -96,6 +96,14 @@ export default function HomeScreen() {
     const [profileLoaded, setProfileLoaded] = useState(false);
     const [showPromo, setShowPromo] = useState(false);
     const [monthlyRequestsCount, setMonthlyRequestsCount] = useState(0);
+    const [selectedDetailItem, setSelectedDetailItem] = useState<{
+        title: string;
+        body: string | null;
+        image_url: string | null;
+        category?: string;
+        city?: string;
+        tag?: string | null;
+    } | null>(null);
 
     const triggerPromoAfterDelay = useCallback(() => {
         if (promoShownSession) return;
@@ -250,7 +258,7 @@ export default function HomeScreen() {
 
         supabase
             .from("content")
-            .select("id, title, category, city, image_url, venue_id")
+            .select("id, title, category, city, image_url, venue_id, body")
             .eq("type", "partner")
             .eq("published", true)
             .is("deleted_at", null)
@@ -261,7 +269,7 @@ export default function HomeScreen() {
                     console.warn("Primary partners query failed (falling back):", error.message);
                     supabase
                         .from("content")
-                        .select("id, title, category, city, image_url")
+                        .select("id, title, category, city, image_url, body")
                         .eq("type", "partner")
                         .eq("published", true)
                         .is("deleted_at", null)
@@ -278,7 +286,8 @@ export default function HomeScreen() {
                                     category: item.category ?? "restaurant",
                                     city: item.city ?? "",
                                     image_url: item.image_url,
-                                    venue_id: null
+                                    venue_id: null,
+                                    body: item.body ?? null
                                 }));
                                 setPartners(mapped);
                                 setPartnersLoading(false);
@@ -293,7 +302,8 @@ export default function HomeScreen() {
                         category: item.category ?? "restaurant",
                         city: item.city ?? "",
                         image_url: item.image_url,
-                        venue_id: item.venue_id
+                        venue_id: item.venue_id,
+                        body: item.body ?? null
                     }));
                     setPartners(mapped);
                     setPartnersLoading(false);
@@ -593,7 +603,7 @@ export default function HomeScreen() {
                 {/* Partners carousel */}
                 <View style={s.sectionRow}>
                     <Text style={s.sectionTitle}>Our Partners</Text>
-                    <TouchableOpacity onPress={() => router.push("/explore" as any)}>
+                    <TouchableOpacity onPress={() => router.push("/partners" as any)}>
                         <Text style={s.viewAll}>See all →</Text>
                     </TouchableOpacity>
                 </View>
@@ -613,6 +623,14 @@ export default function HomeScreen() {
                                             const venueId = p.venue_id || getVenueIdForCard(p.name, p.city || "");
                                             if (venueId) {
                                                 router.push({ pathname: "/explore/venue-detail", params: { id: venueId } });
+                                            } else if (p.body || p.image_url) {
+                                                setSelectedDetailItem({
+                                                    title: p.name,
+                                                    body: p.body ?? null,
+                                                    image_url: p.image_url,
+                                                    category: p.category,
+                                                    city: p.city
+                                                });
                                             } else {
                                                 router.push("/explore" as any);
                                             }
@@ -660,6 +678,15 @@ export default function HomeScreen() {
                                                         id: venueId,
                                                         overrideDescription: card.body || undefined
                                                     }
+                                                });
+                                            } else if (card.body || card.image_url) {
+                                                setSelectedDetailItem({
+                                                    title: card.title,
+                                                    body: card.body,
+                                                    image_url: card.image_url,
+                                                    category: card.category || undefined,
+                                                    city: card.city || undefined,
+                                                    tag: card.tag
                                                 });
                                             } else {
                                                 router.push("/explore" as any);
@@ -769,6 +796,52 @@ export default function HomeScreen() {
                 }}
             />
             <PromoPopup visible={showPromo} onClose={() => setShowPromo(false)} />
+
+            {/* Custom Detail Popup Modal for Picks/Partners without venue linking */}
+            <Modal
+                visible={selectedDetailItem !== null}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setSelectedDetailItem(null)}
+            >
+                <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "center", alignItems: "center", padding: 24 }}>
+                    <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => setSelectedDetailItem(null)} />
+                    <View style={{ width: "100%", maxWidth: 400, backgroundColor: C.surface, borderRadius: 24, overflow: "hidden", borderWidth: 1, borderColor: theme === "dark" ? "#2a2a2a" : "#d8d3ca" }}>
+                        {selectedDetailItem?.image_url && (
+                            <Image source={{ uri: selectedDetailItem.image_url }} style={{ width: "100%", height: 200 }} resizeMode="cover" />
+                        )}
+                        <View style={{ padding: 20 }}>
+                            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                                <Text style={{ fontSize: 18, fontWeight: "700", color: C.text, flex: 1, marginRight: 8 }} numberOfLines={2}>
+                                    {selectedDetailItem?.title}
+                                </Text>
+                                {selectedDetailItem?.category && (
+                                    <Text style={{ fontSize: 11, fontWeight: "700", color: C.primary, textTransform: "uppercase" }}>
+                                        {selectedDetailItem.category}
+                                    </Text>
+                                )}
+                            </View>
+                            {selectedDetailItem?.city && (
+                                <Text style={{ fontSize: 13, color: C.muted, marginBottom: 12 }}>
+                                    📍 {selectedDetailItem.city}
+                                </Text>
+                            )}
+                            <ScrollView style={{ maxHeight: 200, marginBottom: 20 }}>
+                                <Text style={{ fontSize: 14, color: C.muted, lineHeight: 22 }}>
+                                    {selectedDetailItem?.body || "No additional description details provided."}
+                                </Text>
+                            </ScrollView>
+
+                            <TouchableOpacity
+                                style={{ width: "100%", paddingVertical: 12, borderRadius: 14, backgroundColor: C.primary, alignItems: "center" }}
+                                onPress={() => setSelectedDetailItem(null)}
+                            >
+                                <Text style={{ fontSize: 14, fontWeight: "700", color: "#000" }}>Close</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
 
             {/* Quick Actions FAB */}
             {showDropdown && (
