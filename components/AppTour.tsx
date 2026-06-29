@@ -1,10 +1,10 @@
-﻿import { useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
     View, Text, Modal, TouchableOpacity, StyleSheet,
     Dimensions, Animated,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Home, Search, Calendar, User, Car, MessageCircle, ClipboardList } from "lucide-react-native";
+import { Home, Search, Calendar, User, Car, MessageCircle, ClipboardList, Gift } from "lucide-react-native";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 const GOLD = "#c9a84c";
@@ -26,9 +26,21 @@ interface Step {
     spotlight: Spotlight | null;
 }
 
-const TAB_Y = SH - 90;
-const TAB_H = 65;
-const TAB_W = SW / 4;
+const TABS_COUNT = 5;
+const BAR_MARGIN = 32;
+const BAR_PADDING = 8;
+const ACTIVE_BAR_W = SW - (BAR_MARGIN * 2) - (BAR_PADDING * 2);
+const CELL_W = ACTIVE_BAR_W / TABS_COUNT;
+const TAB_Y = SH - 98;
+const TAB_H = 58;
+
+const getTabSpotlight = (index: number): Spotlight => ({
+    x: BAR_MARGIN + BAR_PADDING + (index * CELL_W),
+    y: TAB_Y,
+    w: CELL_W,
+    h: TAB_H,
+    radius: 16,
+});
 
 const STEPS: Step[] = [
     {
@@ -41,37 +53,43 @@ const STEPS: Step[] = [
         title: "Request Services",
         body: "Tap any service card to request chauffeur rides, events, travel arrangements, lifestyle support, and more.",
         icon: Car,
-        spotlight: { x: PAD, y: 160, w: SW - PAD * 2, h: SH * 0.48, radius: 20 },
+        spotlight: { x: PAD, y: 220, w: SW - PAD * 2, h: 250, radius: 20 },
     },
     {
-        title: "Explore",
+        title: "Member Benefits",
+        body: "Unlock exclusive perks, partnership offers, global travel upgrades, and VIP rewards tailored to your membership tier.",
+        icon: Gift,
+        spotlight: getTabSpotlight(1),
+    },
+    {
+        title: "Explore Venue Guide",
         body: "Discover curated venues, restaurants, lounges, and experiences in your city - all handpicked for Lapeq members.",
         icon: Search,
-        spotlight: { x: TAB_W * 1, y: TAB_Y, w: TAB_W, h: TAB_H, radius: 12 },
+        spotlight: getTabSpotlight(2),
     },
     {
-        title: "Events",
+        title: "Exclusive Events",
         body: "Browse and book exclusive events. From private dinners to VIP experiences - your concierge handles everything.",
         icon: Calendar,
-        spotlight: { x: TAB_W * 2, y: TAB_Y, w: TAB_W, h: TAB_H, radius: 12 },
+        spotlight: getTabSpotlight(3),
     },
     {
-        title: "Profile & Membership",
+        title: "Profile & Settings",
         body: "View your membership tier, manage your personal info, preferences, and settings from your profile.",
         icon: User,
-        spotlight: { x: TAB_W * 3, y: TAB_Y, w: TAB_W, h: TAB_H, radius: 12 },
+        spotlight: getTabSpotlight(4),
     },
     {
-        title: "Your Concierge",
+        title: "Your Concierge Chat",
         body: "Tap the 24/7 Concierge row to speak directly with your personal concierge - available any time for anything you need.",
         icon: MessageCircle,
-        spotlight: { x: PAD, y: SH * 0.60, w: SW - PAD * 2, h: 90, radius: 16 },
+        spotlight: { x: 16, y: SH * 0.58, w: SW - 32, h: 46, radius: 23 },
     },
     {
-        title: "Track Your Requests",
-        body: "Tap 'My Requests' from the services grid to track every request you submit in real time.",
+        title: "Quick Actions",
+        body: "Tap the floating action button (+) anytime to quickly make a new request, track bookings, or edit settings.",
         icon: ClipboardList,
-        spotlight: { x: SW / 2 + PAD / 2, y: SH * 0.52, w: SW / 2 - PAD * 1.5, h: SH * 0.12, radius: 16 },
+        spotlight: { x: SW - 70, y: SH - 166, w: 58, h: 58, radius: 29 },
     },
 ];
 

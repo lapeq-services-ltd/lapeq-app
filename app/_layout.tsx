@@ -85,13 +85,16 @@ function NotificationBanner() {
 
             responseSub = Notifications.addNotificationResponseReceivedListener(response => {
                 const data = response.notification.request.content.data as Record<string, any> | undefined;
-                if (data?.type === "request") {
-                    if (data.targetId) router.push(`/requests/${data.targetId}`);
+                const reqId = data?.target_id || data?.targetId || data?.request_id || data?.requestId;
+                const notifType = data?.type || data?.notification_type;
+
+                if (notifType === "request" || notifType === "chat" || notifType === "receipt" || reqId) {
+                    if (reqId) router.push(`/requests/${reqId}`);
                     else router.push("/requests");
                 } else if (data?.url) {
                     router.push(data.url);
                 } else {
-                    router.push("/notifications");
+                    router.push("/(main)/notifications");
                 }
             });
         } catch {}
@@ -123,13 +126,16 @@ function NotificationBanner() {
                 onPress={() => {
                     Animated.timing(translateY, { toValue: -150, duration: 200, useNativeDriver: true }).start(() => {
                         const data = notification.request.content.data as Record<string, any> | undefined;
-                        if (data?.type === "request" || data?.type === "receipt") {
-                            if (data.targetId) router.push(`/requests/${data.targetId}`);
+                        const reqId = data?.target_id || data?.targetId || data?.request_id || data?.requestId;
+                        const notifType = data?.type || data?.notification_type;
+
+                        if (notifType === "request" || notifType === "chat" || notifType === "receipt" || reqId) {
+                            if (reqId) router.push(`/requests/${reqId}`);
                             else router.push("/requests");
                         } else if (data?.url) {
                             router.push(data.url);
                         } else {
-                            router.push("/notifications");
+                            router.push("/(main)/notifications");
                         }
                         setNotification(null);
                     });

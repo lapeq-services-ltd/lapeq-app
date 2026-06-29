@@ -9,7 +9,7 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
-import { ChevronLeft, Calendar, Check, Plane, Plus, Minus } from "lucide-react-native";
+import { ChevronLeft, ChevronRight, Calendar, Check, Plane, Plus, Minus } from "lucide-react-native";
 import VoiceInput from "@/components/VoiceInput";
 import * as Haptics from "expo-haptics";
 
@@ -116,6 +116,25 @@ export default function LifestyleTravelScreen() {
         }
     }, [params]);
 
+    useEffect(() => {
+        const loadUserTier = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const now = new Date();
+                const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+                const [{ data: profile }, { count }] = await Promise.all([
+                    supabase.from("profiles").select("tier").eq("id", user.id).single(),
+                    supabase.from("requests").select("id", { count: "exact", head: true }).eq("user_id", user.id).gte("created_at", startOfMonth),
+                ]);
+
+                if (profile) setUserTier(profile.tier);
+                setMonthlyRequestsCount(count ?? 0);
+            }
+        };
+        loadUserTier();
+    }, []);
+
     // Shared date/time state
     const [dateFromObj, setDateFromObj]   = useState<Date | null>(null);
     const [dateToObj, setDateToObj]       = useState<Date | null>(null);
@@ -173,6 +192,8 @@ export default function LifestyleTravelScreen() {
 
     const [loading, setLoading]       = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
+    const [userTier, setUserTier] = useState<string | null>(null);
+    const [monthlyRequestsCount, setMonthlyRequestsCount] = useState(0);
     const alertOpacity = useRef(new Animated.Value(0)).current;
     const alertScale   = useRef(new Animated.Value(0.9)).current;
     const scrollRef    = useRef<ScrollView>(null);
@@ -218,6 +239,7 @@ export default function LifestyleTravelScreen() {
         setLoading(true);
         const { data: { user } } = await supabase.auth.getUser();
         const ref = (isJets ? "JET-" : "LPQ-") + Date.now().toString(36).toUpperCase().slice(-5);
+        const hasPremiumMembership = userTier && ["silver", "gold", "black"].includes(userTier.toLowerCase());
         const details = isJets
             ? { aircraft: selectedAircraft.name, tripType, departure: jetDeparture, destination: jetDestination, depDate: fmtDate(depDate), depTime: fmtTime(depTime), retDate: tripType === "return" ? fmtDate(retDate) : null, passengers, catering, groundTransfer, specialRequests }
             : {
@@ -238,6 +260,7 @@ export default function LifestyleTravelScreen() {
             status: "pending",
             reference: ref,
             title: isLifestyleService ? `${serviceType} Request` : isJets ? `${selectedAircraft.name} · ${jetDeparture} → ${jetDestination}` : serviceType,
+            payment_status: hasPremiumMembership ? "paid" : null,
             details,
         });
         setLoading(false);
@@ -264,7 +287,6 @@ export default function LifestyleTravelScreen() {
                         </TouchableOpacity>
                     </View>
                     <View style={s.heroContent}>
-                        <Text style={s.heroEyebrow}>LIFESTYLE & TRAVEL</Text>
                         <Text style={s.heroTitle}>{activeService.label}</Text>
                         <Text style={s.heroDesc}>{activeService.desc}</Text>
                     </View>
@@ -272,7 +294,13 @@ export default function LifestyleTravelScreen() {
 
                 {/* Service type chips */}
                 <View style={s.section}>
-                    <Text style={s.sectionLabel}>What are you looking for?</Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                        <Text style={[s.sectionLabel, { marginBottom: 0 }]}>Select a Service</Text>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+                            <Text style={{ fontSize: 11, color: C.muted, opacity: 0.55, letterSpacing: 0.5 }}>swipe</Text>
+                            <ChevronRight size={13} color={C.muted} opacity={0.55} />
+                        </View>
+                    </View>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingRight: 4 }}>
                         {SERVICE_TYPES.map(svc => {
                             const active = serviceType === svc.id;
@@ -768,15 +796,34 @@ export default function LifestyleTravelScreen() {
 
                 {/* Fee card */}
                 <View style={{ paddingHorizontal: 24, paddingTop: 28 }}>
-                    <View style={s.feeCard}>
-                        <Text style={s.feeEyebrow}>SERVICE FEE</Text>
-                        <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6, marginBottom: 4 }}>
-                            <Text style={s.feeAmount}>₦5,000</Text>
-                            <Text style={s.feeNote}>per request</Text>
+                    {userTier && ["silver", "gold", "black"].includes(userTier.toLowerCase()) ? (
+                        <View style={[s.feeCard, { borderColor: "rgba(76,175,80,0.3)", backgroundColor: "rgba(76,175,80,0.05)" }]}>
+                            <Text style={[s.feeEyebrow, { color: "#4caf50" }]}>MEMBERSHIP BENEFIT</Text>
+                            <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6, marginBottom: 4 }}>
+                                <Text style={[s.feeAmount, { color: "#4caf50" }]}>₦0</Text>
+                                <Text style={[s.feeNote, { color: C.muted }]}>Included in Tier</Text>
+                            </View>
+                            <Text style={s.feeSub}>Your Lapeq premium membership covers all request and orchestration fees.</Text>
                         </View>
-                        <Text style={s.feeSub}>Collected upon confirmation of your request.</Text>
-                    </View>
+                    ) : (
+                        <View style={s.feeCard}>
+                            <Text style={s.feeEyebrow}>SERVICE FEE</Text>
+                            <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6, marginBottom: 4 }}>
+                                <Text style={s.feeAmount}>₦5,000</Text>
+                                <Text style={s.feeNote}>per request</Text>
+                            </View>
+                            <Text style={s.feeSub}>Collected upon confirmation of your request.</Text>
+                        </View>
+                    )}
                 </View>
+
+                {(!userTier || !["silver", "gold", "black"].includes(userTier.toLowerCase())) && (
+                    <View style={{ paddingHorizontal: 24, paddingTop: 12 }}>
+                        <Text style={{ fontSize: 12, color: C.muted, textAlign: "center" }}>
+                            Community Plan: This will use 1 of your 5 monthly concierge requests ({monthlyRequestsCount}/5 used this month).
+                        </Text>
+                    </View>
+                )}
 
                 {/* Submit */}
                 <View style={{ paddingHorizontal: 24, paddingTop: 16 }}>

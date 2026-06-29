@@ -4,7 +4,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useFocusEffect } from "expo-router";
-import { Settings, Crown, ArrowRight, Clock, MapPin, Heart, Bookmark, BookOpen, Info } from "lucide-react-native";
+import { Settings, Crown, ArrowRight, Clock, MapPin, Heart, Bookmark, Info } from "lucide-react-native";
 import Skeleton from "@/components/Skeleton";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
@@ -49,12 +49,7 @@ const STATUS_COLORS: Record<string, string> = {
     cancelled: "#ef4444",
 };
 
-const JOURNAL_ARTICLES = [
-    { category: "Lifestyle", readTime: "6 min", date: "Feb 2026", title: "The Insider's Guide to Abuja's Most Exclusive Venues", img: require("@/assets/images/lagos-rooftop.jpg"), route: "/journal" },
-    { category: "Travel", readTime: "5 min", date: "Mar 2026", title: "Lagos to London: How LAPEQ Members Travel Differently", img: require("@/assets/images/lagos-hotel.jpg"), route: "/journal" },
-    { category: "Dining", readTime: "4 min", date: "Mar 2026", title: "Port Harcourt's Best Kept Dining Secrets", img: require("@/assets/images/lagos-restaurant.jpg"), route: "/journal" },
-    { category: "Hospitality", readTime: "7 min", date: "Apr 2026", title: "Nigeria's Finest Hotel Suites - Reviewed by Our Team", img: require("@/assets/images/lagos-beach.jpg"), route: "/journal" },
-];
+
 
 const PLACEHOLDER_IMAGES: Record<string, any> = {
     restaurant: require("@/assets/images/lagos-restaurant.jpg"),
@@ -76,7 +71,7 @@ export default function ProfileScreen() {
     const [userCountry, setUserCountry] = useState("");
     const [imageUri, setImageUri] = useState<string | null>(null);
     const [tier, setTier] = useState("Standard");
-    const [activeTab, setActiveTab] = useState<"requests" | "saved" | "journal">("requests");
+    const [activeTab, setActiveTab] = useState<"requests" | "saved">("requests");
 
     const [requestCount, setRequestCount] = useState<number | null>(null);
     const [savedCount, setSavedCount] = useState<number | null>(null);
@@ -154,7 +149,7 @@ export default function ProfileScreen() {
         setSavedLoaded(true);
     }, [savedLoaded]);
 
-    const handleTabChange = (tab: "requests" | "saved" | "journal") => {
+    const handleTabChange = (tab: "requests" | "saved") => {
         setActiveTab(tab);
         if (tab === "saved") loadSaved();
     };
@@ -236,10 +231,6 @@ export default function ProfileScreen() {
                         <Bookmark size={16} color={activeTab === "saved" ? C.primary : C.muted} />
                         <Text style={[s.tabText, activeTab === "saved" && s.tabTextActive]}>Saved</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={[s.tab, activeTab === "journal" && s.tabActive]} onPress={() => handleTabChange("journal")}>
-                        <BookOpen size={16} color={activeTab === "journal" ? C.primary : C.muted} />
-                        <Text style={[s.tabText, activeTab === "journal" && s.tabTextActive]}>Journal</Text>
-                    </TouchableOpacity>
                 </View>
 
                 {/* Tab content - Requests */}
@@ -285,27 +276,7 @@ export default function ProfileScreen() {
                     )
                 )}
 
-                {/* Tab content - Journal */}
-                {activeTab === "journal" && (
-                    <View>
-                        <View style={s.articleGrid}>
-                            {JOURNAL_ARTICLES.map((article, i) => (
-                                <TouchableOpacity key={i} style={s.articleCard} onPress={() => router.push(article.route as any)} activeOpacity={0.85}>
-                                    <Image source={article.img} style={s.articleCardImg} resizeMode="cover" />
-                                    <View style={s.articleCardOverlay} />
-                                    <View style={s.articleCardContent}>
-                                        <Text style={s.articleCardCategory}>{article.category}</Text>
-                                        <Text style={s.articleCardTitle} numberOfLines={3}>{article.title}</Text>
-                                        <Text style={s.articleCardMeta}>{article.readTime} · {article.date}</Text>
-                                    </View>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                        <TouchableOpacity style={s.articleViewAll} onPress={() => router.push("/journal")}>
-                            <Text style={s.articleViewAllText}>View all articles →</Text>
-                        </TouchableOpacity>
-                    </View>
-                )}
+
 
                 {/* Tab content - Saved */}
                 {activeTab === "saved" && (
@@ -396,14 +367,4 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     venueCategory: { fontSize: 12, color: C.primary, fontWeight: "600" },
     emptyTab: { paddingTop: 48, alignItems: "center" },
     emptyTabText: { fontSize: 14, color: C.muted, textAlign: "center", lineHeight: 22 },
-    articleGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 4 },
-    articleCard: { width: "48.5%", height: 200, borderRadius: 16, overflow: "hidden", position: "relative" },
-    articleCardImg: { width: "100%", height: "100%", position: "absolute" },
-    articleCardOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.52)" },
-    articleCardContent: { position: "absolute", bottom: 0, left: 0, right: 0, padding: 12 },
-    articleCardCategory: { fontSize: 9, fontWeight: "800", color: C.primary, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 5 },
-    articleCardTitle: { fontSize: 13, fontWeight: "700", color: "#fff", lineHeight: 18, marginBottom: 6 },
-    articleCardMeta: { fontSize: 11, color: "rgba(255,255,255,0.6)" },
-    articleViewAll: { alignItems: "center", paddingVertical: 16 },
-    articleViewAllText: { fontSize: 14, fontWeight: "600", color: C.primary },
 });

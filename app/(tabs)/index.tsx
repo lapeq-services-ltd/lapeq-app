@@ -14,7 +14,6 @@ import {
 } from "react-native";
 import WelcomeModal from "@/components/WelcomeModal";
 import AppTour from "@/components/AppTour";
-import BenefitNudge from "@/components/BenefitNudge";
 import PromoPopup from "@/components/PromoPopup";
 import Skeleton from "@/components/Skeleton";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -39,7 +38,7 @@ const PARTNER_IMGS: Record<string, any> = {
     spa: require("@/assets/images/lagos-restaurant.jpg"),
 };
 
-type Partner = { id: string; name: string; category: string; city: string; image_url: string | null };
+type Partner = { id: string; name: string; category: string; city: string; image_url: string | null; venue_id?: string | null };
 
 const ADS = [
     {
@@ -75,6 +74,10 @@ const ADS = [
 // Duplicate for seamless loop
 const LOOPED = [...ADS, ...ADS, ...ADS];
 
+let welcomeShownSession = false;
+let trialShownSession = false;
+let promoShownSession = false;
+
 export default function HomeScreen() {
     const router = useRouter();
     const { C, theme } = useTheme();
@@ -91,6 +94,42 @@ export default function HomeScreen() {
     const [showTour, setShowTour] = useState(false);
     const [showWelcome, setShowWelcome] = useState(false);
     const [profileLoaded, setProfileLoaded] = useState(false);
+    const [showPromo, setShowPromo] = useState(false);
+    const [monthlyRequestsCount, setMonthlyRequestsCount] = useState(0);
+
+    const triggerPromoAfterDelay = useCallback(() => {
+        if (promoShownSession) return;
+        setTimeout(() => {
+            if (promoShownSession) return;
+            promoShownSession = true;
+            setShowPromo(true);
+        }, 5000);
+    }, []);
+
+    const triggerTrialAfterDelay = useCallback((user: any) => {
+        if (trialShownSession || promoShownSession) return;
+        setTimeout(async () => {
+            if (trialShownSession || promoShownSession) return;
+            const now = new Date();
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+            const [{ data: profile }, { count }] = await Promise.all([
+                supabase.from("profiles").select("tier").eq("id", user.id).single(),
+                supabase.from("requests").select("id", { count: "exact", head: true }).eq("user_id", user.id).gte("created_at", startOfMonth),
+            ]);
+
+            const needsTrial = (!profile?.tier || profile.tier === "free" || profile.tier === "Standard");
+            setMonthlyRequestsCount(count ?? 0);
+
+            if (needsTrial) {
+                trialShownSession = true;
+                setShowTrialPopup(true);
+            } else {
+                promoShownSession = true;
+                setShowPromo(true);
+            }
+        }, 5000);
+    }, []);
     const translateX = useRef(new Animated.Value(0)).current;
     const offsetRef = useRef(0);
     const partnerTranslateX = useRef(new Animated.Value(0)).current;
@@ -148,6 +187,9 @@ export default function HomeScreen() {
             const lastUser = await AsyncStorage.getItem("lapeq_last_user");
             if (lastUser && lastUser !== user.id) {
                 await AsyncStorage.multiRemove(["lapeq_welcome_seen", "lapeq_tour_seen", "lapeq_cached_name"]);
+                welcomeShownSession = false;
+                trialShownSession = false;
+                promoShownSession = false;
             }
             await AsyncStorage.setItem("lapeq_last_user", user.id);
 
@@ -160,7 +202,12 @@ export default function HomeScreen() {
                 AsyncStorage.getItem(`lapeq_chat_last_open_${user.id}`),
             ]);
 
-            if (!welcomeSeen) setShowWelcome(true);
+            if (!welcomeSeen && !welcomeShownSession) {
+                welcomeShownSession = true;
+                setShowWelcome(true);
+            } else {
+                triggerTrialAfterDelay(user);
+            }
 
             if (!profileResult.data) {
                 const meta2 = user.user_metadata ?? {};
@@ -199,25 +246,61 @@ export default function HomeScreen() {
                 setUnreadMessages(0);
             }
             setUserId(user.id);
-
-            if (
-                !trialPopupShown &&
-                (!profileResult.data?.tier || profileResult.data.tier === "free") &&
-                tourSeen === "1" &&
-                welcomeSeen === "1"
-            ) {
-                trialPopupShown = true;
-                setTimeout(() => setShowTrialPopup(true), 1500);
-            }
         });
 
         supabase
-            .from("venues")
-            .select("id, name, category, city, image_url")
-            .eq("active", true)
+            .from("content")
+            .select("id, title, category, city, image_url, venue_id")
+            .eq("type", "partner")
+            .eq("published", true)
             .is("deleted_at", null)
+            .order("created_at", { ascending: false })
             .limit(20)
-            .then(({ data }) => { setPartners(data ?? []); setPartnersLoading(false); });
+            .then(({ data, error }) => {
+                if (error) {
+                    console.warn("Primary partners query failed (falling back):", error.message);
+                    supabase
+                        .from("content")
+                        .select("id, title, category, city, image_url")
+                        .eq("type", "partner")
+                        .eq("published", true)
+                        .is("deleted_at", null)
+                        .order("created_at", { ascending: false })
+                        .limit(20)
+                        .then(({ data: fbData, error: fbError }) => {
+                            if (fbError) {
+                                console.error("Fallback partners query failed:", fbError.message);
+                                setPartnersLoading(false);
+                            } else if (fbData) {
+                                const mapped = fbData.map(item => ({
+                                    id: item.id,
+                                    name: item.title,
+                                    category: item.category ?? "restaurant",
+                                    city: item.city ?? "",
+                                    image_url: item.image_url,
+                                    venue_id: null
+                                }));
+                                setPartners(mapped);
+                                setPartnersLoading(false);
+                            } else {
+                                setPartnersLoading(false);
+                            }
+                        });
+                } else if (data) {
+                    const mapped = data.map(item => ({
+                        id: item.id,
+                        name: item.title,
+                        category: item.category ?? "restaurant",
+                        city: item.city ?? "",
+                        image_url: item.image_url,
+                        venue_id: item.venue_id
+                    }));
+                    setPartners(mapped);
+                    setPartnersLoading(false);
+                } else {
+                    setPartnersLoading(false);
+                }
+            });
 
         supabase
             .from("venues")
@@ -526,7 +609,14 @@ export default function HomeScreen() {
                                     <TouchableOpacity
                                         key={`${p.id}-${i}`}
                                         style={[s.partnerCard, { marginRight: 12 }]}
-                                        onPress={() => router.push({ pathname: "/explore/venue-detail", params: { id: p.id } })}
+                                        onPress={() => {
+                                            const venueId = p.venue_id || getVenueIdForCard(p.name, p.city || "");
+                                            if (venueId) {
+                                                router.push({ pathname: "/explore/venue-detail", params: { id: venueId } });
+                                            } else {
+                                                router.push("/explore" as any);
+                                            }
+                                        }}
                                         activeOpacity={0.88}
                                     >
                                         <Image
@@ -624,19 +714,29 @@ export default function HomeScreen() {
                             style={s.trialLogo}
                             resizeMode="contain"
                         />
-                        <Text style={s.trialEyebrow}>FREE PLAN</Text>
-                        <Text style={s.trialTitle}>4 Requests This Month</Text>
+                        <Text style={s.trialEyebrow}>COMMUNITY PLAN</Text>
+                        <Text style={s.trialTitle}>{monthlyRequestsCount} / 5 Requests Used</Text>
                         <Text style={s.trialBody}>
-                            You have 4 concierge requests available on your free plan. Upgrade to Gold or Black for unlimited access, priority service, and exclusive member benefits.
+                            You have used {monthlyRequestsCount} of your 5 monthly concierge requests on the Community plan. Upgrade to Silver, Gold or Black for unlimited access, priority service, and exclusive member benefits.
                         </Text>
                         <TouchableOpacity
                             style={s.trialUpgradeBtn}
-                            onPress={() => { setShowTrialPopup(false); router.push("/membership"); }}
+                            onPress={() => {
+                                setShowTrialPopup(false);
+                                router.push("/membership");
+                                triggerPromoAfterDelay();
+                            }}
                             activeOpacity={0.85}
                         >
                             <Text style={s.trialUpgradeBtnText}>Upgrade Membership</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity onPress={() => setShowTrialPopup(false)} style={{ marginTop: 14 }}>
+                        <TouchableOpacity
+                            onPress={() => {
+                                setShowTrialPopup(false);
+                                triggerPromoAfterDelay();
+                            }}
+                            style={{ marginTop: 14 }}
+                        >
                             <Text style={s.trialSkip}>Skip for now</Text>
                         </TouchableOpacity>
                     </View>
@@ -647,16 +747,28 @@ export default function HomeScreen() {
                 <WelcomeModal
                     name={userName}
                     visible={showWelcome}
-                    onClose={() => setShowWelcome(false)}
+                    onClose={() => {
+                        setShowWelcome(false);
+                        supabase.auth.getUser().then(({ data: { user } }) => {
+                            if (user) triggerTrialAfterDelay(user);
+                        });
+                    }}
                     onStartTour={() => {
                         setShowWelcome(false);
                         setShowTour(true);
                     }}
                 />
             )}
-            <AppTour visible={showTour} onFinish={() => setShowTour(false)} />
-            <BenefitNudge />
-            <PromoPopup />
+            <AppTour
+                visible={showTour}
+                onFinish={() => {
+                    setShowTour(false);
+                    supabase.auth.getUser().then(({ data: { user } }) => {
+                        if (user) triggerTrialAfterDelay(user);
+                    });
+                }}
+            />
+            <PromoPopup visible={showPromo} onClose={() => setShowPromo(false)} />
 
             {/* Quick Actions FAB */}
             {showDropdown && (
@@ -850,7 +962,7 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     partnerImg: { width: "100%", height: "100%", position: "absolute" },
     partnerOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.45)" },
     partnerBadge: { position: "absolute", top: 12, left: 12, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 99, backgroundColor: C.primary },
-    partnerBadgeText: { fontSize: 9, fontWeight: "800", color: "#0a0a0a", letterSpacing: 1.5 },
+    partnerBadgeText: { fontSize: 9, fontWeight: "800", color: "#ffffff", letterSpacing: 1.5 },
     partnerContent: { position: "absolute", bottom: 0, left: 0, right: 0, padding: 14 },
     partnerName: { fontSize: 15, fontWeight: "700", color: "#fff", marginBottom: 2 },
     partnerCity: { fontSize: 12, color: "rgba(255,255,255,0.7)" },
@@ -861,7 +973,7 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     trialTitle: { fontSize: 22, fontWeight: "700", color: C.text, marginBottom: 12, textAlign: "center" },
     trialBody: { fontSize: 14, color: C.muted, textAlign: "center", lineHeight: 22, marginBottom: 24 },
     trialUpgradeBtn: { width: "100%", paddingVertical: 16, borderRadius: 14, backgroundColor: C.primary, alignItems: "center" },
-    trialUpgradeBtnText: { fontSize: 15, fontWeight: "700", color: "#0a0a0a" },
+    trialUpgradeBtnText: { fontSize: 15, fontWeight: "700", color: "#ffffff" },
     trialSkip: { fontSize: 14, color: C.muted, fontWeight: "500" },
     featCard: { width: 160, height: 130, borderRadius: 16, overflow: "hidden", position: "relative" },
     featImg: { width: "100%", height: "100%", position: "absolute" },
@@ -870,3 +982,4 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     featLabel: { fontSize: 9, fontWeight: "800", color: C.primary, letterSpacing: 2, marginBottom: 4 },
     featTitle: { fontSize: 15, fontWeight: "700", color: "#fff", lineHeight: 20 },
 });
+

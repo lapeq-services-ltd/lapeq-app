@@ -93,7 +93,9 @@ create table public.requests (
   dropoff_location text,
   scheduled_time timestamp with time zone,
   details jsonb not null default '{}',
+  payment_status text default 'unpaid' check (payment_status in ('unpaid', 'deposit_paid', 'paid')),
   admin_notes text,
+  reference text,
   created_at timestamp with time zone default now(),
   updated_at timestamp with time zone default now()
 );

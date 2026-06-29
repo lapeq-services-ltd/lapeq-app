@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+﻿import { useState, useEffect, useRef, useCallback } from "react";
 import {
     View, Text, FlatList, TouchableOpacity, Dimensions,
     StyleSheet, Animated, Alert, Image, ScrollView, Modal,
@@ -425,7 +425,7 @@ const ps = StyleSheet.create({
     payNote: { marginBottom: 16 },
     payNoteText: { fontSize: 11, color: "#555", textAlign: "center" },
     payBtn: { borderRadius: 16, paddingVertical: 18, alignItems: "center" },
-    payBtnText: { fontSize: 15, fontWeight: "800", color: "#0a0a0a" },
+    payBtnText: { fontSize: 15, fontWeight: "800", color: "#ffffff" },
 });
 
 // ─── TierPage ─────────────────────────────────────────────────────────────────
@@ -802,7 +802,7 @@ const s = StyleSheet.create({
     categoryPerkCheck: { width: 18, height: 18, borderRadius: 5, alignItems: "center", justifyContent: "center", marginTop: 1 },
     categoryPerkText: { fontSize: 13.5, color: "rgba(255,255,255,0.85)", lineHeight: 19, flex: 1 },
     cta: { borderRadius: 16, paddingVertical: 18, alignItems: "center" },
-    ctaText: { fontSize: 15, fontWeight: "800", color: "#0a0a0a", letterSpacing: 0.3 },
+    ctaText: { fontSize: 15, fontWeight: "800", color: "#ffffff", letterSpacing: 0.3 },
     dots: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 6, paddingVertical: 16 },
     dot: { height: 6, width: 6, borderRadius: 3 },
     priceBlock: { marginBottom: 20 },
@@ -811,3 +811,4 @@ const s = StyleSheet.create({
     includesBar: { flexDirection: "row", alignItems: "center", gap: 9, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 24 },
     includesText: { fontSize: 12, fontWeight: "600" },
 });
+

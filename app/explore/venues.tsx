@@ -5,6 +5,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { ChevronLeft, MapPin, Building2, UtensilsCrossed, Music2, Hotel, Sparkles, Heart, Search, X } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
+import Toast from "@/components/Toast";
 
 type Venue = {
     id: string;
@@ -57,6 +58,8 @@ export default function VenuesScreen() {
     const [activeCity, setActiveCity] = useState("All");
     const [favorites, setFavorites] = useState<Set<string>>(new Set());
     const [userId, setUserId] = useState<string | null>(null);
+    const [toast, setToast] = useState<{ visible: boolean; message: string; type: "save" | "unsave" }>({ visible: false, message: "", type: "save" });
+    const toastTimer = useRef<any>(null);
     const [search, setSearch] = useState("");
     const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -77,6 +80,12 @@ export default function VenuesScreen() {
         setLoading(false);
     };
 
+    const showToast = (message: string, type: "save" | "unsave") => {
+        if (toastTimer.current) clearTimeout(toastTimer.current);
+        setToast({ visible: true, message, type });
+        toastTimer.current = setTimeout(() => setToast(t => ({ ...t, visible: false })), 2500);
+    };
+
     const toggleFavorite = async (venueId: string) => {
         if (!userId) return;
         const isFav = favorites.has(venueId);
@@ -84,9 +93,11 @@ export default function VenuesScreen() {
         if (isFav) {
             next.delete(venueId);
             await supabase.from("favorites").delete().eq("user_id", userId).eq("venue_id", venueId);
+            showToast("Removed from saved places", "unsave");
         } else {
             next.add(venueId);
             await supabase.from("favorites").insert({ user_id: userId, venue_id: venueId });
+            showToast("Saved to your profile", "save");
         }
         setFavorites(next);
     };
@@ -149,15 +160,13 @@ export default function VenuesScreen() {
                             {getCategoryIcon(item.category, C.primary)}
                         </View>
                         <View style={{ flex: 1 }}>
-                            <Text style={s.cardName} numberOfLines={1}>{item.name}</Text>
-                            {item.address ? (
-                                <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 3 }}>
-                                    <MapPin size={10} color={C.muted} />
-                                    <Text style={s.cardAddress} numberOfLines={1}>{item.address}</Text>
-                                </View>
-                            ) : (
-                                <Text style={s.cardAddress}>{CATEGORY_LABELS[item.category] ?? item.category}</Text>
-                            )}
+                            <Text style={s.cardName} numberOfLines={1}>
+                                {`Curated ${CATEGORY_LABELS[item.category] ?? item.category}`}
+                            </Text>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 3 }}>
+                                <MapPin size={10} color={C.muted} />
+                                <Text style={s.cardAddress} numberOfLines={1}>{item.city}</Text>
+                            </View>
                         </View>
                     </View>
                     <ChevronLeft size={16} color={C.muted} style={{ transform: [{ rotate: "180deg" }] }} />
@@ -225,6 +234,7 @@ export default function VenuesScreen() {
                     renderItem={renderItem}
                 />
             )}
+            <Toast visible={toast.visible} message={toast.message} type={toast.type} />
         </SafeAreaView>
     );
 }

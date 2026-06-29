@@ -10,5 +10,6 @@ export default function SplashRedirect() {
         router.replace("/(auth)/onboarding");
     }, []);
 
-    return <View style={{ flex: 1, backgroundColor: "#0a0a0a" }} />;
+    return <View style={{ flex: 1, backgroundColor: "#ffffff" }} />;
 }
+

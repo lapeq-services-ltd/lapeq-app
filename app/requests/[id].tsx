@@ -1,13 +1,15 @@
-import { useState, useEffect, useMemo } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image, Modal, Dimensions } from "react-native";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image, Modal, Dimensions, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ChevronLeft, Car, Briefcase, Plane, HeartHandshake, FileText, Package, MapPin, Clock, Calendar, Users, AlertTriangle, Wallet, Building2, UtensilsCrossed, Ticket, Sparkles, Anchor, Receipt, Check, MessageCircle } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
 import { LinearGradient } from "expo-linear-gradient";
+import { PayWithFlutterwave } from "flutterwave-react-native";
 
 const GOLD = "#c9a84c";
+const FLW_PUBLIC_KEY = process.env.EXPO_PUBLIC_FLUTTERWAVE_PUBLIC_KEY ?? "";
 const { width: W } = Dimensions.get("window");
 
 type ReceiptType = {
@@ -32,6 +34,7 @@ type Request = {
     scheduled_time: string | null;
     notes: string | null;
     driver_status: string | null;
+    payment_status?: string | null;
     details: {
         passengers?: number; carType?: string; instructions?: string; carCount?: number; color?: string | null;
         serviceType?: string; destination?: string; dateFrom?: string; dateTo?: string; guests?: number; budget?: string; preferences?: string;
@@ -108,15 +111,28 @@ export default function RequestDetailsScreen() {
     const [loading, setLoading] = useState(true);
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [cancelling, setCancelling] = useState(false);
+    const [userName, setUserName] = useState("Member");
+    const [userEmail, setUserEmail] = useState("");
+    const [payingOption, setPayingOption] = useState<{ title: string; price: number } | null>(null);
 
     useEffect(() => {
         const fetch = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            let profileData = null;
+            if (user) {
+                const { data: prof } = await supabase.from("profiles").select("full_name, email").eq("id", user.id).single();
+                profileData = prof;
+            }
             const [{ data: reqData }, { data: recData }] = await Promise.all([
                 supabase.from("requests").select("*").eq("id", id).single(),
                 supabase.from("receipts").select("*").eq("request_id", id).order("created_at", { ascending: false }).limit(1).single(),
             ]);
             if (reqData) setRequest(reqData as Request);
             if (recData) setReceipt(recData as ReceiptType);
+            if (profileData) {
+                setUserName(profileData.full_name ?? "Member");
+                setUserEmail(profileData.email ?? user?.email ?? "");
+            }
             setLoading(false);
         };
         fetch();
@@ -255,6 +271,176 @@ export default function RequestDetailsScreen() {
                         </LinearGradient>
                     </View>
 
+                    {/* Curation Payment Action Card */}
+                    {request.service_type === "experience" && request.payment_status === "unpaid" && (
+                        <View style={{ marginHorizontal: 20, marginBottom: 20, borderRadius: 24, backgroundColor: C.surface, borderWidth: 1, borderColor: `${GOLD}50`, overflow: "hidden" }}>
+                            <LinearGradient colors={[`${GOLD}15`, "transparent"]} style={{ padding: 24, gap: 16 }}>
+                                <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                                    <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: `${GOLD}20`, alignItems: "center", justifyContent: "center" }}>
+                                        <Wallet size={20} color={GOLD} />
+                                    </View>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={{ fontSize: 16, fontWeight: "700", color: C.text }}>Curation Fee Booking</Text>
+                                        <Text style={{ fontSize: 12, color: C.muted, marginTop: 1 }}>Secure your reservation curated by LAPEQ</Text>
+                                    </View>
+                                </View>
+
+                                <View style={{ height: 1, backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)" }} />
+
+                                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                                    <Text style={{ fontSize: 13, fontWeight: "600", color: C.muted }}>Curation Fee</Text>
+                                    <Text style={{ fontSize: 24, fontWeight: "800", color: GOLD }}>₦5,000</Text>
+                                </View>
+
+                                <View style={{ backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)", borderRadius: 12, padding: 12 }}>
+                                    <Text style={{ fontSize: 11, color: C.muted, textAlign: "center" }}>
+                                        Secure payment via Flutterwave · Card, Bank Transfer, USSD
+                                    </Text>
+                                </View>
+
+                                {userEmail ? (
+                                    <PayWithFlutterwave
+                                        options={{
+                                            tx_ref: `CUR-${request.id.slice(0, 8)}-${Date.now().toString(36).toUpperCase()}`,
+                                            authorization: FLW_PUBLIC_KEY,
+                                            customer: { email: userEmail, name: userName },
+                                            amount: 5000,
+                                            currency: "NGN",
+                                            payment_options: "card,banktransfer,ussd",
+                                        }}
+                                        customButton={(props) => (
+                                            <TouchableOpacity
+                                                onPress={props.onPress}
+                                                disabled={props.disabled}
+                                                style={{
+                                                    backgroundColor: GOLD,
+                                                    paddingVertical: 16,
+                                                    borderRadius: 16,
+                                                    alignItems: "center",
+                                                    justifyContent: "center",
+                                                    shadowColor: GOLD,
+                                                    shadowOffset: { width: 0, height: 4 },
+                                                    shadowOpacity: 0.2,
+                                                    shadowRadius: 8,
+                                                    elevation: 3,
+                                                }}
+                                                activeOpacity={0.85}
+                                            >
+                                                <Text style={{ fontSize: 15, fontWeight: "700", color: "#000" }}>
+                                                    Pay Booking Fee (₦5,000)
+                                                </Text>
+                                            </TouchableOpacity>
+                                        )}
+                                        onRedirect={async (data) => {
+                                            if (data.status === "successful" || data.status === "completed") {
+                                                await supabase
+                                                    .from("requests")
+                                                    .update({ payment_status: "paid" })
+                                                    .eq("id", request.id);
+
+                                                setRequest(prev => prev ? { ...prev, payment_status: "paid" } : prev);
+                                                Alert.alert("Payment Successful", "Your curation booking fee of ₦5,000 has been paid successfully! Your concierge is now finalizing your booking details.");
+                                            } else {
+                                                Alert.alert("Payment Cancelled", "The payment process was not completed.");
+                                            }
+                                        }}
+                                    />
+                                ) : (
+                                    <ActivityIndicator size="small" color={GOLD} />
+                                )}
+                            </LinearGradient>
+                        </View>
+                    )}
+
+                    {/* Paid Success Banner */}
+                    {request.service_type === "experience" && request.payment_status === "paid" && (
+                        <View style={{ marginHorizontal: 20, marginBottom: 20, borderRadius: 16, backgroundColor: "rgba(76,175,80,0.08)", borderWidth: 1, borderColor: "rgba(76,175,80,0.3)", padding: 16, flexDirection: "row", alignItems: "center", gap: 12 }}>
+                            <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: "rgba(76,175,80,0.15)", alignItems: "center", justifyContent: "center" }}>
+                                <Check size={14} color="#4caf50" strokeWidth={3} />
+                            </View>
+                            <Text style={{ flex: 1, fontSize: 13, color: "#4caf50", fontWeight: "600" }}>
+                                Curation Booking Fee (₦5,000) Paid Successfully! Our team is finalizing your reservation.
+                            </Text>
+                        </View>
+                    )}
+
+                    {/* Curated Interactive Suggestions */}
+                    {request.details?.curated_options && (
+                        <View style={{ marginHorizontal: 20, marginBottom: 20, gap: 14 }}>
+                            {request.payment_status === "paid" && request.details.curated_options.selection ? (
+                                <View style={{ borderRadius: 20, backgroundColor: "rgba(76,175,80,0.06)", borderWidth: 1, borderColor: "rgba(76,175,80,0.3)", padding: 20, gap: 8 }}>
+                                    <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                                        <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: "rgba(76,175,80,0.15)", alignItems: "center", justifyContent: "center" }}>
+                                            <Check size={12} color="#4caf50" strokeWidth={3} />
+                                        </View>
+                                        <Text style={{ fontSize: 11, fontWeight: "800", color: "#4caf50", letterSpacing: 1 }}>BOOKING CONFIRMED</Text>
+                                    </View>
+                                    <Text style={{ fontSize: 16, fontWeight: "700", color: C.text }}>{request.details.curated_options.selection.title}</Text>
+                                    <Text style={{ fontSize: 13, color: C.muted }}>Paid ₦{Number(request.details.curated_options.selection.price).toLocaleString()}</Text>
+                                </View>
+                            ) : (
+                                <View style={{ gap: 16 }}>
+                                    <Text style={{ fontSize: 11, fontWeight: "800", color: GOLD, letterSpacing: 1.5 }}>RECOMMENDED FOR YOU</Text>
+                                    
+                                    {request.details.curated_options.recommended && (
+                                        <View style={{ borderRadius: 24, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, overflow: "hidden" }}>
+                                            {request.details.curated_options.recommended.image ? (
+                                                <Image source={{ uri: request.details.curated_options.recommended.image }} style={{ width: "100%", height: 160 }} resizeMode="cover" />
+                                            ) : null}
+                                            <View style={{ padding: 20, gap: 12 }}>
+                                                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                                                    <View style={{ flex: 1, gap: 4 }}>
+                                                        <View style={{ alignSelf: "flex-start", backgroundColor: `${GOLD}20`, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
+                                                            <Text style={{ fontSize: 9, fontWeight: "700", color: GOLD }}>STRONGLY RECOMMENDED</Text>
+                                                        </View>
+                                                        <Text style={{ fontSize: 17, fontWeight: "700", color: C.text }}>{request.details.curated_options.recommended.title}</Text>
+                                                    </View>
+                                                    <Text style={{ fontSize: 18, fontWeight: "800", color: GOLD }}>₦{Number(request.details.curated_options.recommended.price).toLocaleString()}</Text>
+                                                </View>
+                                                
+                                                {request.details.curated_options.recommended.description ? (
+                                                    <Text style={{ fontSize: 13, color: C.muted, lineHeight: 18 }}>{request.details.curated_options.recommended.description}</Text>
+                                                ) : null}
+
+                                                <TouchableOpacity 
+                                                    onPress={() => setPayingOption({ title: request.details.curated_options.recommended.title, price: request.details.curated_options.recommended.price })}
+                                                    style={{ backgroundColor: GOLD, paddingVertical: 12, borderRadius: 14, alignItems: "center" }}
+                                                    activeOpacity={0.85}
+                                                >
+                                                    <Text style={{ fontSize: 13, fontWeight: "700", color: "#000" }}>Select & Pay</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        </View>
+                                    )}
+
+                                    {request.details.curated_options.suggestions?.length > 0 && (
+                                        <View style={{ gap: 10 }}>
+                                            <Text style={{ fontSize: 11, fontWeight: "800", color: C.muted, letterSpacing: 1 }}>ALTERNATIVE OPTIONS</Text>
+                                            {request.details.curated_options.suggestions.map((sug: any, idx: number) => (
+                                                <View key={idx} style={{ borderRadius: 20, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, padding: 18, flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                                                    <View style={{ flex: 1, gap: 4 }}>
+                                                        <Text style={{ fontSize: 15, fontWeight: "700", color: C.text }}>{sug.title}</Text>
+                                                        {sug.description ? <Text style={{ fontSize: 12, color: C.muted }}>{sug.description}</Text> : null}
+                                                    </View>
+                                                    <View style={{ alignItems: "flex-end", gap: 8 }}>
+                                                        <Text style={{ fontSize: 15, fontWeight: "800", color: GOLD }}>₦{Number(sug.price).toLocaleString()}</Text>
+                                                        <TouchableOpacity 
+                                                            onPress={() => setPayingOption({ title: sug.title, price: sug.price })}
+                                                            style={{ backgroundColor: `${GOLD}20`, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 }}
+                                                            activeOpacity={0.85}
+                                                        >
+                                                            <Text style={{ fontSize: 11, fontWeight: "700", color: GOLD }}>Select</Text>
+                                                        </TouchableOpacity>
+                                                    </View>
+                                                </View>
+                                            ))}
+                                        </View>
+                                    )}
+                                </View>
+                            )}
+                        </View>
+                    )}
+
                     {/* Details Card */}
                     <View style={{ marginHorizontal: 20, marginBottom: 20, borderRadius: 20, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, overflow: "hidden" }}>
                         <View style={{ paddingHorizontal: 20, paddingTop: 18, paddingBottom: 4 }}>
@@ -319,12 +505,22 @@ export default function RequestDetailsScreen() {
                             </>)}
                         </View>
 
-                        {/* Notes / special instructions */}
-                        {(request.details?.instructions || request.details?.preferences || request.details?.notes || request.details?.specialRequests || request.details?.details || request.notes) && (
-                            <View style={{ margin: 12, borderRadius: 14, backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)", padding: 16, gap: 6 }}>
-                                <Text style={{ fontSize: 10, fontWeight: "800", color: GOLD, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 4 }}>Notes</Text>
+                        {/* Concierge Response Updates */}
+                        {request.notes && (
+                            <View style={{ margin: 12, borderRadius: 16, backgroundColor: isDark ? "rgba(201,168,76,0.08)" : "rgba(201,168,76,0.05)", borderWidth: 1, borderColor: `${GOLD}30`, padding: 16, gap: 6 }}>
+                                <Text style={{ fontSize: 10, fontWeight: "800", color: GOLD, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 4 }}>Concierge Response</Text>
                                 <Text style={{ fontSize: 14, color: C.text, lineHeight: 22 }}>
-                                    {request.details?.instructions || request.details?.preferences || request.details?.notes || request.details?.specialRequests || request.details?.details || request.notes}
+                                    {request.notes}
+                                </Text>
+                            </View>
+                        )}
+
+                        {/* User initial request notes */}
+                        {(request.details?.instructions || request.details?.preferences || request.details?.notes || request.details?.specialRequests || request.details?.details) && (
+                            <View style={{ margin: 12, borderRadius: 14, backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)", padding: 16, gap: 6 }}>
+                                <Text style={{ fontSize: 10, fontWeight: "800", color: GOLD, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 4 }}>My Request Notes</Text>
+                                <Text style={{ fontSize: 14, color: C.text, lineHeight: 22 }}>
+                                    {request.details?.instructions || request.details?.preferences || request.details?.notes || request.details?.specialRequests || request.details?.details}
                                 </Text>
                             </View>
                         )}
@@ -430,6 +626,93 @@ export default function RequestDetailsScreen() {
                         >
                             <Text style={{ fontSize: 15, fontWeight: "600", color: C.muted }}>Keep Request</Text>
                         </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Paying Option Checkout Modal */}
+            <Modal visible={!!payingOption} transparent animationType="slide">
+                <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.85)", justifyContent: "flex-end" }}>
+                    <View style={{ backgroundColor: C.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, gap: 20, borderTopWidth: 1, borderTopColor: C.border }}>
+                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                            <Text style={{ fontSize: 18, fontWeight: "700", color: C.text }}>Confirm Booking</Text>
+                            <TouchableOpacity onPress={() => setPayingOption(null)}>
+                                <Text style={{ fontSize: 14, color: GOLD, fontWeight: "600" }}>Cancel</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={{ gap: 4 }}>
+                            <Text style={{ fontSize: 12, color: C.muted }}>SELECTED OPTION</Text>
+                            <Text style={{ fontSize: 16, fontWeight: "600", color: C.text }}>{payingOption?.title}</Text>
+                        </View>
+
+                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)", borderRadius: 16, padding: 16 }}>
+                            <Text style={{ fontSize: 14, fontWeight: "600", color: C.muted }}>Total Amount</Text>
+                            <Text style={{ fontSize: 22, fontWeight: "800", color: GOLD }}>₦{Number(payingOption?.price || 0).toLocaleString()}</Text>
+                        </View>
+
+                        {userEmail && payingOption ? (
+                            <PayWithFlutterwave
+                                options={{
+                                    tx_ref: `REC-${request.id.slice(0, 8)}-${Date.now().toString(36).toUpperCase()}`,
+                                    authorization: FLW_PUBLIC_KEY,
+                                    customer: { email: userEmail, name: userName },
+                                    amount: payingOption.price,
+                                    currency: "NGN",
+                                    payment_options: "card,banktransfer,ussd",
+                                }}
+                                customButton={(props) => (
+                                    <TouchableOpacity
+                                        onPress={props.onPress}
+                                        disabled={props.disabled}
+                                        style={{
+                                            backgroundColor: GOLD,
+                                            paddingVertical: 16,
+                                            borderRadius: 16,
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            shadowColor: GOLD,
+                                            shadowOffset: { width: 0, height: 4 },
+                                            shadowOpacity: 0.2,
+                                            shadowRadius: 8,
+                                            elevation: 3,
+                                        }}
+                                        activeOpacity={0.85}
+                                    >
+                                        <Text style={{ fontSize: 15, fontWeight: "700", color: "#000" }}>
+                                            Pay and Confirm Booking
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
+                                onRedirect={async (data) => {
+                                    if (data.status === "successful" || data.status === "completed") {
+                                        const updatedDetails = {
+                                            ...request.details,
+                                            curated_options: {
+                                                ...request.details.curated_options,
+                                                selection: payingOption
+                                            }
+                                        };
+                                        
+                                        await supabase
+                                            .from("requests")
+                                            .update({ 
+                                                payment_status: "paid",
+                                                details: updatedDetails
+                                            })
+                                            .eq("id", request.id);
+
+                                        setRequest(prev => prev ? { ...prev, payment_status: "paid", details: updatedDetails } : prev);
+                                        setPayingOption(null);
+                                        Alert.alert("Booking Confirmed", `Your payment of ₦${Number(payingOption.price).toLocaleString()} for ${payingOption.title} was successful! Your concierge is preparing confirmation passes.`);
+                                    } else {
+                                        Alert.alert("Payment Cancelled", "The payment process was not completed.");
+                                    }
+                                }}
+                            />
+                        ) : (
+                            <ActivityIndicator size="small" color={GOLD} />
+                        )}
                     </View>
                 </View>
             </Modal>

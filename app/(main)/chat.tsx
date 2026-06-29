@@ -87,6 +87,7 @@ export default function ConciergeChatScreen() {
     const listRef = useRef<FlatList>(null);
     const [faqs, setFaqs] = useState<{ question: string; answer: string; keywords: string[] }[]>([]);
     const [showQuickQuestions, setShowQuickQuestions] = useState(false);
+    const [userRequests, setUserRequests] = useState<{ id: string; reference: string; title: string }[]>([]);
 
     useEffect(() => {
         // Load FAQs from Supabase database
@@ -144,9 +145,20 @@ export default function ConciergeChatScreen() {
     }, [packageId]);
 
     useEffect(() => {
-        supabase.auth.getUser().then(({ data: { user } }) => {
+        supabase.auth.getUser().then(async ({ data: { user } }) => {
             if (user) {
                 setUserId(user.id);
+                const { data: reqs } = await supabase
+                    .from("requests")
+                    .select("id, reference, title")
+                    .eq("user_id", user.id)
+                    .is("deleted_at", null)
+                    .order("created_at", { ascending: false });
+
+                if (reqs) {
+                    setUserRequests(reqs.filter(r => r.reference));
+                }
+
                 // Stamp when user opens chat so home screen dot clears correctly
                 if (initialMode === "concierge" || !initialMode) {
                     AsyncStorage.setItem(`lapeq_chat_last_open_${user.id}`, new Date().toISOString());
@@ -416,6 +428,46 @@ export default function ConciergeChatScreen() {
                     style={{ width: 36, height: 36, opacity: 0.95 }}
                     resizeMode="contain"
                 />
+            {userRequests.length > 0 && (
+                <View style={{ backgroundColor: isDark ? "#141414" : "#f5f5f5", borderBottomWidth: 1, borderBottomColor: C.border }}>
+                    <Text style={{ fontSize: 9, color: C.muted, fontWeight: "700", letterSpacing: 0.5, textTransform: "uppercase", paddingHorizontal: 16, paddingTop: 8, paddingBottom: 2 }}>
+                        Discuss a Request:
+                    </Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 16, paddingBottom: 10, paddingTop: 4 }}>
+                        {userRequests.map(req => {
+                            const active = refPackage?.reference === req.reference;
+                            return (
+                                <TouchableOpacity
+                                    key={req.id}
+                                    onPress={() => {
+                                        if (active) {
+                                            setRefPackage(null);
+                                        } else {
+                                            setRefPackage({
+                                                reference: req.reference,
+                                                title: req.title || "Request detail"
+                                            });
+                                        }
+                                    }}
+                                    style={{
+                                        paddingHorizontal: 12,
+                                        paddingVertical: 6,
+                                        borderRadius: 20,
+                                        backgroundColor: active ? C.primary : (isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)"),
+                                        borderWidth: 1,
+                                        borderColor: active ? C.primary : C.border,
+                                    }}
+                                    activeOpacity={0.8}
+                                >
+                                    <Text style={{ fontSize: 11, fontWeight: "600", color: active ? "#000" : C.text }}>
+                                        #{req.reference}
+                                    </Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </ScrollView>
+                </View>
+            )}
             </View>
 
             {refPackage && (

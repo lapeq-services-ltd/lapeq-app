@@ -7,7 +7,7 @@ import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
-import { Briefcase, Check, FileText, ChevronLeft, ChevronDown, ChevronUp, Globe, Heart, Home, Minus, Plus } from "lucide-react-native";
+import { Briefcase, Check, FileText, ChevronLeft, ChevronDown, ChevronUp, Globe, Heart, Home, Minus, Plus, TrendingUp, CalendarDays, Shield } from "lucide-react-native";
 import VoiceInput from "@/components/VoiceInput";
 
 const SUGGESTIONS = [
@@ -61,6 +61,41 @@ const PACKAGES = [
         desc: "Protect your real estate investments. We provide independent weekly site visits, photo/video documentation, construction material verification, and property management reports.",
         bullet: "Weekly site visits · Material verification · Drone reports",
         Icon: Home
+    },
+    {
+        id: "Document & Legal Affairs",
+        label: "Document & Legal Affairs",
+        desc: "Handle your Nigerian documentation and legal matters remotely. We coordinate passport renewals, NIN/BVN recovery, land document processing, and power of attorney arrangements.",
+        bullet: "Passport renewal · NIN/BVN · Land docs · POA",
+        Icon: FileText
+    },
+    {
+        id: "Remote Business Liaison",
+        label: "Remote Business Liaison",
+        desc: "Keep your Nigerian business running smoothly while you're abroad. We represent you at meetings, manage vendor relationships, and supervise operations on your behalf.",
+        bullet: "Meeting rep · Vendor management · Office supervision",
+        Icon: Globe
+    },
+    {
+        id: "Investment & Finance Watch",
+        label: "Investment & Finance Watch",
+        desc: "Monitor and protect your Nigerian investments from abroad. We verify property status, liaise with banks, confirm investment returns, and coordinate remittances.",
+        bullet: "Property checks · Bank liaison · Remittance support",
+        Icon: TrendingUp
+    },
+    {
+        id: "Event & Ceremony Coordination",
+        label: "Event & Ceremony Coordination",
+        desc: "Plan and execute events, celebrations, and ceremonies in Nigeria while you remain abroad. We handle venue sourcing, vendors, guest management, and full day-of coordination.",
+        bullet: "Venue · Vendors · Guest management · Day-of support",
+        Icon: CalendarDays
+    },
+    {
+        id: "Security & Risk Advisory",
+        label: "Security & Risk Advisory",
+        desc: "Stay informed and protected. We provide on-ground security assessments, safe travel routing, location risk reports, and emergency evacuation coordination for Nigeria visits.",
+        bullet: "Risk reports · Safe routing · Emergency extraction",
+        Icon: Shield
     }
 ];
 
@@ -160,6 +195,36 @@ export default function DiasporaScreen() {
     const [poAudit, setPoAudit] = useState(false);
     const [poLegal, setPoLegal] = useState(false);
 
+    // Document & Legal Sub-options
+    const [dlPassport, setDlPassport] = useState(true);
+    const [dlNIN, setDlNIN] = useState(false);
+    const [dlLand, setDlLand] = useState(false);
+    const [dlPOA, setDlPOA] = useState(false);
+
+    // Remote Business Liaison Sub-options
+    const [blMeeting, setBlMeeting] = useState(true);
+    const [blVendor, setBlVendor] = useState(false);
+    const [blContract, setBlContract] = useState(false);
+    const [blOffice, setBlOffice] = useState(false);
+
+    // Investment & Finance Sub-options
+    const [ifProperty, setIfProperty] = useState(true);
+    const [ifBank, setIfBank] = useState(false);
+    const [ifRemittance, setIfRemittance] = useState(false);
+    const [ifVerify, setIfVerify] = useState(false);
+
+    // Event & Ceremony Sub-options
+    const [evVenue, setEvVenue] = useState(true);
+    const [evVendor, setEvVendor] = useState(false);
+    const [evGuest, setEvGuest] = useState(false);
+    const [evDayOf, setEvDayOf] = useState(false);
+
+    // Security Sub-options
+    const [secRisk, setSecRisk] = useState(true);
+    const [secRouting, setSecRouting] = useState(false);
+    const [secExtraction, setSecExtraction] = useState(false);
+    const [secIntel, setSecIntel] = useState(false);
+
     const scrollRef = useRef<ScrollView>(null);
     const detailsY = useRef(0);
     const alertOpacity = useRef(new Animated.Value(0)).current;
@@ -228,6 +293,41 @@ export default function DiasporaScreen() {
                 "Materials Verification": poAudit,
                 "Title & Legal Due Diligence": poLegal
             };
+        } else if (serviceType === "Document & Legal Affairs") {
+            detailsPayload.options = {
+                "Passport & Visa Renewal": dlPassport,
+                "NIN / BVN Recovery": dlNIN,
+                "Land Document Processing": dlLand,
+                "Power of Attorney": dlPOA
+            };
+        } else if (serviceType === "Remote Business Liaison") {
+            detailsPayload.options = {
+                "Meeting Representation": blMeeting,
+                "Vendor & Supplier Management": blVendor,
+                "Contract Coordination": blContract,
+                "Office & Staff Supervision": blOffice
+            };
+        } else if (serviceType === "Investment & Finance Watch") {
+            detailsPayload.options = {
+                "Property Status Monitoring": ifProperty,
+                "Bank & Account Liaison": ifBank,
+                "Remittance Coordination": ifRemittance,
+                "Investment Return Verification": ifVerify
+            };
+        } else if (serviceType === "Event & Ceremony Coordination") {
+            detailsPayload.options = {
+                "Venue Sourcing & Booking": evVenue,
+                "Vendor & Caterer Coordination": evVendor,
+                "Guest List Management": evGuest,
+                "Day-of Supervision": evDayOf
+            };
+        } else if (serviceType === "Security & Risk Advisory") {
+            detailsPayload.options = {
+                "Location Risk Assessment": secRisk,
+                "Safe Routing & Movement": secRouting,
+                "Emergency Extraction Plan": secExtraction,
+                "Intelligence & Threat Monitoring": secIntel
+            };
         }
 
         const { error } = await supabase.from("requests").insert({
@@ -256,7 +356,7 @@ export default function DiasporaScreen() {
             <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
                 <ScrollView
                     ref={scrollRef}
-                    scrollEnabled={!pkgExpanded}
+                    scrollEnabled={true}
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
                     keyboardDismissMode="on-drag"
@@ -519,7 +619,7 @@ export default function DiasporaScreen() {
                                             </View>
                                             <View style={s.toggleRow}>
                                                 <View style={{ flex: 1, paddingRight: 10 }}>
-                                                    <Text style={[s.toggleLabel, { color: C.text }]}>Arial Drone Video Reports</Text>
+                                                    <Text style={[s.toggleLabel, { color: C.text }]}>Aerial Drone Video Reports</Text>
                                                     <Text style={s.toggleSub}>High-resolution aerial construction footage</Text>
                                                 </View>
                                                 <Switch value={poDrone} onValueChange={setPoDrone} trackColor={{ false: border, true: `${GOLD}80` }} thumbColor={poDrone ? GOLD : "#888"} />
@@ -537,6 +637,171 @@ export default function DiasporaScreen() {
                                                     <Text style={s.toggleSub}>Registry boundary checks & property background research</Text>
                                                 </View>
                                                 <Switch value={poLegal} onValueChange={setPoLegal} trackColor={{ false: border, true: `${GOLD}80` }} thumbColor={poLegal ? GOLD : "#888"} />
+                                            </View>
+                                        </View>
+                                    )}
+
+                                    {serviceType === "Document & Legal Affairs" && (
+                                        <View style={{ gap: 4 }}>
+                                            <View style={s.toggleRow}>
+                                                <View style={{ flex: 1, paddingRight: 10 }}>
+                                                    <Text style={[s.toggleLabel, { color: C.text }]}>Passport & Visa Renewal</Text>
+                                                    <Text style={s.toggleSub}>Application processing, booking & collection</Text>
+                                                </View>
+                                                <Switch value={dlPassport} onValueChange={setDlPassport} trackColor={{ false: border, true: `${GOLD}80` }} thumbColor={dlPassport ? GOLD : "#888"} />
+                                            </View>
+                                            <View style={s.toggleRow}>
+                                                <View style={{ flex: 1, paddingRight: 10 }}>
+                                                    <Text style={[s.toggleLabel, { color: C.text }]}>NIN / BVN Recovery</Text>
+                                                    <Text style={s.toggleSub}>NIMC enrollment, linkage & corrections</Text>
+                                                </View>
+                                                <Switch value={dlNIN} onValueChange={setDlNIN} trackColor={{ false: border, true: `${GOLD}80` }} thumbColor={dlNIN ? GOLD : "#888"} />
+                                            </View>
+                                            <View style={s.toggleRow}>
+                                                <View style={{ flex: 1, paddingRight: 10 }}>
+                                                    <Text style={[s.toggleLabel, { color: C.text }]}>Land Document Processing</Text>
+                                                    <Text style={s.toggleSub}>C of O, deed of assignment & title perfection</Text>
+                                                </View>
+                                                <Switch value={dlLand} onValueChange={setDlLand} trackColor={{ false: border, true: `${GOLD}80` }} thumbColor={dlLand ? GOLD : "#888"} />
+                                            </View>
+                                            <View style={[s.toggleRow, { borderBottomWidth: 0 }]}>
+                                                <View style={{ flex: 1, paddingRight: 10 }}>
+                                                    <Text style={[s.toggleLabel, { color: C.text }]}>Power of Attorney</Text>
+                                                    <Text style={s.toggleSub}>Drafting, notarization & execution on your behalf</Text>
+                                                </View>
+                                                <Switch value={dlPOA} onValueChange={setDlPOA} trackColor={{ false: border, true: `${GOLD}80` }} thumbColor={dlPOA ? GOLD : "#888"} />
+                                            </View>
+                                        </View>
+                                    )}
+
+                                    {serviceType === "Remote Business Liaison" && (
+                                        <View style={{ gap: 4 }}>
+                                            <View style={s.toggleRow}>
+                                                <View style={{ flex: 1, paddingRight: 10 }}>
+                                                    <Text style={[s.toggleLabel, { color: C.text }]}>Meeting Representation</Text>
+                                                    <Text style={s.toggleSub}>Attend & report on business meetings on your behalf</Text>
+                                                </View>
+                                                <Switch value={blMeeting} onValueChange={setBlMeeting} trackColor={{ false: border, true: `${GOLD}80` }} thumbColor={blMeeting ? GOLD : "#888"} />
+                                            </View>
+                                            <View style={s.toggleRow}>
+                                                <View style={{ flex: 1, paddingRight: 10 }}>
+                                                    <Text style={[s.toggleLabel, { color: C.text }]}>Vendor & Supplier Management</Text>
+                                                    <Text style={s.toggleSub}>Negotiate, coordinate, and hold vendors accountable</Text>
+                                                </View>
+                                                <Switch value={blVendor} onValueChange={setBlVendor} trackColor={{ false: border, true: `${GOLD}80` }} thumbColor={blVendor ? GOLD : "#888"} />
+                                            </View>
+                                            <View style={s.toggleRow}>
+                                                <View style={{ flex: 1, paddingRight: 10 }}>
+                                                    <Text style={[s.toggleLabel, { color: C.text }]}>Contract Coordination</Text>
+                                                    <Text style={s.toggleSub}>Review, signing, and handover of agreements</Text>
+                                                </View>
+                                                <Switch value={blContract} onValueChange={setBlContract} trackColor={{ false: border, true: `${GOLD}80` }} thumbColor={blContract ? GOLD : "#888"} />
+                                            </View>
+                                            <View style={[s.toggleRow, { borderBottomWidth: 0 }]}>
+                                                <View style={{ flex: 1, paddingRight: 10 }}>
+                                                    <Text style={[s.toggleLabel, { color: C.text }]}>Office & Staff Supervision</Text>
+                                                    <Text style={s.toggleSub}>On-site oversight & staff accountability checks</Text>
+                                                </View>
+                                                <Switch value={blOffice} onValueChange={setBlOffice} trackColor={{ false: border, true: `${GOLD}80` }} thumbColor={blOffice ? GOLD : "#888"} />
+                                            </View>
+                                        </View>
+                                    )}
+
+                                    {serviceType === "Investment & Finance Watch" && (
+                                        <View style={{ gap: 4 }}>
+                                            <View style={s.toggleRow}>
+                                                <View style={{ flex: 1, paddingRight: 10 }}>
+                                                    <Text style={[s.toggleLabel, { color: C.text }]}>Property Status Monitoring</Text>
+                                                    <Text style={s.toggleSub}>Verify condition, occupancy, and value of your properties</Text>
+                                                </View>
+                                                <Switch value={ifProperty} onValueChange={setIfProperty} trackColor={{ false: border, true: `${GOLD}80` }} thumbColor={ifProperty ? GOLD : "#888"} />
+                                            </View>
+                                            <View style={s.toggleRow}>
+                                                <View style={{ flex: 1, paddingRight: 10 }}>
+                                                    <Text style={[s.toggleLabel, { color: C.text }]}>Bank & Account Liaison</Text>
+                                                    <Text style={s.toggleSub}>Resolve issues, update mandates & collect statements</Text>
+                                                </View>
+                                                <Switch value={ifBank} onValueChange={setIfBank} trackColor={{ false: border, true: `${GOLD}80` }} thumbColor={ifBank ? GOLD : "#888"} />
+                                            </View>
+                                            <View style={s.toggleRow}>
+                                                <View style={{ flex: 1, paddingRight: 10 }}>
+                                                    <Text style={[s.toggleLabel, { color: C.text }]}>Remittance Coordination</Text>
+                                                    <Text style={s.toggleSub}>Safe naira delivery & transfer confirmation</Text>
+                                                </View>
+                                                <Switch value={ifRemittance} onValueChange={setIfRemittance} trackColor={{ false: border, true: `${GOLD}80` }} thumbColor={ifRemittance ? GOLD : "#888"} />
+                                            </View>
+                                            <View style={[s.toggleRow, { borderBottomWidth: 0 }]}>
+                                                <View style={{ flex: 1, paddingRight: 10 }}>
+                                                    <Text style={[s.toggleLabel, { color: C.text }]}>Investment Return Verification</Text>
+                                                    <Text style={s.toggleSub}>Confirm dividends, rents & returns are received correctly</Text>
+                                                </View>
+                                                <Switch value={ifVerify} onValueChange={setIfVerify} trackColor={{ false: border, true: `${GOLD}80` }} thumbColor={ifVerify ? GOLD : "#888"} />
+                                            </View>
+                                        </View>
+                                    )}
+
+                                    {serviceType === "Event & Ceremony Coordination" && (
+                                        <View style={{ gap: 4 }}>
+                                            <View style={s.toggleRow}>
+                                                <View style={{ flex: 1, paddingRight: 10 }}>
+                                                    <Text style={[s.toggleLabel, { color: C.text }]}>Venue Sourcing & Booking</Text>
+                                                    <Text style={s.toggleSub}>Identify, inspect & secure the right venue</Text>
+                                                </View>
+                                                <Switch value={evVenue} onValueChange={setEvVenue} trackColor={{ false: border, true: `${GOLD}80` }} thumbColor={evVenue ? GOLD : "#888"} />
+                                            </View>
+                                            <View style={s.toggleRow}>
+                                                <View style={{ flex: 1, paddingRight: 10 }}>
+                                                    <Text style={[s.toggleLabel, { color: C.text }]}>Vendor & Caterer Coordination</Text>
+                                                    <Text style={s.toggleSub}>Food, décor, photography, entertainment sourcing</Text>
+                                                </View>
+                                                <Switch value={evVendor} onValueChange={setEvVendor} trackColor={{ false: border, true: `${GOLD}80` }} thumbColor={evVendor ? GOLD : "#888"} />
+                                            </View>
+                                            <View style={s.toggleRow}>
+                                                <View style={{ flex: 1, paddingRight: 10 }}>
+                                                    <Text style={[s.toggleLabel, { color: C.text }]}>Guest List Management</Text>
+                                                    <Text style={s.toggleSub}>Invites, RSVPs & guest liaison</Text>
+                                                </View>
+                                                <Switch value={evGuest} onValueChange={setEvGuest} trackColor={{ false: border, true: `${GOLD}80` }} thumbColor={evGuest ? GOLD : "#888"} />
+                                            </View>
+                                            <View style={[s.toggleRow, { borderBottomWidth: 0 }]}>
+                                                <View style={{ flex: 1, paddingRight: 10 }}>
+                                                    <Text style={[s.toggleLabel, { color: C.text }]}>Day-of Supervision</Text>
+                                                    <Text style={s.toggleSub}>On-ground presence to manage the full event day</Text>
+                                                </View>
+                                                <Switch value={evDayOf} onValueChange={setEvDayOf} trackColor={{ false: border, true: `${GOLD}80` }} thumbColor={evDayOf ? GOLD : "#888"} />
+                                            </View>
+                                        </View>
+                                    )}
+
+                                    {serviceType === "Security & Risk Advisory" && (
+                                        <View style={{ gap: 4 }}>
+                                            <View style={s.toggleRow}>
+                                                <View style={{ flex: 1, paddingRight: 10 }}>
+                                                    <Text style={[s.toggleLabel, { color: C.text }]}>Location Risk Assessment</Text>
+                                                    <Text style={s.toggleSub}>Pre-travel security briefing for your destination</Text>
+                                                </View>
+                                                <Switch value={secRisk} onValueChange={setSecRisk} trackColor={{ false: border, true: `${GOLD}80` }} thumbColor={secRisk ? GOLD : "#888"} />
+                                            </View>
+                                            <View style={s.toggleRow}>
+                                                <View style={{ flex: 1, paddingRight: 10 }}>
+                                                    <Text style={[s.toggleLabel, { color: C.text }]}>Safe Routing & Movement</Text>
+                                                    <Text style={s.toggleSub}>Planned low-risk transit routes & convoy coordination</Text>
+                                                </View>
+                                                <Switch value={secRouting} onValueChange={setSecRouting} trackColor={{ false: border, true: `${GOLD}80` }} thumbColor={secRouting ? GOLD : "#888"} />
+                                            </View>
+                                            <View style={s.toggleRow}>
+                                                <View style={{ flex: 1, paddingRight: 10 }}>
+                                                    <Text style={[s.toggleLabel, { color: C.text }]}>Emergency Extraction Plan</Text>
+                                                    <Text style={s.toggleSub}>Pre-arranged evacuation routes & standby response</Text>
+                                                </View>
+                                                <Switch value={secExtraction} onValueChange={setSecExtraction} trackColor={{ false: border, true: `${GOLD}80` }} thumbColor={secExtraction ? GOLD : "#888"} />
+                                            </View>
+                                            <View style={[s.toggleRow, { borderBottomWidth: 0 }]}>
+                                                <View style={{ flex: 1, paddingRight: 10 }}>
+                                                    <Text style={[s.toggleLabel, { color: C.text }]}>Intelligence & Threat Monitoring</Text>
+                                                    <Text style={s.toggleSub}>Ongoing updates on area security & threat levels</Text>
+                                                </View>
+                                                <Switch value={secIntel} onValueChange={setSecIntel} trackColor={{ false: border, true: `${GOLD}80` }} thumbColor={secIntel ? GOLD : "#888"} />
                                             </View>
                                         </View>
                                     )}

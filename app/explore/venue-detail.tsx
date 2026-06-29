@@ -1,12 +1,17 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image, Dimensions, Linking, NativeSyntheticEvent, NativeScrollEvent } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image, Dimensions, Linking, NativeSyntheticEvent, NativeScrollEvent, Modal, TextInput, Platform, Animated, KeyboardAvoidingView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronLeft, ChevronRight, MapPin, Heart, ArrowRight, ExternalLink } from "lucide-react-native";
+import { ChevronLeft, ChevronRight, MapPin, Heart, ArrowRight, ExternalLink, Plus, Minus, Calendar, Check, X } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import VoiceInput from "@/components/VoiceInput";
+import Toast from "@/components/Toast";
+import { PayWithFlutterwave } from "flutterwave-react-native";
 
 const GOLD = "#c9a84c";
+const FLW_PUBLIC_KEY = process.env.EXPO_PUBLIC_FLUTTERWAVE_PUBLIC_KEY ?? "FLWPUBK_TEST-5f00e9bc042a98f121d51a66a1a117b3-X";
 
 type Venue = {
     id: string;
@@ -84,12 +89,15 @@ export default function VenueDetailScreen() {
     const { id, overrideDescription } = useLocalSearchParams<{ id: string; overrideDescription?: string }>();
     const router = useRouter();
     const { C, theme } = useTheme();
+    const isDark = theme === "dark";
     const s = useMemo(() => getStyles(C, theme), [C, theme]);
 
     const [venue, setVenue] = useState<Venue | null>(null);
     const [loading, setLoading] = useState(true);
     const [isFav, setIsFav] = useState(false);
     const [userId, setUserId] = useState<string | null>(null);
+    const [toast, setToast] = useState<{ visible: boolean; message: string; type: "save" | "unsave" }>({ visible: false, message: "", type: "save" });
+    const toastTimer = useRef<any>(null);
     const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
     const [mapLoading, setMapLoading] = useState(false);
     const [venueImages, setVenueImages] = useState<VenueImage[]>([]);
@@ -98,6 +106,65 @@ export default function VenueDetailScreen() {
     const [menuItems, setMenuItems] = useState<VenueMenuItem[]>([]);
     const [activeDishIndex, setActiveDishIndex] = useState(0);
 
+    // Curation Request Form State
+    const [showRequestModal, setShowRequestModal] = useState(false);
+    const [requestDate, setRequestDate] = useState<Date | null>(null);
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [guestsCount, setGuestsCount] = useState(2);
+    const [requestNotes, setRequestNotes] = useState("");
+    const [requestLoading, setRequestLoading] = useState(false);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [userTier, setUserTier] = useState<string | null>(null);
+    const [monthlyRequestsCount, setMonthlyRequestsCount] = useState(0);
+    const [userEmail, setUserEmail] = useState("");
+    const [userName, setUserName] = useState("Member");
+
+    const alertOpacity = useRef(new Animated.Value(0)).current;
+    const alertScale = useRef(new Animated.Value(0.9)).current;
+
+    const fmtDate = (d: Date | null) => d
+        ? d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+        : null;
+
+    const handleSubmitRequest = async (paidAlready = false) => {
+        setRequestLoading(true);
+        const { data: { user } } = await supabase.auth.getUser();
+        const ref = "CUR-" + Date.now().toString(36).toUpperCase().slice(-5);
+        const hasPremiumMembership = userTier && ["silver", "gold", "black"].includes(userTier.toLowerCase());
+
+        const { error } = await supabase.from("requests").insert({
+            user_id: user?.id,
+            service_type: "experience",
+            status: "pending",
+            reference: ref,
+            title: `Curation: Curated ${CATEGORY_LABELS[venue?.category ?? ""] ?? venue?.category ?? "Partner"} (${venue?.city})`,
+            payment_status: (hasPremiumMembership || paidAlready) ? "paid" : "unpaid",
+            details: {
+                city: venue?.city,
+                venue_id: venue?.id,
+                venue_name: venue?.name, // Admin sees this!
+                venue_category: venue?.category,
+                guests: guestsCount,
+                date: fmtDate(requestDate),
+                notes: requestNotes.trim(),
+                curation_fee: (hasPremiumMembership || paidAlready) ? "Included" : "₦5,000",
+            },
+        });
+
+        setRequestLoading(false);
+        if (error) {
+            alert("Error: " + error.message);
+            return;
+        }
+
+        setShowRequestModal(false);
+        setShowSuccessModal(true);
+        Animated.parallel([
+            Animated.timing(alertOpacity, { toValue: 1, duration: 250, useNativeDriver: true }),
+            Animated.spring(alertScale, { toValue: 1, friction: 8, tension: 40, useNativeDriver: true }),
+        ]).start();
+    };
+
     useEffect(() => { init(); }, [id]);
 
     const init = async () => {
@@ -105,8 +172,22 @@ export default function VenueDetailScreen() {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
             setUserId(user.id);
-            const { data: fav } = await supabase.from("favorites").select("id").eq("user_id", user.id).eq("venue_id", id).single();
+            const now = new Date();
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+            const [{ data: fav }, { data: profile }, { count }] = await Promise.all([
+                supabase.from("favorites").select("id").eq("user_id", user.id).eq("venue_id", id).single(),
+                supabase.from("profiles").select("tier, full_name, email").eq("id", user.id).single(),
+                supabase.from("requests").select("id", { count: "exact", head: true }).eq("user_id", user.id).gte("created_at", startOfMonth),
+            ]);
+
             setIsFav(!!fav);
+            if (profile) {
+                setUserTier(profile.tier);
+                setUserName(profile.full_name ?? "Member");
+                setUserEmail(profile.email ?? user.email ?? "");
+            }
+            setMonthlyRequestsCount(count ?? 0);
         }
         const { data } = await supabase.from("venues").select("*").eq("id", id).is("deleted_at", null).single();
         if (data) {
@@ -140,14 +221,23 @@ export default function VenueDetailScreen() {
         setLoading(false);
     };
 
+    const showToast = (message: string, type: "save" | "unsave") => {
+        if (toastTimer.current) clearTimeout(toastTimer.current);
+        setToast({ visible: true, message, type });
+        toastTimer.current = setTimeout(() => setToast(t => ({ ...t, visible: false })), 2500);
+    };
+
     const toggleFavorite = async () => {
         if (!userId || !venue) return;
         if (isFav) {
             await supabase.from("favorites").delete().eq("user_id", userId).eq("venue_id", venue.id);
+            setIsFav(false);
+            showToast("Removed from saved places", "unsave");
         } else {
             await supabase.from("favorites").insert({ user_id: userId, venue_id: venue.id });
+            setIsFav(true);
+            showToast("Saved to your profile", "save");
         }
-        setIsFav(!isFav);
     };
 
     const openMaps = () => {
@@ -216,14 +306,7 @@ export default function VenueDetailScreen() {
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                             <TouchableOpacity
                                 style={s.headerCurateBtn}
-                                onPress={() => router.push({
-                                    pathname: "/services/lifestyle-travel" as any,
-                                    params: {
-                                        prefillType: VENUE_SERVICE_TYPE[venue.category] ?? "",
-                                        prefillVenue: venue.name,
-                                        prefillCity: venue.city,
-                                    }
-                                })}
+                                onPress={() => setShowRequestModal(true)}
                                 activeOpacity={0.8}
                             >
                                 <Text style={s.headerCurateText}>Curate This</Text>
@@ -359,20 +442,158 @@ export default function VenueDetailScreen() {
             <View style={s.cta}>
                 <TouchableOpacity
                     style={s.ctaBtn}
-                    onPress={() => router.push({
-                        pathname: "/services/lifestyle-travel" as any,
-                        params: {
-                            prefillType: VENUE_SERVICE_TYPE[venue.category] ?? "",
-                            prefillVenue: venue.name,
-                            prefillCity: venue.city,
-                        }
-                    })}
+                    onPress={() => setShowRequestModal(true)}
                     activeOpacity={0.85}
                 >
                     <Text style={s.ctaBtnText}>Curate This For Me</Text>
                     <ArrowRight size={18} color={C.background} strokeWidth={2.5} />
                 </TouchableOpacity>
             </View>
+
+            {/* Request Modal */}
+            <Modal visible={showRequestModal} animationType="slide" transparent onRequestClose={() => setShowRequestModal(false)}>
+                <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
+                    <TouchableOpacity style={s.modalBackdrop} activeOpacity={1} onPress={() => setShowRequestModal(false)} />
+                    <View style={[s.sheet, { backgroundColor: C.background }]}>
+                        <View style={[s.sheetHandle, { backgroundColor: isDark ? "#2a2a2a" : "#e0dbd2" }]} />
+                        <View style={s.sheetHeader}>
+                            <View>
+                                <Text style={s.sheetTag}>CURATION REQUEST</Text>
+                                <Text style={[s.sheetTitle, { color: C.text }]}>{`Curated ${CATEGORY_LABELS[venue.category] ?? venue.category}`}</Text>
+                            </View>
+                            <TouchableOpacity style={[s.closeBtn, { backgroundColor: C.surface }]} onPress={() => setShowRequestModal(false)}>
+                                <X size={20} color={C.muted} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 40 }}>
+                            <Text style={[s.fieldLabel, { color: C.muted }]}>NUMBER OF GUESTS</Text>
+                            <View style={s.stepperRow}>
+                                <TouchableOpacity style={[s.stepBtn, { borderColor: isDark ? "#2a2a2a" : "#e0dbd2", backgroundColor: C.surface }]} onPress={() => setGuestsCount(g => Math.max(1, g - 1))}>
+                                    <Minus size={16} color={C.text} />
+                                </TouchableOpacity>
+                                <Text style={[s.stepVal, { color: C.text }]}>{guestsCount}</Text>
+                                <TouchableOpacity style={[s.stepBtn, { borderColor: isDark ? "#2a2a2a" : "#e0dbd2", backgroundColor: C.surface }]} onPress={() => setGuestsCount(g => Math.min(30, g + 1))}>
+                                    <Plus size={16} color={C.text} />
+                                </TouchableOpacity>
+                            </View>
+
+                            <Text style={[s.fieldLabel, { color: C.muted }]}>PREFERRED DATE</Text>
+                            <TouchableOpacity style={[s.dateBtn, { backgroundColor: C.surface, borderColor: requestDate ? GOLD : (isDark ? "#2a2a2a" : "#e0dbd2") }]} onPress={() => setShowDatePicker(true)}>
+                                <Calendar size={16} color={requestDate ? GOLD : C.muted} />
+                                <Text style={{ fontSize: 15, color: requestDate ? C.text : C.muted, fontWeight: requestDate ? "600" : "400" }}>{fmtDate(requestDate) ?? "Select a date (optional)"}</Text>
+                            </TouchableOpacity>
+
+                            <Text style={[s.fieldLabel, { color: C.muted }]}>SPECIAL NOTES</Text>
+                            <VoiceInput
+                                placeholder="Any dietary restrictions, table preference, or surprise arrangements..."
+                                value={requestNotes}
+                                onChange={setRequestNotes}
+                                accent={GOLD}
+                                textColor={C.text}
+                                border={isDark ? "#2a2a2a" : "#e0dbd2"}
+                                inputBg={C.surface}
+                            />
+
+                            {userTier && ["silver", "gold", "black"].includes(userTier.toLowerCase()) ? (
+                                <View style={[s.feeCard, { borderColor: "rgba(76,175,80,0.3)", backgroundColor: "rgba(76,175,80,0.05)" }]}>
+                                    <Text style={[s.feeEyebrow, { color: "#4caf50" }]}>MEMBERSHIP BENEFIT</Text>
+                                    <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6, marginBottom: 4 }}>
+                                        <Text style={[s.feeAmount, { color: "#4caf50" }]}>₦0</Text>
+                                        <Text style={[s.feeNote, { color: C.muted }]}>Included in Tier</Text>
+                                    </View>
+                                    <Text style={[s.feeSub, { color: C.muted }]}>As a premium member, your booking curation fees are fully covered.</Text>
+                                </View>
+                            ) : (
+                                <View style={[s.feeCard, { borderColor: `${GOLD}40`, backgroundColor: `${GOLD}08` }]}>
+                                    <Text style={s.feeEyebrow}>COMMITMENT FEE</Text>
+                                    <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6, marginBottom: 4 }}>
+                                        <Text style={s.feeAmount}>₦5,000</Text>
+                                        <Text style={[s.feeNote, { color: C.muted }]}>per request</Text>
+                                    </View>
+                                    <Text style={[s.feeSub, { color: C.muted }]}>Charged to your payment method when reservations are confirmed. Cost of food and experiences are billed separately.</Text>
+                                </View>
+                            )}
+
+                            {(!userTier || !["silver", "gold", "black"].includes(userTier.toLowerCase())) && (
+                                <Text style={{ fontSize: 11, color: C.muted, textAlign: "center", marginTop: 8, marginBottom: 4 }}>
+                                    Community Plan: This will use 1 of your 5 monthly concierge requests ({monthlyRequestsCount}/5 used this month).
+                                </Text>
+                            )}
+
+                            {(!userTier || !["silver", "gold", "black"].includes(userTier.toLowerCase())) ? (
+                                <PayWithFlutterwave
+                                    options={{
+                                        tx_ref: `CUR-${Date.now().toString(36).toUpperCase()}`,
+                                        authorization: FLW_PUBLIC_KEY,
+                                        customer: { email: userEmail || "member@lapeq.com", name: userName },
+                                        amount: 5000,
+                                        currency: "NGN",
+                                        payment_options: "card,banktransfer,ussd",
+                                    }}
+                                    customButton={(props) => (
+                                        <TouchableOpacity 
+                                            style={[s.submitBtn, (requestLoading || props.disabled) && { opacity: 0.7 }]} 
+                                            onPress={props.onPress} 
+                                            disabled={requestLoading || props.disabled} 
+                                            activeOpacity={0.85}
+                                        >
+                                            <Text style={s.submitText}>{requestLoading ? "Submitting..." : "Pay ₦5,000 & Confirm"}</Text>
+                                            <ChevronRight size={16} color="#0a0a0a" />
+                                        </TouchableOpacity>
+                                    )}
+                                    onRedirect={async (data) => {
+                                        if (data.status === "successful" || data.status === "completed") {
+                                            await handleSubmitRequest(true);
+                                        } else {
+                                            alert("Payment not successful. Please try again.");
+                                        }
+                                    }}
+                                />
+                            ) : (
+                                <TouchableOpacity style={[s.submitBtn, requestLoading && { opacity: 0.7 }]} onPress={() => handleSubmitRequest(false)} disabled={requestLoading} activeOpacity={0.85}>
+                                    <Text style={s.submitText}>{requestLoading ? "Submitting..." : "Confirm Request"}</Text>
+                                    <ChevronRight size={16} color="#0a0a0a" />
+                                </TouchableOpacity>
+                            )}
+                        </ScrollView>
+                    </View>
+
+                    {Platform.OS === "android" && showDatePicker && (
+                        <DateTimePicker value={requestDate ?? new Date()} mode="date" display="default" minimumDate={new Date()} onChange={(_, d) => { setShowDatePicker(false); if (d) setRequestDate(d); }} />
+                    )}
+                    <Modal visible={Platform.OS === "ios" && showDatePicker} transparent animationType="slide">
+                        <TouchableOpacity style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)" }} activeOpacity={1} onPress={() => setShowDatePicker(false)} />
+                        <View style={[s.pickerSheet, { backgroundColor: C.surface }]}>
+                            <View style={s.pickerHeader}>
+                                <TouchableOpacity onPress={() => setShowDatePicker(false)}><Text style={{ color: C.muted, fontSize: 16 }}>Cancel</Text></TouchableOpacity>
+                                <Text style={{ color: C.text, fontWeight: "700", fontSize: 16 }}>Select Date</Text>
+                                <TouchableOpacity onPress={() => setShowDatePicker(false)}><Text style={{ color: GOLD, fontWeight: "700", fontSize: 16 }}>Done</Text></TouchableOpacity>
+                            </View>
+                            <DateTimePicker value={requestDate ?? new Date()} mode="date" display="spinner" minimumDate={new Date()} themeVariant={theme === "dark" ? "dark" : "light"} style={{ width: "100%" }} onChange={(_, d) => { if (d) setRequestDate(d); }} />
+                        </View>
+                    </Modal>
+                </KeyboardAvoidingView>
+            </Modal>
+
+            {/* Success Modal */}
+            <Modal visible={showSuccessModal} transparent animationType="fade">
+                <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.8)", justifyContent: "center", alignItems: "center", padding: 24 }}>
+                    <Animated.View style={[s.successBox, { backgroundColor: C.surface, opacity: alertOpacity, transform: [{ scale: alertScale }], borderColor: C.border, borderWidth: 1 }]}>
+                        <View style={[s.successIcon, { backgroundColor: `${GOLD}20` }]}>
+                            <Check size={36} color={GOLD} strokeWidth={3} />
+                        </View>
+                        <Text style={[s.successTitle, { color: C.text }]}>Curation Requested</Text>
+                        <Text style={[s.successBody, { color: C.muted }]}>
+                            Your concierge is checking availability at this venue. We will confirm details and lock reservations shortly.
+                        </Text>
+                        <TouchableOpacity style={s.successBtn} onPress={() => { setShowSuccessModal(false); router.back(); }} activeOpacity={0.8}>
+                            <Text style={s.successBtnText}>Done</Text>
+                        </TouchableOpacity>
+                    </Animated.View>
+                </View>
+            </Modal>
+            <Toast visible={toast.visible} message={toast.message} type={toast.type} />
         </View>
     );
 }
@@ -428,5 +649,33 @@ const getStyles = (C: any, theme: string) => {
         cta: { padding: 20, paddingBottom: 36, backgroundColor: C.background, borderTopWidth: 1, borderTopColor: C.border },
         ctaBtn: { backgroundColor: GOLD, borderRadius: 14, padding: 16, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
         ctaBtnText: { color: "#000", fontSize: 16, fontWeight: "700" },
+
+        modalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)" },
+        sheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 24, paddingTop: 12, maxHeight: "90%", paddingBottom: 30, position: "absolute", bottom: 0, left: 0, right: 0 },
+        sheetHandle: { width: 40, height: 4, borderRadius: 2, alignSelf: "center", marginBottom: 20 },
+        sheetHeader: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24 },
+        sheetTag: { fontSize: 9, fontWeight: "800", color: GOLD, letterSpacing: 2, marginBottom: 6 },
+        sheetTitle: { fontSize: 20, fontWeight: "700" },
+        closeBtn: { width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center" },
+        fieldLabel: { fontSize: 10, fontWeight: "800", letterSpacing: 2, marginBottom: 12, marginTop: 16 },
+        stepperRow: { flexDirection: "row", alignItems: "center", gap: 20, marginBottom: 4 },
+        stepBtn: { width: 44, height: 44, borderRadius: 12, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+        stepVal: { fontSize: 24, fontWeight: "700", minWidth: 36, textAlign: "center" },
+        dateBtn: { flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 14, padding: 14, borderWidth: 1, marginBottom: 4 },
+        feeCard: { marginTop: 20, padding: 16, borderRadius: 14, borderWidth: 1 },
+        feeEyebrow: { fontSize: 9, fontWeight: "800", color: GOLD, letterSpacing: 2, marginBottom: 6 },
+        feeAmount: { fontSize: 22, fontWeight: "800", color: GOLD },
+        feeNote: { fontSize: 13, fontWeight: "600" },
+        feeSub: { fontSize: 11, marginTop: 2, lineHeight: 16 },
+        submitBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: GOLD, borderRadius: 16, paddingVertical: 17, marginTop: 16 },
+        submitText: { color: "#0a0a0a", fontSize: 15, fontWeight: "800" },
+        successBox: { borderRadius: 28, padding: 24, width: "100%", alignItems: "center", gap: 16 },
+        successIcon: { width: 72, height: 72, borderRadius: 36, alignItems: "center", justifyContent: "center", marginBottom: 8 },
+        successTitle: { fontSize: 22, fontWeight: "800", textAlign: "center" },
+        successBody: { fontSize: 14, textAlign: "center", lineHeight: 22, marginBottom: 12 },
+        successBtn: { width: "100%", paddingVertical: 16, borderRadius: 14, backgroundColor: GOLD, alignItems: "center" },
+        successBtnText: { color: "#0a0a0a", fontSize: 15, fontWeight: "700" },
+        pickerSheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 32, position: "absolute", bottom: 0, left: 0, right: 0 },
+        pickerHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 20, borderBottomWidth: 1, borderBottomColor: "rgba(128,128,128,0.15)" },
     });
 };

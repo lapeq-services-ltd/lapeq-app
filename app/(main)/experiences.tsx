@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+﻿import { useState, useMemo, useCallback } from "react";
 import * as Notifications from "expo-notifications";
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Image, Modal } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -347,11 +347,11 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     steps:           { gap: 16, marginBottom: 32 },
     step:            { flexDirection: "row", alignItems: "flex-start", gap: 16 },
     stepNum:         { width: 32, height: 32, borderRadius: 16, backgroundColor: C.primary, alignItems: "center", justifyContent: "center", flexShrink: 0 },
-    stepNumText:     { fontSize: 14, fontWeight: "700", color: "#0a0a0a" },
+    stepNumText:     { fontSize: 14, fontWeight: "700", color: "#ffffff" },
     stepTitle:       { fontSize: 15, fontWeight: "700", color: C.text, marginBottom: 4 },
     stepDesc:        { fontSize: 13, color: C.muted, lineHeight: 20 },
     ctaBtn:          { backgroundColor: C.primary, borderRadius: 16, paddingVertical: 18, alignItems: "center" },
-    ctaBtnText:      { fontSize: 16, fontWeight: "700", color: "#0a0a0a" },
+    ctaBtnText:      { fontSize: 16, fontWeight: "700", color: "#ffffff" },
 
     // Package cards
     pkgCard:       { backgroundColor: C.surface, borderRadius: 18, padding: 18, borderWidth: 1, borderColor: theme === "dark" ? "#2a2a2a" : "#d8d3ca" },
@@ -365,3 +365,4 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     newPackageRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, padding: 16 },
     newPackageText:{ fontSize: 14, fontWeight: "600", color: C.primary },
 });
+

@@ -36,8 +36,26 @@ export default function MonthlyPicksScreen() {
             .eq("published", true)
             .is("deleted_at", null)
             .order("created_at", { ascending: false })
-            .then(({ data }) => {
-                if (data) setPicks(data);
+            .then(({ data, error }) => {
+                if (error) {
+                    console.warn("Picks query failed, trying fallback without venue_id/address columns:", error.message);
+                    supabase
+                        .from("content")
+                        .select("id, title, body, image_url, tag, city, category")
+                        .eq("type", "pick")
+                        .eq("published", true)
+                        .is("deleted_at", null)
+                        .order("created_at", { ascending: false })
+                        .then(({ data: fallbackData, error: fallbackError }) => {
+                            if (fallbackError) {
+                                console.error("Fallback picks query failed:", fallbackError.message);
+                            } else if (fallbackData) {
+                                setPicks(fallbackData);
+                            }
+                        });
+                } else if (data) {
+                    setPicks(data);
+                }
             });
     }, []);
 

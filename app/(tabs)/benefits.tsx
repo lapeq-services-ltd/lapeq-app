@@ -1,16 +1,26 @@
 import {
     View, Text, StyleSheet, ScrollView, Platform,
-    Image, TouchableOpacity, Dimensions,
+    Image, TouchableOpacity, Dimensions, Animated,
 } from "react-native";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ChevronRight } from "lucide-react-native";
+import { ChevronRight, Crown, Gift, Plane, Utensils, Hotel, Shield, ArrowRight } from "lucide-react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { useRouter } from "expo-router";
+import Svg, { Circle, Path } from "react-native-svg";
 
 const GOLD = "#c9a84c";
 const { width: W, height: H } = Dimensions.get("window");
 const isAndroid = Platform.OS === "android";
+
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
+const ANALYTICS = [
+    { label: "Privilege index", val: 98, color: GOLD },
+    { label: "Access rate", val: 100, color: "#ffffff" },
+    { label: "Priority score", val: 95, color: GOLD },
+];
 
 const STATS = [
     { value: "9.4", label: "Client Satisfaction" },
@@ -20,37 +30,41 @@ const STATS = [
     { value: "100%", label: "Discretion" },
 ];
 
-const MOMENTS = [
+const REDESIGNED_PERKS = [
     {
-        type: "image",
+        title: "Elite Transit",
+        desc: "Private aviation, chauffeur rides & fast-track airport customs.",
+        icon: Plane,
+        badge: "Premium Travel",
+        img: require("@/assets/images/mercedes-sedan.png"),
+    },
+    {
+        title: "VIP Dining",
+        desc: "Last-minute tables, private lounges & exclusive member menus.",
+        icon: Utensils,
+        badge: "Fine Gastronomy",
         img: require("@/assets/images/lagos-restaurant.jpg"),
-        label: "Fine Dining",
-        sub: "Private tables. Curated menus.",
     },
     {
-        type: "gradient",
-        colors: ["#0a0e20", "#1a2040"] as const,
-        label: "Exclusive Events",
-        sub: "Sold-out shows. Private gatherings.",
+        title: "Curated Hotels",
+        desc: "Early check-ins, room upgrades & exclusive hotel benefits worldwide.",
+        icon: Hotel,
+        badge: "Luxury Stays",
+        img: require("@/assets/images/lagos-hotel.jpg"),
     },
     {
-        type: "image",
-        img: require("@/assets/images/collab-img.png"),
-        label: "Elite Venues",
-        sub: "Spaces reserved for you.",
+        title: "Bespoke Care",
+        desc: "24/7 butler service, private security escorts & medical concierge.",
+        icon: Shield,
+        badge: "Elite Protection",
+        img: require("@/assets/images/exterior-luxury.jpg"),
     },
-    {
-        type: "gradient",
-        colors: ["#1a0a00", "#2d1500"] as const,
-        label: "Private Jet Travel",
-        sub: "Fly on your terms.",
-    },
-    {
-        type: "image",
-        img: require("@/assets/images/lagos-beach.jpg"),
-        label: "Beach Escapes",
-        sub: "Cabanas. VIP access.",
-    },
+];
+
+const PARTNER_BANNERS = [
+    { title: "VistaJet Partnership", sub: "Save 15% on empty leg flight bookings worldwide.", btn: "View flights" },
+    { title: "Waldorf Astoria Upgrades", sub: "Complimentary breakfast & double-tier room upgrades.", btn: "Explore hotels" },
+    { title: "Lagos VIP Beach Club", sub: "Priority cabanas, champagne welcome & zero entrance fees.", btn: "Claim entry" },
 ];
 
 const WHAT_WE_DO = [
@@ -66,11 +80,109 @@ const WHAT_WE_DO = [
     "Relationship & proposal packages",
 ];
 
+const ProgressRing = ({ percentage, size = 64, strokeWidth = 5, color = GOLD }: { percentage: number; size?: number; strokeWidth?: number; color?: string }) => {
+    const radius = (size - strokeWidth) / 2;
+    const circumference = radius * 2 * Math.PI;
+
+    // Animated value for circle fill
+    const animVal = useRef(new Animated.Value(0)).current;
+    const [displayVal, setDisplayVal] = useState(0);
+
+    useEffect(() => {
+        // Reset values
+        animVal.setValue(0);
+        setDisplayVal(0);
+
+        // Animate stroke dashoffset
+        Animated.timing(animVal, {
+            toValue: 1,
+            duration: 1800,
+            useNativeDriver: false,
+        }).start();
+
+        // Animate counter text
+        let start = 0;
+        const end = percentage;
+        const duration = 1800;
+        const stepTime = Math.max(Math.floor(duration / end), 12);
+        
+        let timer = setInterval(() => {
+            start += 1;
+            if (start > end) {
+                clearInterval(timer);
+            } else {
+                setDisplayVal(start);
+            }
+        }, stepTime);
+
+        return () => clearInterval(timer);
+    }, [percentage]);
+
+    const strokeDashoffset = animVal.interpolate({
+        inputRange: [0, 1],
+        outputRange: [circumference, circumference - (percentage / 100) * circumference],
+    });
+
+    return (
+        <View style={{ width: size, height: size, justifyContent: "center", alignItems: "center" }}>
+            <Svg width={size} height={size}>
+                <Circle
+                    stroke="rgba(255,255,255,0.06)"
+                    fill="transparent"
+                    cx={size / 2}
+                    cy={size / 2}
+                    r={radius}
+                    strokeWidth={strokeWidth}
+                />
+                <AnimatedCircle
+                    stroke={color}
+                    fill="transparent"
+                    cx={size / 2}
+                    cy={size / 2}
+                    r={radius}
+                    strokeWidth={strokeWidth}
+                    strokeDasharray={`${circumference} ${circumference}`}
+                    strokeDashoffset={strokeDashoffset}
+                    strokeLinecap="round"
+                    transform={`rotate(-90 ${size / 2} ${size / 2})`}
+                />
+            </Svg>
+            <View style={{ position: "absolute" }}>
+                <Text style={{ color: "#fff", fontSize: 11, fontFamily: "Jost_700Bold" }}>{displayVal}%</Text>
+            </View>
+        </View>
+    );
+};
+
 export default function BenefitsScreen() {
     const insets = useSafeAreaInsets();
     const { C, theme } = useTheme();
     const router = useRouter();
-    const isDark = theme === "dark";
+
+    // Auto-playing partner banners state
+    const [partnerIndex, setPartnerIndex] = useState(0);
+    const bannerFadeAnim = useRef(new Animated.Value(1)).current;
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            Animated.timing(bannerFadeAnim, {
+                toValue: 0,
+                duration: 350,
+                useNativeDriver: true,
+            }).start(() => {
+                setPartnerIndex((prev) => (prev + 1) % PARTNER_BANNERS.length);
+                Animated.timing(bannerFadeAnim, {
+                    toValue: 1,
+                    duration: 500,
+                    useNativeDriver: true,
+                }).start();
+            });
+        }, 5000);
+
+        return () => clearInterval(interval);
+    }, []);
+
+    const s = useMemo(() => getStyles(C, theme), [C, theme]);
 
     return (
         <ScrollView
@@ -78,7 +190,7 @@ export default function BenefitsScreen() {
             contentContainerStyle={{ paddingBottom: 120 }}
             showsVerticalScrollIndicator={false}
         >
-            {/* ── HERO ─────────────────────────────────────────── */}
+            {/* ── STATIC HERO BANNER (As requested: "former banner") ─────────────────────── */}
             <View style={s.hero}>
                 <Image
                     source={require("@/assets/images/beautiful-scenery.webp")}
@@ -97,184 +209,164 @@ export default function BenefitsScreen() {
                 </View>
             </View>
 
-            {/* ── STATS STRIP ──────────────────────────────────── */}
-            <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={s.statsRow}
-            >
-                {STATS.map((stat, i) => (
-                    <LinearGradient
-                        key={i}
-                        colors={i % 2 === 0 ? ["#0f0c06", "#1a1508"] : ["#080c14", "#0e1520"]}
-                        style={[s.statCard, { borderColor: "rgba(201,168,76,0.18)" }]}
-                    >
-                        <Text style={s.statValue}>{stat.value}</Text>
-                        <Text style={s.statLabel}>{stat.label}</Text>
-                    </LinearGradient>
-                ))}
-            </ScrollView>
-
-            {/* ── THREE SOLID PILLARS ──────────────────────────── */}
-            <View style={s.sectionPad}>
-                <Text style={[s.sectionEyebrow, { color: C.muted }]}>OUR PILLARS</Text>
-                <View style={s.pillarsRow}>
-                    <LinearGradient colors={["#12080a", "#200e12"]} style={s.pillarCard}>
-                        <Text style={s.pillarTitle}>Lifestyle</Text>
-                        <Text style={s.pillarDesc}>Styling, wellness, grooming & personal care</Text>
-                    </LinearGradient>
-                    <LinearGradient colors={["#080f1a", "#0d1a2e"]} style={s.pillarCard}>
-                        <Text style={s.pillarTitle}>Travel</Text>
-                        <Text style={s.pillarDesc}>Jets, hotels, airport protocol & coordination</Text>
-                    </LinearGradient>
-                    <LinearGradient colors={["#0e0c00", "#1c1800"]} style={s.pillarCard}>
-                        <Text style={s.pillarTitle}>Access</Text>
-                        <Text style={s.pillarDesc}>Events, investments & elite networking</Text>
-                    </LinearGradient>
-                </View>
-            </View>
-
-            {/* ── BENTO GRID ───────────────────────────────────── */}
-            <View style={s.sectionPad}>
-                <Text style={[s.sectionEyebrow, { color: C.muted }]}>WHAT YOU ACCESS</Text>
-                <View style={s.bento}>
-                    {/* Tall left — real restaurant */}
-                    <View style={s.bentoLeft}>
-                        <Image
-                            source={require("@/assets/images/lagos-rooftop.jpg")}
-                            style={StyleSheet.absoluteFillObject as any}
-                            resizeMode="cover"
-                        />
-                        <LinearGradient
-                            colors={["rgba(0,0,0,0.1)", "rgba(0,0,0,0.72)"]}
-                            style={StyleSheet.absoluteFillObject as any}
-                        />
-                        <View style={s.bentoTextBottom}>
-                            <Text style={s.bentoEyebrow}>RESERVATIONS</Text>
-                            <Text style={s.bentoTitle}>Dining &{"\n"}Nightlife</Text>
-                        </View>
-                    </View>
-
-                    {/* Right stacked */}
-                    <View style={s.bentoRight}>
-                        {/* Solid deep navy — Concierge */}
-                        <LinearGradient
-                            colors={["#060d1c", "#0d1830"]}
-                            style={[s.bentoSmall, { marginBottom: 10, borderWidth: 1, borderColor: "rgba(201,168,76,0.18)", borderRadius: 20 }]}
-                        >
-                            <View style={s.bentoTextBottom}>
-                                <Text style={s.bentoEyebrow}>CONCIERGE</Text>
-                                <Text style={s.bentoSmallTitle}>24 / 7{"\n"}Support</Text>
-                            </View>
-                            <Text style={s.bentoWatermark}>24</Text>
-                        </LinearGradient>
-
-                        {/* Car image — Chauffeur */}
-                        <View style={[s.bentoSmall, { borderRadius: 20, overflow: "hidden" }]}>
-                            <Image
-                                source={require("@/assets/images/mercedes-sedan.png")}
-                                style={{ width: "100%", height: "100%", position: "absolute" }}
-                                resizeMode="cover"
-                            />
-                            <LinearGradient
-                                colors={["rgba(0,0,0,0.0)", "rgba(0,0,0,0.78)"]}
-                                style={StyleSheet.absoluteFillObject as any}
-                            />
-                            <View style={s.bentoTextBottom}>
-                                <Text style={s.bentoEyebrow}>TRANSPORT</Text>
-                                <Text style={s.bentoSmallTitle}>Chauffeur{"\n"}Service</Text>
-                            </View>
-                        </View>
-                    </View>
-                </View>
-            </View>
-
-            {/* ── DINING FEATURE ───────────────────────────────── */}
-            <View style={s.sectionPad}>
-                <Text style={[s.sectionEyebrow, { color: C.muted }]}>FINE DINING & RESERVATIONS</Text>
-                <View style={s.diningCard}>
-                    <Image
-                        source={require("@/assets/images/lagos-restaurant.jpg")}
-                        style={StyleSheet.absoluteFillObject as any}
-                        resizeMode="cover"
+            {/* Wavy Scalloped Separator (Mockup 3 Style) */}
+            <View style={s.wavyContainer}>
+                <Svg width="100%" height="20" viewBox="0 0 1440 100" preserveAspectRatio="none" style={s.wavySvg}>
+                    <Path
+                        d="M0,50 C120,80 240,80 360,50 C480,20 600,20 720,50 C840,80 960,80 1080,50 C1200,20 1320,20 1440,50 L1440,100 L0,100 Z"
+                        fill={C.background}
                     />
-                    <LinearGradient
-                        colors={["rgba(0,0,0,0.08)", "rgba(0,0,0,0.75)"]}
-                        style={StyleSheet.absoluteFillObject as any}
-                    />
-                    <View style={s.diningContent}>
-                        <Text style={s.diningTag}>PRIORITY SEATING</Text>
-                        <Text style={s.diningTitle}>The best table,{"\n"}always waiting.</Text>
-                        <Text style={s.diningDesc}>
-                            Last-minute reservations at Lagos and Abuja's finest restaurants. Private dining rooms, chef's table access, and member-exclusive menus — arranged before you arrive.
-                        </Text>
+                </Svg>
+            </View>
+
+            {/* ── MEMBERSHIP METRICS & ANALYTICS (Mockup 4 Style) ────────────────────── */}
+            <View style={s.sectionPad}>
+                <View style={s.metricsCard}>
+                    <View style={{ marginBottom: 16 }}>
+                        <Text style={s.metricsHeader}>Lapeq Privileges</Text>
+                        <Text style={s.metricsSub}>Live telemetry of your membership coverage</Text>
+                    </View>
+                    <View style={s.metricsRow}>
+                        {ANALYTICS.map((metric, i) => (
+                            <View key={i} style={s.metricItem}>
+                                <ProgressRing percentage={metric.val} color={metric.color} size={56} strokeWidth={4.5} />
+                                <Text style={s.metricLabel}>{metric.label}</Text>
+                            </View>
+                        ))}
                     </View>
                 </View>
             </View>
 
-            {/* ── TRANSPORT STRIP ──────────────────────────────── */}
-            <View style={s.sectionPad}>
-                <Text style={[s.sectionEyebrow, { color: C.muted }]}>EXECUTIVE TRANSPORT</Text>
-                <View style={s.carStrip}>
-                    {[
-                        require("@/assets/images/mercedes-sedan.png"),
-                        require("@/assets/images/range-rover-suv.png"),
-                        require("@/assets/images/onboarding-driving.png"),
-                    ].map((img, i) => (
-                        <View key={i} style={s.carCard}>
-                            <Image source={img} style={s.carImg} resizeMode="cover" />
-                            <LinearGradient
-                                colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.7)"]}
-                                style={StyleSheet.absoluteFillObject as any}
-                            />
-                            <Text style={s.carLabel}>
-                                {["Sedan", "SUV", "Premium"][i]}
-                            </Text>
-                        </View>
-                    ))}
-                </View>
-            </View>
-
-            {/* ── MOMENTS SCROLL ───────────────────────────────── */}
+            {/* ── STATS STRIP (Moved under Privileges as requested) ──────────────────────────────────── */}
             <View style={{ marginBottom: 28 }}>
-                <Text style={[s.sectionEyebrow, { color: C.muted, paddingHorizontal: 20, marginBottom: 14 }]}>
-                    MOMENTS WE CREATE
-                </Text>
                 <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}
+                    contentContainerStyle={s.statsRow}
                 >
-                    {MOMENTS.map((m, i) => (
-                        <View key={i} style={s.momentCard}>
-                            {m.type === "image" ? (
-                                <>
-                                    <Image source={m.img} style={s.momentImg} resizeMode="cover" />
-                                    <LinearGradient
-                                        colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.75)"]}
-                                        style={StyleSheet.absoluteFillObject as any}
-                                    />
-                                </>
-                            ) : (
-                                <LinearGradient
-                                    colors={m.colors as any}
-                                    style={StyleSheet.absoluteFillObject as any}
-                                />
-                            )}
-                            <View style={s.momentContent}>
-                                <Text style={s.momentLabel}>{m.label}</Text>
-                                <Text style={s.momentSub}>{m.sub}</Text>
-                            </View>
-                        </View>
+                    {STATS.map((stat, i) => (
+                        <LinearGradient
+                            key={i}
+                            colors={i % 2 === 0 ? ["#0f0c06", "#1a1508"] : ["#080c14", "#0e1520"]}
+                            style={[s.statCard, { borderColor: "rgba(201,168,76,0.18)" }]}
+                        >
+                            <Text style={s.statValue}>{stat.value}</Text>
+                            <Text style={s.statLabel}>{stat.label}</Text>
+                        </LinearGradient>
                     ))}
                 </ScrollView>
             </View>
 
-
-
-            {/* ── DARK NUMBERED LIST ───────────────────────────── */}
+            {/* ── REDESIGNED PERKS GRID (Interspersed layout as requested) ────────── */}
             <View style={s.sectionPad}>
-                <Text style={[s.sectionEyebrow, { color: C.muted }]}>WHAT WE ARRANGE</Text>
+                <View style={s.gridHeader}>
+                    <Text style={s.sectionEyebrow}>BEST-IN-CLASS PERKS</Text>
+                    <Text style={s.sectionTitle}>Amazing Perks</Text>
+                </View>
+                
+                {/* Row 1: Elite Transit & VIP Dining */}
+                <View style={[s.perksGrid, { marginBottom: 16 }]}>
+                    {[REDESIGNED_PERKS[0], REDESIGNED_PERKS[1]].map((perk, i) => {
+                        const Icon = perk.icon;
+                        return (
+                            <TouchableOpacity 
+                                key={i} 
+                                style={s.perkCard} 
+                                activeOpacity={0.88}
+                                onPress={() => router.push("/services/lifestyle" as any)}
+                            >
+                                <Image source={perk.img} style={s.perkCardBg} resizeMode="cover" />
+                                <LinearGradient
+                                    colors={["rgba(10,10,10,0.4)", "rgba(6,6,6,0.92)"]}
+                                    style={StyleSheet.absoluteFillObject}
+                                />
+                                <View style={s.perkCardContent}>
+                                    <View style={s.perkHeaderRow}>
+                                        <View style={s.perkIconCircle}>
+                                            <Icon size={18} color={GOLD} />
+                                        </View>
+                                        <View style={s.arrowPill}>
+                                            <ArrowRight size={12} color="#000" strokeWidth={2.5} />
+                                        </View>
+                                    </View>
+                                    
+                                    <View>
+                                        <Text style={s.perkCardTag}>{perk.badge}</Text>
+                                        <Text style={s.perkCardTitle}>{perk.title}</Text>
+                                        <Text style={s.perkCardDesc} numberOfLines={2}>{perk.desc}</Text>
+                                    </View>
+                                </View>
+                            </TouchableOpacity>
+                        );
+                    })}
+                </View>
+
+                {/* ── PARTNERSHIP BANNER (Placed in the middle as requested) ─────────── */}
+                <View style={{ marginBottom: 16 }}>
+                    <Animated.View style={[s.partnerBanner, { opacity: bannerFadeAnim }]}>
+                        <Image
+                            source={require("@/assets/images/banner_megaphone.png")}
+                            style={StyleSheet.absoluteFillObject as any}
+                            resizeMode="cover"
+                        />
+                        <LinearGradient
+                            colors={["rgba(10,10,10,0.3)", "rgba(6,6,6,0.92)"]}
+                            style={StyleSheet.absoluteFillObject}
+                        />
+                        <View style={s.bannerContent}>
+                            <View style={s.limitedTag}>
+                                <Text style={s.limitedText}>PARTNERSHIP OFFER</Text>
+                            </View>
+                            <Text style={s.bannerTitle}>{PARTNER_BANNERS[partnerIndex].title}</Text>
+                            <Text style={s.bannerSub}>{PARTNER_BANNERS[partnerIndex].sub}</Text>
+                            <TouchableOpacity style={s.bannerBtn} activeOpacity={0.8}>
+                                <Text style={s.bannerBtnText}>{PARTNER_BANNERS[partnerIndex].btn}</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </Animated.View>
+                </View>
+
+                {/* Row 2: Curated Hotels & Bespoke Care */}
+                <View style={s.perksGrid}>
+                    {[REDESIGNED_PERKS[2], REDESIGNED_PERKS[3]].map((perk, i) => {
+                        const Icon = perk.icon;
+                        return (
+                            <TouchableOpacity 
+                                key={i} 
+                                style={s.perkCard} 
+                                activeOpacity={0.88}
+                                onPress={() => router.push("/services/lifestyle" as any)}
+                            >
+                                <Image source={perk.img} style={s.perkCardBg} resizeMode="cover" />
+                                <LinearGradient
+                                    colors={["rgba(10,10,10,0.4)", "rgba(6,6,6,0.92)"]}
+                                    style={StyleSheet.absoluteFillObject}
+                                />
+                                <View style={s.perkCardContent}>
+                                    <View style={s.perkHeaderRow}>
+                                        <View style={s.perkIconCircle}>
+                                            <Icon size={18} color={GOLD} />
+                                        </View>
+                                        <View style={s.arrowPill}>
+                                            <ArrowRight size={12} color="#000" strokeWidth={2.5} />
+                                        </View>
+                                    </View>
+                                    
+                                    <View>
+                                        <Text style={s.perkCardTag}>{perk.badge}</Text>
+                                        <Text style={s.perkCardTitle}>{perk.title}</Text>
+                                        <Text style={s.perkCardDesc} numberOfLines={2}>{perk.desc}</Text>
+                                    </View>
+                                </View>
+                            </TouchableOpacity>
+                        );
+                    })}
+                </View>
+            </View>
+
+            {/* ── DARK NUMBERED LIST ───────────────────────────────────────────── */}
+            <View style={s.sectionPad}>
+                <Text style={s.sectionEyebrow}>WHAT WE ARRANGE</Text>
                 <View style={s.darkBlock}>
                     <Text style={s.darkBlockHeadline}>Everything.{"\n"}On request.</Text>
                     {WHAT_WE_DO.map((item, i) => (
@@ -286,21 +378,7 @@ export default function BenefitsScreen() {
                 </View>
             </View>
 
-            {/* ── QUOTE ────────────────────────────────────────── */}
-            <View style={[s.sectionPad, { marginBottom: 20 }]}>
-                <View style={s.quoteBlock}>
-                    <Text style={s.quoteMark}>"</Text>
-                    <Text style={[s.quoteText, { color: C.text }]}>
-                        Every request handled with discretion, speed, and excellence.
-                    </Text>
-                    <View style={s.quoteFooter}>
-                        <View style={s.quoteLine} />
-                        <Text style={s.quoteBy}>The Lapeq Standard</Text>
-                    </View>
-                </View>
-            </View>
-
-            {/* ── CTA ──────────────────────────────────────────── */}
+            {/* ── CTA Redesign ─────────────────────────────────────────────────── */}
             <View style={s.sectionPad}>
                 <TouchableOpacity
                     style={s.cta}
@@ -320,108 +398,104 @@ export default function BenefitsScreen() {
     );
 }
 
-const s = StyleSheet.create({
+const getStyles = (C: any, theme: string) => StyleSheet.create({
     root: { flex: 1 },
 
-    // Hero
-    hero: { height: H * 0.48, position: "relative", marginBottom: 24 },
+    // Static Hero (Restored)
+    hero: { height: H * 0.44, position: "relative", marginBottom: 24 },
     heroImg: { ...StyleSheet.absoluteFillObject as any, width: "100%", height: "100%" },
     heroContent: { position: "absolute", left: 24, right: 24, bottom: 32 },
     heroEyebrow: { fontSize: 9, fontFamily: "Jost_700Bold", color: GOLD, letterSpacing: 3, marginBottom: 12 },
     heroHeadline: {
-        fontSize: isAndroid ? 60 : 72, fontFamily: "PlayfairDisplay_700Bold",
-        color: "#fff", letterSpacing: -2, lineHeight: isAndroid ? 64 : 76, marginBottom: 16,
+        fontSize: isAndroid ? 52 : 64, fontFamily: "PlayfairDisplay_700Bold",
+        color: "#fff", letterSpacing: -2, lineHeight: isAndroid ? 56 : 68, marginBottom: 16,
     },
     heroDivider: { width: 36, height: 2, backgroundColor: GOLD, borderRadius: 99, marginBottom: 12 },
     heroTagline: { fontSize: 13, fontFamily: "Jost_400Regular", color: "rgba(255,255,255,0.65)", letterSpacing: 0.5 },
 
+    // Wave separator
+    wavyContainer: { width: W, height: 20, marginTop: -20, zIndex: 10, overflow: "hidden" },
+    wavySvg: { width: "100%", height: 20 },
+
+    // Metrics panel (Mockup 4 style)
+    metricsCard: {
+        backgroundColor: "rgba(201,168,76,0.03)", borderRadius: 24, padding: 20,
+        borderWidth: 1.2, borderColor: "rgba(201,168,76,0.12)",
+    },
+    metricsHeader: { fontSize: 18, fontFamily: "PlayfairDisplay_700Bold", color: GOLD },
+    metricsSub: { fontSize: 12, fontFamily: "Jost_400Regular", color: C.muted, marginTop: 2 },
+    metricsRow: { flexDirection: "row", justifyContent: "space-around", alignItems: "center", marginTop: 8 },
+    metricItem: { alignItems: "center", gap: 10 },
+    metricLabel: { fontSize: 10, fontFamily: "Jost_700Bold", color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: 1 },
+
+    // Section standards
+    sectionPad: { paddingHorizontal: 20, marginBottom: 28 },
+    gridHeader: { marginBottom: 16 },
+    sectionEyebrow: { fontSize: 9, fontFamily: "Jost_700Bold", color: GOLD, letterSpacing: 2.5, marginBottom: 6 },
+    sectionTitle: { fontSize: 26, fontFamily: "PlayfairDisplay_700Bold", color: "#fff", letterSpacing: -0.5 },
+
+    // 2x2 perks grid (Mockup 1 style)
+    perksGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+    perkCard: {
+        width: (W - 40 - 12) / 2, height: 190, borderRadius: 24,
+        overflow: "hidden", position: "relative", borderWidth: 1, borderColor: "rgba(255,255,255,0.06)",
+    },
+    perkCardBg: { width: "100%", height: "100%", position: "absolute" },
+    perkCardContent: { flex: 1, padding: 14, justifyContent: "space-between" },
+    perkHeaderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+    perkIconCircle: {
+        width: 32, height: 32, borderRadius: 16,
+        backgroundColor: "rgba(201,168,76,0.12)",
+        alignItems: "center", justifyContent: "center",
+        borderWidth: 1, borderColor: "rgba(201,168,76,0.25)"
+    },
+    arrowPill: {
+        width: 26, height: 26, borderRadius: 13,
+        backgroundColor: "#ffffff", alignItems: "center", justifyContent: "center",
+    },
+    perkCardTag: { fontSize: 8, fontFamily: "Jost_700Bold", color: GOLD, textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 },
+    perkCardTitle: { fontSize: 15, fontFamily: "Jost_700Bold", color: "#fff", marginBottom: 4 },
+    perkCardDesc: { fontSize: 11, fontFamily: "Jost_400Regular", color: "rgba(255,255,255,0.5)", lineHeight: 15 },
+
+    // Partner banners (Mockup 2 style)
+    partnerBanner: {
+        borderRadius: 24, overflow: "hidden", borderWidth: 1, borderColor: "rgba(201,168,76,0.15)",
+        shadowColor: "#000", shadowOpacity: 0.3, shadowRadius: 10, elevation: 4,
+    },
+    bannerContent: { padding: 24 },
+    limitedTag: {
+        alignSelf: "flex-start", backgroundColor: "rgba(201,168,76,0.12)",
+        paddingVertical: 4, paddingHorizontal: 8, borderRadius: 6, marginBottom: 12,
+    },
+    limitedText: { fontSize: 8, fontFamily: "Jost_700Bold", color: GOLD, letterSpacing: 1.5 },
+    bannerTitle: { fontSize: 20, fontFamily: "PlayfairDisplay_700Bold", color: "#fff", marginBottom: 6 },
+    bannerSub: { fontSize: 12, fontFamily: "Jost_400Regular", color: "rgba(255,255,255,0.6)", lineHeight: 18, marginBottom: 16 },
+    bannerBtn: {
+        alignSelf: "flex-start", backgroundColor: "#fff",
+        paddingVertical: 10, paddingHorizontal: 20, borderRadius: 12,
+    },
+    bannerBtnText: { color: "#000", fontSize: 11, fontFamily: "Jost_700Bold" },
+
     // Stats
-    statsRow: { paddingHorizontal: 20, gap: 10, marginBottom: 28 },
+    statsRow: { paddingHorizontal: 20, gap: 10, marginBottom: 16 },
     statCard: { paddingHorizontal: 18, paddingVertical: 14, borderRadius: 14, borderWidth: 1, alignItems: "center", minWidth: 90 },
     statValue: { fontSize: 22, fontFamily: "PlayfairDisplay_700Bold", color: GOLD, letterSpacing: -0.5 },
     statLabel: { fontSize: 9, fontFamily: "Jost_500Medium", color: "rgba(201,168,76,0.55)", letterSpacing: 0.5, marginTop: 4, textAlign: "center" },
 
-    // Sections
-    sectionPad: { paddingHorizontal: 20, marginBottom: 28 },
-    sectionEyebrow: { fontSize: 9, fontFamily: "Jost_700Bold", letterSpacing: 2.5, marginBottom: 14 },
-
-    // Bento
-    bento: { flexDirection: "row", gap: 10, height: 320 },
-    bentoLeft: { flex: 1.1, borderRadius: 20, overflow: "hidden", position: "relative" },
-    bentoRight: { flex: 1 },
-    bentoSmall: { flex: 1, overflow: "hidden", position: "relative" },
-    bentoTextBottom: { position: "absolute", bottom: 16, left: 16, right: 10 },
-    bentoEyebrow: { fontSize: 8, fontFamily: "Jost_700Bold", color: GOLD, letterSpacing: 2, marginBottom: 4 },
-    bentoTitle: { fontSize: 17, fontFamily: "PlayfairDisplay_700Bold", color: "#fff", lineHeight: 22 },
-    bentoSmallTitle: { fontSize: 13, fontFamily: "PlayfairDisplay_700Bold", color: "#fff", lineHeight: 17 },
-    bentoWatermark: {
-        position: "absolute", top: 10, right: 14,
-        fontSize: 52, fontFamily: "PlayfairDisplay_700Bold",
-        color: GOLD, opacity: 0.08, letterSpacing: -2,
-    },
-
-    // Dining
-    diningCard: { height: 300, borderRadius: 24, overflow: "hidden", position: "relative" },
-    diningContent: { position: "absolute", bottom: 28, left: 24, right: 24 },
-    diningTag: { fontSize: 9, fontFamily: "Jost_700Bold", color: GOLD, letterSpacing: 2.5, marginBottom: 10 },
-    diningTitle: {
-        fontSize: isAndroid ? 26 : 32, fontFamily: "PlayfairDisplay_700Bold",
-        color: "#fff", lineHeight: isAndroid ? 32 : 38, marginBottom: 10,
-    },
-    diningDesc: { fontSize: 13, fontFamily: "Jost_400Regular", color: "rgba(255,255,255,0.65)", lineHeight: 20 },
-
-    // Car strip
-    carStrip: { flexDirection: "row", gap: 10, height: 120 },
-    carCard: { flex: 1, borderRadius: 16, overflow: "hidden", position: "relative" },
-    carImg: { width: "100%", height: "100%", position: "absolute" },
-    carLabel: {
-        position: "absolute", bottom: 10, left: 10,
-        fontSize: 11, fontFamily: "Jost_700Bold", color: "#fff",
-    },
-
-    // Moments
-    momentCard: { width: W * 0.52, height: 210, borderRadius: 18, overflow: "hidden", position: "relative" },
-    momentImg: { ...StyleSheet.absoluteFillObject as any, width: "100%", height: "100%" },
-    momentContent: { position: "absolute", bottom: 16, left: 16, right: 12 },
-    momentLabel: { fontSize: 15, fontFamily: "Jost_700Bold", color: "#fff", marginBottom: 3 },
-    momentSub: { fontSize: 11, fontFamily: "Jost_400Regular", color: "rgba(255,255,255,0.6)" },
-
-    // Pillars
-    pillarsRow: { flexDirection: "row", gap: 10 },
-    pillarCard: {
-        flex: 1, borderRadius: 18, padding: 16,
-        borderWidth: 1, borderColor: "rgba(201,168,76,0.12)",
-        gap: 8,
-    },
-    pillarIcon: { fontSize: 18, color: GOLD },
-    pillarTitle: { fontSize: 13, fontFamily: "Jost_700Bold", color: "#fff" },
-    pillarDesc: { fontSize: 10.5, fontFamily: "Jost_400Regular", color: "rgba(255,255,255,0.45)", lineHeight: 15 },
-
-    // Dark list
+    // Dark block (What we arrange)
     darkBlock: {
-        backgroundColor: "#080808", borderRadius: 22, padding: 24,
-        borderWidth: 1, borderColor: "rgba(201,168,76,0.12)",
+        backgroundColor: "#080808", borderRadius: 24, padding: 24,
+        borderWidth: 1.2, borderColor: "rgba(201,168,76,0.12)",
     },
-    darkBlockHeadline: {
-        fontSize: 22, fontFamily: "PlayfairDisplay_400Regular_Italic",
-        color: GOLD, marginBottom: 20, lineHeight: 30,
-    },
+    darkBlockHeadline: { fontSize: 22, fontFamily: "PlayfairDisplay_400Regular_Italic", color: GOLD, marginBottom: 20, lineHeight: 30 },
     darkBlockRow: { flexDirection: "row", alignItems: "center", gap: 16, paddingVertical: 13 },
     darkBlockBorder: { borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.06)" },
     darkBlockNum: { fontSize: 10, fontFamily: "Jost_700Bold", color: GOLD, letterSpacing: 1, width: 22, opacity: 0.6 },
     darkBlockItem: { flex: 1, fontSize: 13.5, fontFamily: "Jost_400Regular", color: "rgba(255,255,255,0.8)", lineHeight: 20 },
 
-    // Quote
-    quoteBlock: { paddingHorizontal: 4 },
-    quoteMark: { fontSize: 80, fontFamily: "PlayfairDisplay_700Bold", color: GOLD, lineHeight: 70, opacity: 0.55 },
-    quoteText: { fontSize: isAndroid ? 17 : 20, fontFamily: "PlayfairDisplay_400Regular_Italic", lineHeight: isAndroid ? 26 : 30, marginBottom: 20 },
-    quoteFooter: { flexDirection: "row", alignItems: "center", gap: 12 },
-    quoteLine: { width: 32, height: 1.5, backgroundColor: GOLD, borderRadius: 99 },
-    quoteBy: { fontSize: 11, fontFamily: "Jost_500Medium", color: GOLD, letterSpacing: 1.5 },
-
     // CTA
     cta: {
-        backgroundColor: GOLD, borderRadius: 18,
+        backgroundColor: GOLD, borderRadius: 20,
         paddingVertical: 20, paddingHorizontal: 24,
         flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     },

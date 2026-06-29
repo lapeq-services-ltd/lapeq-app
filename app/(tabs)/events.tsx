@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+﻿import { useState, useMemo, useRef, useEffect } from "react";
 import {
     View, Text, ScrollView, TouchableOpacity, Image,
     Modal, StyleSheet, Dimensions, Linking, TextInput, Alert, Platform,
@@ -235,7 +235,7 @@ function EventRequestModal({
                                     style={{ backgroundColor: GOLD, borderRadius: 14, paddingVertical: 15, paddingHorizontal: 48 }}
                                     activeOpacity={0.85}
                                 >
-                                    <Text style={{ fontSize: 14, fontFamily: "Jost_700Bold", color: "#0a0a0a" }}>Done</Text>
+                                    <Text style={{ fontSize: 14, fontFamily: "Jost_700Bold", color: "#ffffff" }}>Done</Text>
                                 </TouchableOpacity>
                             </Animated.View>
                         ) : (
@@ -567,7 +567,7 @@ function EventRequestModal({
                                     style={{ backgroundColor: GOLD, borderRadius: 30, paddingVertical: 16, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 10, opacity: loading ? 0.7 : 1 }}
                                 >
                                     {loading ? <ActivityIndicator size="small" color="#0a0a0a" /> : null}
-                                    <Text style={{ fontSize: 14, fontFamily: "Jost_700Bold", color: "#0a0a0a", letterSpacing: 1 }}>
+                                    <Text style={{ fontSize: 14, fontFamily: "Jost_700Bold", color: "#ffffff", letterSpacing: 1 }}>
                                         {loading ? "SUBMITTING..." : "SUBMIT REQUEST"}
                                     </Text>
                                 </TouchableOpacity>
@@ -786,7 +786,7 @@ function EventModal({ event, onClose, C, theme, eventsList }: { event: Event; on
                             activeOpacity={0.85}
                         >
                             <Ticket size={16} color="#0a0a0a" />
-                            <Text style={{ fontSize: 14, fontFamily: "Jost_700Bold", color: "#0a0a0a" }}>Get Tickets</Text>
+                            <Text style={{ fontSize: 14, fontFamily: "Jost_700Bold", color: "#ffffff" }}>Get Tickets</Text>
                         </TouchableOpacity>
                     )}
 
@@ -978,7 +978,7 @@ function EventCard({ event, onPress, C, theme }: { event: Event; onPress: () => 
                                 {meta || event.categories.join(" · ")}
                             </Text>
                             <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: GOLD, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 99 }}>
-                                <Text style={{ fontSize: 12, fontFamily: "Jost_700Bold", color: "#0a0a0a" }}>Explore</Text>
+                                <Text style={{ fontSize: 12, fontFamily: "Jost_700Bold", color: "#ffffff" }}>Explore</Text>
                                 <ChevronRight size={13} color="#0a0a0a" />
                             </View>
                         </View>
@@ -1375,7 +1375,7 @@ export default function EventsScreen() {
                                 style={{ flex: 2, height: 50, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: GOLD }}
                                 onPress={() => setShowFiltersModal(false)}
                             >
-                                <Text style={{ fontSize: 14, fontFamily: "Jost_700Bold", color: "#0a0a0a" }}>Apply Filters</Text>
+                                <Text style={{ fontSize: 14, fontFamily: "Jost_700Bold", color: "#ffffff" }}>Apply Filters</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -1384,3 +1384,4 @@ export default function EventsScreen() {
         </SafeAreaView>
     );
 }
+

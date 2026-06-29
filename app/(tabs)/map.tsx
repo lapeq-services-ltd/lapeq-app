@@ -55,7 +55,7 @@ export default function MapScreen() {
     ];
 
     return (
-        <View style={{ flex: 1, backgroundColor: "#0a0a0a" }}>
+        <View style={{ flex: 1, backgroundColor: "#ffffff" }}>
             {/* Map placeholder */}
             <View style={s.mapPlaceholder}>
                 <View style={StyleSheet.absoluteFillObject}>
@@ -155,7 +155,7 @@ export default function MapScreen() {
 }
 
 const getStyles = (C: any) => StyleSheet.create({
-    mapPlaceholder: { flex: 1, backgroundColor: "#0a0a0a", overflow: "hidden" },
+    mapPlaceholder: { flex: 1, backgroundColor: "#ffffff", overflow: "hidden" },
     gridLine: { position: "absolute", left: 0, right: 0, height: 1, backgroundColor: "rgba(201,168,76,0.07)" },
     gridLineV: { position: "absolute", top: 0, bottom: 0, width: 1, backgroundColor: "rgba(201,168,76,0.07)" },
     headerOverlay: { position: "absolute", top: 0, left: 0, right: 0 },
@@ -165,11 +165,11 @@ const getStyles = (C: any) => StyleSheet.create({
     cityBtn: { paddingHorizontal: 14, paddingVertical: 6 },
     cityBtnActive: { backgroundColor: "#c9a84c" },
     cityBtnText: { fontSize: 11, fontWeight: "700", color: "rgba(255,255,255,0.5)" },
-    cityBtnTextActive: { color: "#0a0a0a" },
+    cityBtnTextActive: { color: "#ffffff" },
     pin: { position: "absolute", alignItems: "center" },
     pinTooltip: { backgroundColor: "rgba(15,15,15,0.92)", borderWidth: 1, borderColor: "rgba(201,168,76,0.3)", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, marginBottom: 6, maxWidth: 120 },
     pinLabel: { fontSize: 10, fontWeight: "600", color: "#fff" },
-    pinCircle: { width: 30, height: 30, borderRadius: 15, backgroundColor: "#c9a84c", alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "#0a0a0a", shadowColor: "#c9a84c", shadowOpacity: 0.7, shadowRadius: 8, elevation: 6 },
+    pinCircle: { width: 30, height: 30, borderRadius: 15, backgroundColor: "#c9a84c", alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "#ffffff", shadowColor: "#c9a84c", shadowOpacity: 0.7, shadowRadius: 8, elevation: 6 },
     bottomCard: { backgroundColor: "rgba(12,12,12,0.98)", borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 40, borderTopWidth: 1, borderTopColor: "rgba(201,168,76,0.2)" },
     bottomHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: "rgba(201,168,76,0.3)", alignSelf: "center", marginBottom: 16 },
     bottomTitle: { fontSize: 16, fontWeight: "700", color: "#fff", marginBottom: 16 },
@@ -180,3 +180,4 @@ const getStyles = (C: any) => StyleSheet.create({
     placeBadgeWrap: { backgroundColor: "#222", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, alignSelf: "flex-start" },
     placeBadgeText: { fontSize: 10, fontWeight: "700", color: "#c9a84c" },
 });
+

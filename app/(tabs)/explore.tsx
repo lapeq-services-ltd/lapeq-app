@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+﻿import { useState, useEffect, useMemo } from "react";
 import {
     View, Text, StyleSheet, ScrollView, TextInput,
     TouchableOpacity, Image, Dimensions, Modal,
@@ -347,7 +347,7 @@ const s = StyleSheet.create({
     expBannerTitle: { fontSize: 22, fontWeight: "700", color: "#fff", fontFamily: "PlayfairDisplay_700Bold", marginBottom: 4 },
     expBannerSub: { fontSize: 11, color: "rgba(255,255,255,0.55)", lineHeight: 16 },
     expBannerBtn: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: GOLD, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12 },
-    expBannerBtnText: { fontSize: 13, fontWeight: "700", color: "#0a0a0a" },
+    expBannerBtnText: { fontSize: 13, fontWeight: "700", color: "#ffffff" },
 
     // Results
     resultsRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingTop: 20, paddingBottom: 14 },
@@ -365,7 +365,7 @@ const s = StyleSheet.create({
     venueScrim: { position: "absolute", bottom: 0, left: 0, right: 0, height: 140, backgroundColor: "rgba(0,0,0,0.68)" },
     venueTop: { position: "absolute", top: 12, left: 12, right: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
     venueBadge: { backgroundColor: GOLD, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 20 },
-    venueBadgeText: { fontSize: 9, fontWeight: "800", color: "#0a0a0a", letterSpacing: 0.5 },
+    venueBadgeText: { fontSize: 9, fontWeight: "800", color: "#ffffff", letterSpacing: 0.5 },
     saveBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: "rgba(0,0,0,0.35)", alignItems: "center", justifyContent: "center" },
     venueBottom: { position: "absolute", bottom: 0, left: 0, right: 0, padding: 14, gap: 4 },
     venueCityRow: { flexDirection: "row", alignItems: "center", gap: 3 },
@@ -389,3 +389,4 @@ const s = StyleSheet.create({
     filterOptionText: { fontSize: 14, fontFamily: "Jost_500Medium" },
     filterOptionDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: GOLD },
 });
+
