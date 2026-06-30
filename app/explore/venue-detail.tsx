@@ -85,6 +85,36 @@ function staticMapUrl(lat: number, lng: number) {
     return `https://api.mapbox.com/styles/v1/mapbox/dark-v11/static/pin-s+c9a84c(${lng},${lat})/${lng},${lat},14,0/${w}x${h}@2x?access_token=${MAPBOX_TOKEN}`;
 }
 
+function CollapsibleSection({ title, children, startExpanded = false, C, theme }: {
+    title: string;
+    children: React.ReactNode;
+    startExpanded?: boolean;
+    C: any;
+    theme: string;
+}) {
+    const [expanded, setExpanded] = useState(startExpanded);
+    const isDark = theme === "dark";
+
+    return (
+        <View style={{ backgroundColor: C.surface, borderRadius: 16, borderWidth: 1, borderColor: isDark ? "#2a2a2a" : "#d8d3ca", overflow: "hidden", marginBottom: 16 }}>
+            <TouchableOpacity
+                style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 16 }}
+                onPress={() => setExpanded(!expanded)}
+                activeOpacity={0.8}
+            >
+                <Text style={{ fontSize: 11, fontWeight: "800", color: GOLD, letterSpacing: 2, textTransform: "uppercase" }}>{title}</Text>
+                <ChevronRight size={16} color={GOLD} style={{ transform: [{ rotate: expanded ? "90deg" : "0deg" }] }} />
+            </TouchableOpacity>
+            
+            {expanded && (
+                <View style={{ paddingHorizontal: 16, paddingBottom: 16, borderTopWidth: 1, borderTopColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)", paddingTop: 16 }}>
+                    {children}
+                </View>
+            )}
+        </View>
+    );
+}
+
 export default function VenueDetailScreen() {
     const { id, overrideDescription } = useLocalSearchParams<{ id: string; overrideDescription?: string }>();
     const router = useRouter();
@@ -105,6 +135,7 @@ export default function VenueDetailScreen() {
     const carouselRef = useRef<ScrollView>(null);
     const [menuItems, setMenuItems] = useState<VenueMenuItem[]>([]);
     const [activeDishIndex, setActiveDishIndex] = useState(0);
+    const [selectedGalleryImage, setSelectedGalleryImage] = useState<string | null>(null);
 
     // Curation Request Form State
     const [showRequestModal, setShowRequestModal] = useState(false);
@@ -321,7 +352,7 @@ export default function VenueDetailScreen() {
                         <View style={[s.categoryPill, { backgroundColor: "rgba(201,168,76,0.85)" }]}>
                             <Text style={s.categoryPillText}>{CATEGORY_LABELS[venue.category] ?? venue.category}</Text>
                         </View>
-                        <Text style={s.heroName}>{`Curated ${CATEGORY_LABELS[venue.category] ?? "Partner"} · ${venue.city}`}</Text>
+                        <Text style={s.heroName}>{venue.name}</Text>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
                             <MapPin size={13} color="rgba(255,255,255,0.7)" />
                             <Text style={s.heroAddress}>{venue.city}</Text>
@@ -338,10 +369,9 @@ export default function VenueDetailScreen() {
                         </Text>
                     </View>
 
-                    {/* Perks */}
+                    {/* Perks Section (Collapsible) */}
                     {venue.perks && (
-                        <View style={s.section}>
-                            <Text style={s.sectionLabel}>MEMBER PERKS</Text>
+                        <CollapsibleSection title="MEMBER PERKS" C={C} theme={theme}>
                             <View style={s.perksCard}>
                                 {venue.perks.split("\n").map((perk, i) => {
                                     const p = perk.trim();
@@ -356,14 +386,12 @@ export default function VenueDetailScreen() {
                                     );
                                 })}
                             </View>
-                        </View>
+                        </CollapsibleSection>
                     )}
 
-                    {/* Curated Menu Swipe Carousel */}
+                    {/* Curated Menu Swipe Carousel (Collapsible) */}
                     {menuItems.length > 0 && (
-                        <View style={s.section}>
-                            <Text style={s.sectionLabel}>CURATED SIGNATURE DISHES</Text>
-                            
+                        <CollapsibleSection title="CURATED SIGNATURE DISHES" C={C} theme={theme}>
                             <View style={s.dishCarouselContainer}>
                                 {menuItems.length > 1 && (
                                     <TouchableOpacity
@@ -414,13 +442,12 @@ export default function VenueDetailScreen() {
                                     </View>
                                 )}
                             </View>
-                        </View>
+                        </CollapsibleSection>
                     )}
 
-                    {/* Menu highlights */}
+                    {/* Menu highlights (Collapsible) */}
                     {venue.menu && (
-                        <View style={s.section}>
-                            <Text style={s.sectionLabel}>CURATED MENU HIGHLIGHTS</Text>
+                        <CollapsibleSection title="CURATED MENU HIGHLIGHTS" C={C} theme={theme}>
                             <View style={s.menuCard}>
                                 {venue.menu.split("\n").map((menuItem, i) => {
                                     const m = menuItem.trim();
@@ -432,6 +459,25 @@ export default function VenueDetailScreen() {
                                         </View>
                                     );
                                 })}
+                            </View>
+                        </CollapsibleSection>
+                    )}
+
+                    {/* Media Gallery (Non-collapsible) */}
+                    {venueImages.length > 0 && (
+                        <View style={{ gap: 12, marginTop: 12 }}>
+                            <Text style={s.sectionLabel}>MEDIA GALLERY</Text>
+                            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                                {venueImages.map((img) => (
+                                    <TouchableOpacity
+                                        key={img.id}
+                                        style={{ width: (SW - 48 - 16) / 3, height: (SW - 48 - 16) / 3, borderRadius: 12, overflow: "hidden", backgroundColor: C.surface, borderWidth: 1, borderColor: isDark ? "#2a2a2a" : "#d8d3ca" }}
+                                        onPress={() => setSelectedGalleryImage(img.url)}
+                                        activeOpacity={0.9}
+                                    >
+                                        <Image source={{ uri: img.url }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
+                                    </TouchableOpacity>
+                                ))}
                             </View>
                         </View>
                     )}
@@ -530,6 +576,11 @@ export default function VenueDetailScreen() {
                                         amount: 5000,
                                         currency: "NGN",
                                         payment_options: "card,banktransfer,ussd",
+                                        customization: {
+                                            title: "Lapeq Curation Fee",
+                                            description: "Venue booking · Concierge-managed",
+                                            logo: "https://iwedpnipbuurohaqibag.supabase.co/storage/v1/object/public/avatars/lapeq-logo.png",
+                                        },
                                     }}
                                     customButton={(props) => (
                                         <TouchableOpacity 
@@ -594,6 +645,19 @@ export default function VenueDetailScreen() {
                 </View>
             </Modal>
             <Toast visible={toast.visible} message={toast.message} type={toast.type} />
+
+            {/* Media Gallery Zoom Modal */}
+            <Modal visible={selectedGalleryImage !== null} transparent animationType="fade" onRequestClose={() => setSelectedGalleryImage(null)}>
+                <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.95)", justifyContent: "center", alignItems: "center" }}>
+                    <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => setSelectedGalleryImage(null)} />
+                    <TouchableOpacity style={{ position: "absolute", top: 48, right: 24, zIndex: 10, width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center" }} onPress={() => setSelectedGalleryImage(null)}>
+                        <X size={24} color="#fff" />
+                    </TouchableOpacity>
+                    {selectedGalleryImage && (
+                        <Image source={{ uri: selectedGalleryImage }} style={{ width: SW, height: SW * 1.3 }} resizeMode="contain" />
+                    )}
+                </View>
+            </Modal>
         </View>
     );
 }
