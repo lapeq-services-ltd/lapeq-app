@@ -94,6 +94,20 @@ export default function LifestyleTravelScreen() {
 
     const [serviceType, setServiceType] = useState(SERVICE_TYPES[0].id);
 
+    const startOfToday = useMemo(() => {
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        return d;
+    }, []);
+
+    const isToday = useCallback((date: Date | null) => {
+        if (!date) return false;
+        const today = new Date();
+        return date.getDate() === today.getDate() &&
+               date.getMonth() === today.getMonth() &&
+               date.getFullYear() === today.getFullYear();
+    }, []);
+
     // Prefill logic
     useEffect(() => {
         if (params.prefillType) {
@@ -114,7 +128,7 @@ export default function LifestyleTravelScreen() {
                 setPreferences(`Requested curation for Curated Partner Venue (Ref: ${params.prefillVenue}).`);
             }
         }
-    }, [params]);
+    }, []);
 
     useEffect(() => {
         const loadUserTier = async () => {
@@ -445,7 +459,9 @@ export default function LifestyleTravelScreen() {
 
                         <View style={s.section}>
                             <Text style={s.sectionLabel}>Destination</Text>
-                            <LocationSearch value={stayDest} onChangeText={setStayDest} placeholder="City or country..." onSelect={setStayDest} />
+                            <View style={params.prefillCity ? { opacity: 0.6 } : null} pointerEvents={params.prefillCity ? "none" : "auto"}>
+                                <LocationSearch value={stayDest} onChangeText={setStayDest} placeholder="City or country..." onSelect={setStayDest} />
+                            </View>
                         </View>
 
                         <View style={s.section}>
@@ -460,6 +476,11 @@ export default function LifestyleTravelScreen() {
                                     <View><Text style={s.dateCardLabel}>Check-out</Text><Text style={[s.dateCardValue, { color: dateToObj ? C.text : C.muted }]}>{fmtDate(dateToObj) ?? "Select"}</Text></View>
                                 </TouchableOpacity>
                             </View>
+                            {isToday(dateFromObj) && (
+                                <Text style={{ color: "#ef4444", fontSize: 12, fontWeight: "600", marginTop: 8 }}>
+                                    ⚠️ Same-day requests are subject to concierge confirmation and may not be guaranteed.
+                                </Text>
+                            )}
                         </View>
 
                         <View style={s.section}>
@@ -543,9 +564,26 @@ export default function LifestyleTravelScreen() {
                                 {CITIES.map(c => {
                                     const isAvailable = c === "Lagos" || c === "Abuja";
                                     const displayLabel = isAvailable ? c : `${c} (Coming Soon)`;
+                                    const isLocked = !!params.prefillCity && params.prefillCity.toLowerCase() !== c.toLowerCase();
                                     return (
-                                        <TouchableOpacity key={c} style={[s.chip, diningCity === c && s.chipActive]} onPress={() => setDiningCity(c)} activeOpacity={0.8}>
-                                            <Text style={[s.chipText, diningCity === c && s.chipTextActive]}>{displayLabel}</Text>
+                                        <TouchableOpacity 
+                                            key={c} 
+                                            disabled={isLocked || !isAvailable}
+                                            style={[
+                                                s.chip, 
+                                                diningCity === c && s.chipActive,
+                                                isLocked && { opacity: 0.25, backgroundColor: "rgba(0,0,0,0.05)", borderColor: "rgba(0,0,0,0.05)" }
+                                            ]} 
+                                            onPress={() => setDiningCity(c)} 
+                                            activeOpacity={0.8}
+                                        >
+                                            <Text style={[
+                                                s.chipText, 
+                                                diningCity === c && s.chipTextActive,
+                                                isLocked && { color: C.muted }
+                                            ]}>
+                                                {displayLabel}
+                                            </Text>
                                         </TouchableOpacity>
                                     );
                                 })}
@@ -564,6 +602,11 @@ export default function LifestyleTravelScreen() {
                                     <View><Text style={s.dateCardLabel}>Time</Text><Text style={[s.dateCardValue, { color: eventTime ? C.text : C.muted }]}>{fmtTime(eventTime) ?? "Select"}</Text></View>
                                 </TouchableOpacity>
                             </View>
+                            {isToday(dateFromObj) && (
+                                <Text style={{ color: "#ef4444", fontSize: 12, fontWeight: "600", marginTop: 8 }}>
+                                    ⚠️ Same-day requests are subject to concierge confirmation and may not be guaranteed.
+                                </Text>
+                            )}
                         </View>
 
                         <View style={s.section}>
@@ -636,9 +679,26 @@ export default function LifestyleTravelScreen() {
                                 {CITIES.map(c => {
                                     const isAvailable = c === "Lagos" || c === "Abuja";
                                     const displayLabel = isAvailable ? c : `${c} (Coming Soon)`;
+                                    const isLocked = !!params.prefillCity && params.prefillCity.toLowerCase() !== c.toLowerCase();
                                     return (
-                                        <TouchableOpacity key={c} style={[s.chip, protocolCity === c && s.chipActive]} onPress={() => setProtocolCity(c)} activeOpacity={0.8}>
-                                            <Text style={[s.chipText, protocolCity === c && s.chipTextActive]}>{displayLabel}</Text>
+                                        <TouchableOpacity 
+                                            key={c} 
+                                            disabled={isLocked || !isAvailable}
+                                            style={[
+                                                s.chip, 
+                                                protocolCity === c && s.chipActive,
+                                                isLocked && { opacity: 0.25, backgroundColor: "rgba(0,0,0,0.05)", borderColor: "rgba(0,0,0,0.05)" }
+                                            ]} 
+                                            onPress={() => setProtocolCity(c)} 
+                                            activeOpacity={0.8}
+                                        >
+                                            <Text style={[
+                                                s.chipText, 
+                                                protocolCity === c && s.chipTextActive,
+                                                isLocked && { color: C.muted }
+                                            ]}>
+                                                {displayLabel}
+                                            </Text>
                                         </TouchableOpacity>
                                     );
                                 })}
@@ -657,6 +717,11 @@ export default function LifestyleTravelScreen() {
                                     <View><Text style={s.dateCardLabel}>Time</Text><Text style={[s.dateCardValue, { color: eventTime ? C.text : C.muted }]}>{fmtTime(eventTime) ?? "Select"}</Text></View>
                                 </TouchableOpacity>
                             </View>
+                            {isToday(dateFromObj) && (
+                                <Text style={{ color: "#ef4444", fontSize: 12, fontWeight: "600", marginTop: 8 }}>
+                                    ⚠️ Same-day requests are subject to concierge confirmation and may not be guaranteed.
+                                </Text>
+                            )}
                         </View>
 
                         <View style={s.section}>
@@ -719,6 +784,11 @@ export default function LifestyleTravelScreen() {
                                     </Text>
                                 </View>
                             </TouchableOpacity>
+                            {isToday(dateFromObj) && (
+                                <Text style={{ color: "#ef4444", fontSize: 12, fontWeight: "600", marginTop: 8 }}>
+                                    ⚠️ Same-day requests are subject to concierge confirmation and may not be guaranteed.
+                                </Text>
+                            )}
                         </View>
 
                         <View style={s.section}>
@@ -756,7 +826,9 @@ export default function LifestyleTravelScreen() {
 
                         <View style={s.section}>
                             <Text style={s.sectionLabel}>Destination</Text>
-                            <LocationSearch value={destination} onChangeText={setDestination} placeholder="City, country, or let us suggest..." onSelect={setDestination} />
+                            <View style={params.prefillCity ? { opacity: 0.6 } : null} pointerEvents={params.prefillCity ? "none" : "auto"}>
+                                <LocationSearch value={destination} onChangeText={setDestination} placeholder="City, country, or let us suggest..." onSelect={setDestination} />
+                            </View>
                         </View>
 
                         <View style={s.section}>
@@ -857,10 +929,10 @@ export default function LifestyleTravelScreen() {
 
             {/* General date pickers (Android) */}
             {Platform.OS === "android" && showDateFrom && (
-                <DateTimePicker value={dateFromObj ?? new Date()} mode="date" display="default" minimumDate={new Date()} onChange={(_, d) => { setShowDateFrom(false); if (d) setDateFromObj(d); }} />
+                <DateTimePicker value={dateFromObj ?? new Date()} mode="date" display="default" minimumDate={startOfToday} onChange={(_, d) => { setShowDateFrom(false); if (d) setDateFromObj(d); }} />
             )}
             {Platform.OS === "android" && showDateTo && (
-                <DateTimePicker value={dateToObj ?? dateFromObj ?? new Date()} mode="date" display="default" minimumDate={dateFromObj ?? new Date()} onChange={(_, d) => { setShowDateTo(false); if (d) setDateToObj(d); }} />
+                <DateTimePicker value={dateToObj ?? dateFromObj ?? new Date()} mode="date" display="default" minimumDate={dateFromObj ?? startOfToday} onChange={(_, d) => { setShowDateTo(false); if (d) setDateToObj(d); }} />
             )}
             {Platform.OS === "android" && showEventTime && (
                 <DateTimePicker value={eventTime ?? new Date()} mode="time" display="default" onChange={(_, d) => { setShowEventTime(false); if (d) setEventTime(d); }} />
@@ -876,7 +948,7 @@ export default function LifestyleTravelScreen() {
                             <Text style={{ color: C.text, fontWeight: "700", fontSize: 16 }}>{isStays ? "Check-in" : "Date"}</Text>
                             <TouchableOpacity onPress={() => setShowDateFrom(false)}><Text style={{ color: GOLD, fontWeight: "700", fontSize: 16 }}>Done</Text></TouchableOpacity>
                         </View>
-                        <DateTimePicker value={dateFromObj ?? new Date()} mode="date" display="spinner" minimumDate={new Date()} themeVariant={theme === "dark" ? "dark" : "light"} style={{ width: "100%" }} onChange={(_, d) => { if (d) setDateFromObj(d); }} />
+                        <DateTimePicker value={dateFromObj ?? new Date()} mode="date" display="spinner" minimumDate={startOfToday} themeVariant={theme === "dark" ? "dark" : "light"} style={{ width: "100%" }} onChange={(_, d) => { if (d) setDateFromObj(d); }} />
                     </View>
                 </View>
             </Modal>
@@ -889,7 +961,7 @@ export default function LifestyleTravelScreen() {
                             <Text style={{ color: C.text, fontWeight: "700", fontSize: 16 }}>{isStays ? "Check-out" : "Return"}</Text>
                             <TouchableOpacity onPress={() => setShowDateTo(false)}><Text style={{ color: GOLD, fontWeight: "700", fontSize: 16 }}>Done</Text></TouchableOpacity>
                         </View>
-                        <DateTimePicker value={dateToObj ?? dateFromObj ?? new Date()} mode="date" display="spinner" minimumDate={dateFromObj ?? new Date()} themeVariant={theme === "dark" ? "dark" : "light"} style={{ width: "100%" }} onChange={(_, d) => { if (d) setDateToObj(d); }} />
+                        <DateTimePicker value={dateToObj ?? dateFromObj ?? new Date()} mode="date" display="spinner" minimumDate={dateFromObj ?? startOfToday} themeVariant={theme === "dark" ? "dark" : "light"} style={{ width: "100%" }} onChange={(_, d) => { if (d) setDateToObj(d); }} />
                     </View>
                 </View>
             </Modal>
@@ -909,13 +981,16 @@ export default function LifestyleTravelScreen() {
 
             {/* Jets date/time pickers (Android) */}
             {Platform.OS === "android" && showDepDate && (
-                <DateTimePicker value={depDate ?? new Date()} mode="date" display="default" minimumDate={new Date()} onChange={(_, d) => { setShowDepDate(false); if (d) setDepDate(d); }} />
+                <DateTimePicker value={depDate ?? new Date()} mode="date" display="default" minimumDate={startOfToday} onChange={(_, d) => { setShowDepDate(false); if (d) setDepDate(d); }} />
+            )}
+            {Platform.OS === "android" && showRetDate && (
+                <DateTimePicker value={retDate ?? depDate ?? new Date()} mode="date" display="default" minimumDate={depDate ?? startOfToday} onChange={(_, d) => { setShowRetDate(false); if (d) setRetDate(d); }} />
             )}
             {Platform.OS === "android" && showDepTime && (
                 <DateTimePicker value={depTime ?? new Date()} mode="time" display="default" onChange={(_, d) => { setShowDepTime(false); if (d) setDepTime(d); }} />
             )}
-            {Platform.OS === "android" && showRetDate && (
-                <DateTimePicker value={retDate ?? depDate ?? new Date()} mode="date" display="default" minimumDate={depDate ?? new Date()} onChange={(_, d) => { setShowRetDate(false); if (d) setRetDate(d); }} />
+            {Platform.OS === "android" && showRetTime && (
+                <DateTimePicker value={retTime ?? new Date()} mode="time" display="default" onChange={(_, d) => { setShowRetTime(false); if (d) setRetTime(d); }} />
             )}
 
             {/* Jets date/time pickers (iOS) */}
@@ -928,7 +1003,20 @@ export default function LifestyleTravelScreen() {
                             <Text style={{ color: C.text, fontWeight: "700", fontSize: 16 }}>Departure Date</Text>
                             <TouchableOpacity onPress={() => setShowDepDate(false)}><Text style={{ color: GOLD, fontWeight: "700", fontSize: 16 }}>Done</Text></TouchableOpacity>
                         </View>
-                        <DateTimePicker value={depDate ?? new Date()} mode="date" display="spinner" minimumDate={new Date()} themeVariant={theme === "dark" ? "dark" : "light"} style={{ width: "100%" }} onChange={(_, d) => { if (d) setDepDate(d); }} />
+                        <DateTimePicker value={depDate ?? new Date()} mode="date" display="spinner" minimumDate={startOfToday} themeVariant={theme === "dark" ? "dark" : "light"} style={{ width: "100%" }} onChange={(_, d) => { if (d) setDepDate(d); }} />
+                    </View>
+                </View>
+            </Modal>
+            <Modal visible={Platform.OS === "ios" && showRetDate} transparent animationType="slide">
+                <View style={{ flex: 1, justifyContent: "flex-end" }}>
+                    <TouchableOpacity style={[StyleSheet.absoluteFillObject, { backgroundColor: "rgba(0,0,0,0.5)" }]} activeOpacity={1} onPress={() => setShowRetDate(false)} />
+                    <View style={[s.pickerSheet, { backgroundColor: C.surface }]}>
+                        <View style={s.pickerHeader}>
+                            <TouchableOpacity onPress={() => setShowRetDate(false)}><Text style={{ color: C.muted, fontSize: 16 }}>Cancel</Text></TouchableOpacity>
+                            <Text style={{ color: C.text, fontWeight: "700", fontSize: 16 }}>Return Date</Text>
+                            <TouchableOpacity onPress={() => setShowRetDate(false)}><Text style={{ color: GOLD, fontWeight: "700", fontSize: 16 }}>Done</Text></TouchableOpacity>
+                        </View>
+                        <DateTimePicker value={retDate ?? depDate ?? new Date()} mode="date" display="spinner" minimumDate={depDate ?? startOfToday} themeVariant={theme === "dark" ? "dark" : "light"} style={{ width: "100%" }} onChange={(_, d) => { if (d) setRetDate(d); }} />
                     </View>
                 </View>
             </Modal>

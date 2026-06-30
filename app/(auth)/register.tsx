@@ -9,6 +9,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Eye, EyeOff, ChevronLeft, ChevronDown } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { COUNTRIES, STATES_BY_COUNTRY } from "@/constants/location";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Svg, { Path } from "react-native-svg";
 import Constants from "expo-constants";
 
@@ -266,6 +267,8 @@ export default function RegisterScreen() {
             return;
         }
         if (data.user) {
+            const savedAnswers = await AsyncStorage.getItem("onboarding_answers");
+            const onboardingAnswers = savedAnswers ? JSON.parse(savedAnswers) : null;
             await supabase.from("profiles").upsert({
                 id: data.user.id,
                 full_name: fullName,
@@ -274,6 +277,7 @@ export default function RegisterScreen() {
                 region,
                 gender,
                 phone: phone.trim() ? `${dialCode.code}${phone.trim()}` : null,
+                ...(onboardingAnswers && { onboarding_answers: onboardingAnswers }),
             }, { onConflict: "id" });
             await supabase.from("notifications").insert({
                 user_id: data.user.id,
