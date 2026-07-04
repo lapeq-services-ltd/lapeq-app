@@ -11,6 +11,7 @@ import {
 } from "lucide-react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { supabase } from "@/lib/supabase";
+import VoiceInput from "@/components/VoiceInput";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -416,24 +417,15 @@ export default function GentlemensConciergeScreen() {
             return (
                 <View key={f.label} style={s.fieldGroup}>
                     <Text style={s.fieldLabel}>{f.label}</Text>
-                    <View style={s.notesRow}>
-                        <TextInput
-                            style={s.textarea}
-                            placeholder={f.placeholder}
-                            placeholderTextColor={C.muted}
-                            value={fieldState[f.label] ?? ""}
-                            onChangeText={v => setField(f.label, v)}
-                            multiline
-                            numberOfLines={4}
-                            textAlignVertical="top"
-                        />
-                        <TouchableOpacity
-                            style={s.micBtn}
-                            onPress={() => Alert.alert("Voice Input", "Speak your request and it will be transcribed here.")}
-                        >
-                            <Mic size={18} color={C.muted} />
-                        </TouchableOpacity>
-                    </View>
+                    <VoiceInput
+                        placeholder={f.placeholder}
+                        value={fieldState[f.label] ?? ""}
+                        onChange={v => setField(f.label, v)}
+                        accent={BLUE}
+                        textColor={C.text}
+                        border={C.border}
+                        inputBg={C.surface}
+                    />
                 </View>
             );
         }
