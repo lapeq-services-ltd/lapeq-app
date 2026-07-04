@@ -1,6 +1,6 @@
-﻿import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
-    View, Text, ScrollView, TouchableOpacity, StyleSheet, Animated, Image
+    View, Text, ScrollView, TouchableOpacity, StyleSheet, Animated, Image, ActivityIndicator, Linking
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -9,6 +9,7 @@ import Svg, { Path, Circle } from "react-native-svg";
 
 import { useTheme } from "@/context/ThemeContext";
 import { useMemo } from "react";
+import { supabase } from "@/lib/supabase";
 
 const scheduled = [
     { title: "Dinner at Nok by Alara", from: "Eko Hotel, VI", to: "Nok by Alara, Oniru", day: "Fri, Mar 20", time: "7:00 PM" },
@@ -23,19 +24,122 @@ export default function CoordinationScreen() {
     const { C, theme } = useTheme();
     const s = useMemo(() => getStyles(C, theme), [C, theme]);
 
+    const [loading, setLoading] = useState(true);
+    const [activeTrip, setActiveTrip] = useState<any>(null);
+    const [driver, setDriver] = useState<any>(null);
+    const [upcomingTrips, setUpcomingTrips] = useState<any[]>([]);
+
     const [activeTab, setActiveTab] = useState<"current" | "upcoming">("current");
     const [hasActiveRide, setHasActiveRide] = useState(false);
     const progressAnim = useRef(new Animated.Value(35)).current;
 
+    // Trigger spring animation when the driver status changes
     useEffect(() => {
-        const animate = () => {
-            Animated.sequence([
-                Animated.timing(progressAnim, { toValue: 85, duration: 5000, useNativeDriver: false }),
-                Animated.timing(progressAnim, { toValue: 35, duration: 0, useNativeDriver: false }),
-            ]).start(() => animate());
+        let targetValue = 35;
+        if (activeTrip) {
+            const status = activeTrip.driver_status;
+            if (status === "assigned") targetValue = 20;
+            else if (status === "en_route") targetValue = 50;
+            else if (status === "arrived") targetValue = 75;
+            else if (status === "in_progress") targetValue = 90;
+        } else {
+            targetValue = 35;
+        }
+
+        Animated.spring(progressAnim, {
+            toValue: targetValue,
+            tension: 10,
+            friction: 5,
+            useNativeDriver: false
+        }).start();
+    }, [activeTrip?.driver_status]);
+
+    useEffect(() => {
+        let isMounted = true;
+
+        async function loadData() {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return;
+
+                // 1. Fetch active trip (transport types: driving-service, logistics, driving)
+                const { data: activeTrips } = await supabase
+                    .from("requests")
+                    .select("*")
+                    .eq("user_id", user.id)
+                    .in("service_type", ["driving", "driving-service", "logistics"])
+                    .not("status", "in", '("completed","cancelled")')
+                    .order("created_at", { ascending: false })
+                    .limit(1);
+
+                if (activeTrips && activeTrips.length > 0 && isMounted) {
+                    const trip = activeTrips[0];
+                    setActiveTrip(trip);
+                    setHasActiveRide(true);
+
+                    // Fetch driver details if assigned
+                    if (trip.driver_id) {
+                        const { data: driverProfile } = await supabase
+                            .from("profiles")
+                            .select("*")
+                            .eq("id", trip.driver_id)
+                            .single();
+                        if (driverProfile && isMounted) {
+                            setDriver(driverProfile);
+                        }
+                    } else if (isMounted) {
+                        setDriver(null);
+                    }
+                } else if (isMounted) {
+                    setHasActiveRide(false);
+                    setActiveTrip(null);
+                    setDriver(null);
+                }
+
+                // 2. Fetch upcoming scheduled trips
+                const { data: upcoming } = await supabase
+                    .from("requests")
+                    .select("*")
+                    .eq("user_id", user.id)
+                    .in("service_type", ["driving", "driving-service", "logistics"])
+                    .in("status", ["pending", "approved", "arranged"])
+                    .order("scheduled_time", { ascending: true });
+
+                if (upcoming && isMounted) {
+                    // Filter out the active trip if it is also listed in upcoming
+                    const filteredUpcoming = upcoming.filter(t => !activeTrips || activeTrips.length === 0 || t.id !== activeTrips[0].id);
+                    setUpcomingTrips(filteredUpcoming);
+                }
+
+            } catch (err) {
+                console.error("Failed to load coordination data:", err);
+            } finally {
+                if (isMounted) setLoading(false);
+            }
+        }
+
+        loadData();
+
+        // Subscribe to real-time updates for requests and profile changes
+        const requestsSubscription = supabase.channel('coordination-channel')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, () => {
+                loadData();
+            })
+            .subscribe();
+
+        return () => {
+            isMounted = false;
+            supabase.removeChannel(requestsSubscription);
         };
-        animate();
     }, []);
+
+    if (loading) {
+        return (
+            <SafeAreaView style={[s.root, { justifyContent: "center", alignItems: "center" }]}>
+                <ActivityIndicator size="large" color={C.primary} />
+            </SafeAreaView>
+        );
+    }
 
     return (
         <SafeAreaView style={s.root}>
@@ -44,9 +148,6 @@ export default function CoordinationScreen() {
                     <ChevronLeft size={32} color={C.cardFg} />
                 </TouchableOpacity>
                 <Text style={s.headerTitle}>Coordination</Text>
-                <TouchableOpacity style={s.debugToggle} onPress={() => setHasActiveRide(!hasActiveRide)}>
-                    <Text style={s.debugToggleText}>{hasActiveRide ? "Sim Empty" : "Sim Ride"}</Text>
-                </TouchableOpacity>
             </View>
 
             <View style={s.tabBar}>
@@ -65,18 +166,31 @@ export default function CoordinationScreen() {
 
             <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}>
                 {activeTab === "current" ? (
-                    hasActiveRide ? (
+                    hasActiveRide && activeTrip ? (
                         <>
                             <View style={s.etaCard}>
                                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                                    <Text style={s.etaLabel}>Arriving in</Text>
+                                    <Text style={s.etaLabel}>
+                                        {activeTrip.driver_status === 'arrived' ? 'Status' : 
+                                         activeTrip.driver_status === 'in_progress' ? 'Status' : 'Arriving in'}
+                                    </Text>
                                     <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                                        <ShieldCheck size={18} color={C.green} />
+                                        <ShieldCheck size={18} color={theme === 'dark' ? C.black : C.green} />
                                         <Text style={s.verifiedText}>Verified</Text>
                                     </View>
                                 </View>
-                                <Text style={s.etaTime}>8 min</Text>
-                                <Text style={s.etaCar}>Toyota Camry - Silver - LND 234 GH</Text>
+                                <Text style={s.etaTime}>
+                                    {activeTrip.driver_status === 'arrived' ? 'Arrived' : 
+                                     activeTrip.driver_status === 'in_progress' ? 'On Trip' : 
+                                     activeTrip.driver_status === 'assigned' ? 'Assigned' : '8 min'}
+                                </Text>
+                                <Text style={s.etaCar}>
+                                    {[
+                                        activeTrip.details?.car_model || activeTrip.details?.car_info || activeTrip.details?.vehicle,
+                                        activeTrip.details?.car_color,
+                                        activeTrip.details?.car_plate
+                                    ].filter(Boolean).join(" - ") || "Toyota Camry - Silver - LND 234 GH"}
+                                </Text>
                                 <View style={s.membershipTag}>
                                     <Crown size={16} color={theme === 'dark' ? C.black : C.primary} />
                                     <Text style={s.membershipTagText}>Included in your membership</Text>
@@ -85,13 +199,13 @@ export default function CoordinationScreen() {
 
                             <View style={{ marginBottom: 32 }}>
                                 <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 16 }}>
-                                    <View>
+                                    <View style={{ flex: 1, marginRight: 8 }}>
                                         <Text style={s.stopLabel}>Pickup</Text>
-                                        <Text style={s.stopName}>Lekki Phase 1</Text>
+                                        <Text style={s.stopName} numberOfLines={2}>{activeTrip.pickup_location || 'Lekki Phase 1'}</Text>
                                     </View>
-                                    <View style={{ alignItems: "flex-end" }}>
+                                    <View style={{ flex: 1, alignItems: "flex-end", marginLeft: 8 }}>
                                         <Text style={s.stopLabel}>Destination</Text>
-                                        <Text style={s.stopName}>Nok by Alara, VI</Text>
+                                        <Text style={s.stopName} numberOfLines={2}>{activeTrip.dropoff_location || 'Destination'}</Text>
                                     </View>
                                 </View>
                                 <View style={{ position: "relative", marginBottom: 12 }}>
@@ -123,20 +237,28 @@ export default function CoordinationScreen() {
                             <View style={s.driverCard}>
                                 <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
                                     <View style={s.driverAvatar}>
-                                        <Text style={s.driverInitials}>AB</Text>
+                                        <Text style={s.driverInitials}>
+                                            {driver?.full_name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() || 'DR'}
+                                        </Text>
                                     </View>
                                     <View style={{ flex: 1 }}>
-                                        <Text style={s.driverName}>Abubakar S.</Text>
+                                        <Text style={s.driverName}>{driver?.full_name || 'Assigned Driver'}</Text>
                                         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                                             <Star size={14} color={C.primary} fill={C.primary} />
-                                            <Text style={s.driverRating}>4.92</Text>
+                                            <Text style={s.driverRating}>{driver?.preferred_name ? '4.95' : '4.92'}</Text>
                                         </View>
                                     </View>
                                     <View style={{ flexDirection: "row", gap: 12 }}>
-                                        <TouchableOpacity style={s.driverActionSecondary}>
+                                        <TouchableOpacity 
+                                            style={s.driverActionSecondary}
+                                            onPress={() => driver?.phone && Linking.openURL('sms:' + driver.phone)}
+                                        >
                                             <MessageCircle size={24} color={C.cardFg} />
                                         </TouchableOpacity>
-                                        <TouchableOpacity style={s.driverActionPrimary}>
+                                        <TouchableOpacity 
+                                            style={s.driverActionPrimary}
+                                            onPress={() => driver?.phone && Linking.openURL('tel:' + driver.phone)}
+                                        >
                                             <Phone size={24} color={C.black} />
                                         </TouchableOpacity>
                                     </View>
@@ -145,22 +267,58 @@ export default function CoordinationScreen() {
 
                             <Text style={s.sectionTitle}>Updates</Text>
                             <View style={{ gap: 12, marginBottom: 20 }}>
-                                <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
-                                    <View style={[s.updateDot, { backgroundColor: C.green }]} />
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={s.updateTitle}>Driver en route to you</Text>
-                                        <Text style={s.updateSub}>Passing Admiralty Way</Text>
-                                    </View>
-                                    <Text style={s.updateTime}>Now</Text>
-                                </View>
-                                <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
-                                    <View style={[s.updateDot, { backgroundColor: "rgba(6,6,6,0.15)" }]} />
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={s.updateTitle}>Arrangement confirmed</Text>
-                                        <Text style={s.updateSub}>Your concierge arranged this ride</Text>
-                                    </View>
-                                    <Text style={s.updateTime}>2 min</Text>
-                                </View>
+                                {(() => {
+                                    const ds = activeTrip.driver_status;
+                                    const updatesList = [];
+                                    
+                                    if (ds === "in_progress") {
+                                        updatesList.push({
+                                            title: "Trip is underway",
+                                            sub: "En route to " + (activeTrip.dropoff_location || "destination"),
+                                            color: C.green,
+                                            time: "Now"
+                                        });
+                                    }
+                                    if (ds === "in_progress" || ds === "arrived") {
+                                        updatesList.push({
+                                            title: "Driver arrived at pickup",
+                                            sub: driver?.full_name ? `${driver.full_name} is waiting for you` : "Driver is waiting at your location",
+                                            color: ds === "arrived" ? C.green : "rgba(6,6,6,0.15)",
+                                            time: ds === "arrived" ? "Now" : "Arrived"
+                                        });
+                                    }
+                                    if (ds === "in_progress" || ds === "arrived" || ds === "en_route") {
+                                        updatesList.push({
+                                            title: "Driver en route to you",
+                                            sub: driver?.full_name ? `${driver.full_name} is heading to your pickup location` : "Passing Admiralty Way",
+                                            color: ds === "en_route" ? C.green : "rgba(6,6,6,0.15)",
+                                            time: ds === "en_route" ? "Now" : "En Route"
+                                        });
+                                    }
+                                    updatesList.push({
+                                        title: "Chauffeur assigned",
+                                        sub: driver?.full_name ? `${driver.full_name} has been assigned to your ride` : "A driver has been assigned to this trip",
+                                        color: ds === "assigned" ? C.green : "rgba(6,6,6,0.15)",
+                                        time: "Assigned"
+                                    });
+                                    updatesList.push({
+                                        title: "Arrangement confirmed",
+                                        sub: "Your concierge confirmed this transfer",
+                                        color: !ds ? C.green : "rgba(6,6,6,0.15)",
+                                        time: "2 min"
+                                    });
+
+                                    return updatesList.map((upd, idx) => (
+                                        <View key={idx} style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
+                                            <View style={[s.updateDot, { backgroundColor: upd.color }]} />
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={s.updateTitle}>{upd.title}</Text>
+                                                <Text style={s.updateSub}>{upd.sub}</Text>
+                                            </View>
+                                            <Text style={s.updateTime}>{upd.time}</Text>
+                                        </View>
+                                    ));
+                                })()}
                             </View>
 
                             <View style={s.safetyBox}>
@@ -196,39 +354,55 @@ export default function CoordinationScreen() {
                                 <Text style={s.notificationHintText}>You will be notified via Push Notification the moment your driver is en route or arrives.</Text>
                             </View>
                         </View>
-                    )) : (
+                    )
+                ) : (
                     <>
                         <View style={s.memberBanner}>
                             <Crown size={20} color={C.primary} />
                             <Text style={s.memberBannerText}><Text style={s.memberBannerBold}>All movements coordinated</Text> through your membership.</Text>
                         </View>
                         <View style={{ gap: 12 }}>
-                            {scheduled.map((trip, i) => (
-                                <TouchableOpacity key={i} style={s.tripCard}>
-                                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                                        <Text style={s.tripTitle}>{trip.title}</Text>
-                                        <Text style={s.arrangedBadge}>Arranged</Text>
-                                    </View>
-                                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                                        <CalendarDays size={16} color={C.muted} />
-                                        <Text style={s.tripMeta}>{trip.day}</Text>
-                                        <View style={{ width: 12 }} />
-                                        <Clock size={16} color={C.muted} />
-                                        <Text style={s.tripMeta}>{trip.time}</Text>
-                                    </View>
-                                    <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
-                                        <View style={{ alignItems: "center", gap: 2 }}>
-                                            <View style={s.routeDotFilled} />
-                                            <View style={s.routeLine} />
-                                            <View style={s.routeDotEmpty} />
-                                        </View>
-                                        <View style={{ gap: 8 }}>
-                                            <Text style={s.routeStop}>{trip.from}</Text>
-                                            <Text style={s.routeStop}>{trip.to}</Text>
-                                        </View>
-                                    </View>
-                                </TouchableOpacity>
-                            ))}
+                            {upcomingTrips.length > 0 ? (
+                                upcomingTrips.map((trip, i) => {
+                                    const scheduledDate = trip.scheduled_time ? new Date(trip.scheduled_time) : new Date();
+                                    const dayStr = scheduledDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                                    const timeStr = scheduledDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                                    
+                                    return (
+                                        <TouchableOpacity key={i} style={s.tripCard}>
+                                            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                                                <Text style={s.tripTitle}>{trip.title || (trip.service_type === 'driving-service' ? 'Chauffeur Ride' : 'Logistics Delivery')}</Text>
+                                                <Text style={s.arrangedBadge}>{trip.status === 'arranged' ? 'Arranged' : trip.status}</Text>
+                                            </View>
+                                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                                                <CalendarDays size={16} color={C.muted} />
+                                                <Text style={s.tripMeta}>{dayStr}</Text>
+                                                <View style={{ width: 12 }} />
+                                                <Clock size={16} color={C.muted} />
+                                                <Text style={s.tripMeta}>{timeStr}</Text>
+                                            </View>
+                                            <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
+                                                <View style={{ alignItems: "center", gap: 2 }}>
+                                                    <View style={s.routeDotFilled} />
+                                                    <View style={s.routeLine} />
+                                                    <View style={s.routeDotEmpty} />
+                                                </View>
+                                                <View style={{ gap: 8 }}>
+                                                    <Text style={s.routeStop}>{trip.pickup_location || 'Lekki Phase 1'}</Text>
+                                                    <Text style={s.routeStop}>{trip.dropoff_location || 'Destination'}</Text>
+                                                </View>
+                                            </View>
+                                        </TouchableOpacity>
+                                    );
+                                })
+                            ) : (
+                                <View style={{ paddingVertical: 40, alignItems: "center" }}>
+                                    <Text style={{ fontSize: 16, fontWeight: "600", color: C.text, marginBottom: 8 }}>No scheduled movements</Text>
+                                    <Text style={{ fontSize: 13, color: C.muted, textAlign: "center", paddingHorizontal: 20 }}>
+                                        Any upcoming transfers booked through your concierge will be listed here.
+                                    </Text>
+                                </View>
+                            )}
                         </View>
                     </>
                 )}
