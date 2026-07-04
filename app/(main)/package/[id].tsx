@@ -19,6 +19,8 @@ type Package = {
     activities: string[] | null;
 };
 
+const GOLD = "#c9a84c";
+
 const ACTIVITY_CONFIG: Record<string, { icon: any; label: string }> = {
     "Hotel / Villa Stay": { icon: <MapPin size={16} color="#c9a84c" />, label: "Accommodation" },
     "Private Dining": { icon: <Coffee size={16} color="#c9a84c" />, label: "Private Dining reservations" },
@@ -241,45 +243,7 @@ export default function PackageDetailScreen() {
 
             <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 48 }}>
 
-                {/* Itinerary Ready Banner */}
-                {itineraryNotifId && (
-                    <TouchableOpacity
-                        onPress={() => router.push(`/itinerary-view?notifId=${itineraryNotifId}`)}
-                        activeOpacity={0.85}
-                        style={{
-                            marginBottom: 20,
-                            borderRadius: 16,
-                            borderWidth: 1,
-                            borderColor: GOLD,
-                            overflow: "hidden",
-                            backgroundColor: isDark ? "#1a1400" : "#fffbf0",
-                        }}
-                    >
-                        <View style={{ padding: 18, flexDirection: "row", alignItems: "center", gap: 14 }}>
-                            <View style={{
-                                width: 38,
-                                height: 38,
-                                borderRadius: 19,
-                                backgroundColor: `${GOLD}20`,
-                                alignItems: "center",
-                                  justifyContent: "center",
-                                borderWidth: 1,
-                                borderColor: `${GOLD}40`,
-                            }}>
-                                <Star size={16} color={GOLD} fill={GOLD} />
-                            </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={{ fontSize: 15, fontWeight: "700", color: C.text, marginBottom: 2 }}>
-                                    Your Itinerary is Ready!
-                                </Text>
-                                <Text style={{ fontSize: 12, color: C.muted, lineHeight: 16 }}>
-                                    Tap to view the interactive schedule details.
-                                </Text>
-                            </View>
-                            <ChevronLeft size={16} color={GOLD} style={{ transform: [{ rotate: "180deg" }] }} />
-                        </View>
-                    </TouchableOpacity>
-                )}
+
 
                 {/* Meta row */}
                 <View style={s.metaRow}>
