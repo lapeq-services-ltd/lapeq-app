@@ -399,10 +399,9 @@ function VoiceInput({ value, onChange, voiceUri, onVoiceChange, placeholder, bg,
 }
 
 // ── Occasion-specific forms ──────────────────────────────────────────────────
-function DateNightForm({ accent, muted, textColor, cardBg, border, onData }: any) {
+function DateNightForm({ accent, muted, textColor, cardBg, border, onData, onDatePick }: any) {
     const [needs, setNeeds] = useState<string[]>([]);
     const [date, setDate] = useState(new Date());
-    const [showDate, setShowDate] = useState(false);
     const [notes, setNotes] = useState("");
     const [voiceUri, setVoiceUri] = useState<string | null>(null);
 
@@ -433,24 +432,9 @@ function DateNightForm({ accent, muted, textColor, cardBg, border, onData }: any
                 <SectionLabel text="WHAT SHOULD WE ARRANGE?" muted={muted} />
                 <MultiPill options={["Transport & Driver", "Outfit Styling", "Restaurant / Venue", "Beauty Appointment", "Full Evening Package"]} selected={needs} onToggle={toggle} accent={accent} textColor={textColor} />
                 <SectionLabel text="WHEN IS THE OCCASION?" muted={muted} />
-                <TouchableOpacity style={[fl.dateBtn, { borderColor: `${accent}40`, backgroundColor: cardBg }]} onPress={() => setShowDate(true)}>
+                <TouchableOpacity style={[fl.dateBtn, { borderColor: `${accent}40`, backgroundColor: cardBg }]} onPress={() => onDatePick(date, (d: Date) => update("date", d))}>
                     <Text style={[fl.dateBtnText, { color: textColor }]}>{date.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</Text>
                 </TouchableOpacity>
-                {showDate && Platform.OS === "android" && <DateTimePicker value={date} mode="date" display="default" onChange={(_, d) => { setShowDate(false); if (d) update("date", d); }} />}
-                {Platform.OS === "ios" && (
-                    <Modal transparent animationType="slide" visible={showDate} onRequestClose={() => setShowDate(false)}>
-                        <View style={fl.dateModal}>
-                            <TouchableOpacity style={fl.dateBackdrop} activeOpacity={1} onPress={() => setShowDate(false)} />
-                            <View style={fl.dateSheet}>
-                                <View style={fl.dateSheetHeader}>
-                                    <TouchableOpacity onPress={() => setShowDate(false)}><Text style={[fl.dateSheetBtn, { color: "#888" }]}>Cancel</Text></TouchableOpacity>
-                                    <TouchableOpacity onPress={() => setShowDate(false)}><Text style={[fl.dateSheetBtn, { color: accent }]}>Done</Text></TouchableOpacity>
-                                </View>
-                                <DateTimePicker value={date} mode="date" display="spinner" style={{ width: "100%" }} onChange={(_, d) => { if (d) update("date", d); }} />
-                            </View>
-                        </View>
-                    </Modal>
-                )}
                 <SectionLabel text="ANYTHING ELSE TO KNOW?" muted={muted} />
                 <VoiceInput value={notes} onChange={(v: string) => update("notes", v)} voiceUri={voiceUri} onVoiceChange={handleVoiceChange} placeholder="Dress code, preferences, special requests..." bg={cardBg} border={border} textColor={textColor} accent={accent} />
             </View>
@@ -545,10 +529,9 @@ function ShoppingForm({ accent, muted, textColor, cardBg, border, onData }: any)
     );
 }
 
-function EventPrepForm({ accent, muted, textColor, cardBg, border, onData }: any) {
+function EventPrepForm({ accent, muted, textColor, cardBg, border, onData, onDatePick }: any) {
     const [eventType, setEventType] = useState("");
     const [eventDate, setEventDate] = useState(new Date());
-    const [showDate, setShowDate] = useState(false);
     const [services, setServices] = useState<string[]>([]);
     const [notes, setNotes] = useState("");
     const [voiceUri, setVoiceUri] = useState<string | null>(null);
@@ -582,24 +565,9 @@ function EventPrepForm({ accent, muted, textColor, cardBg, border, onData }: any
                 <SectionLabel text="WHAT KIND OF EVENT?" muted={muted} />
                 <RadioPill options={["Wedding", "Gala", "Birthday", "Corporate", "Private Party"]} selected={eventType} onSelect={(v: string) => update("eventType", v)} accent={accent} textColor={textColor} />
                 <SectionLabel text="EVENT DATE" muted={muted} />
-                <TouchableOpacity style={[fl.dateBtn, { borderColor: `${accent}40`, backgroundColor: cardBg }]} onPress={() => setShowDate(true)}>
+                <TouchableOpacity style={[fl.dateBtn, { borderColor: `${accent}40`, backgroundColor: cardBg }]} onPress={() => onDatePick(eventDate, (d: Date) => update("eventDate", d))}>
                     <Text style={[fl.dateBtnText, { color: textColor }]}>{eventDate.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</Text>
                 </TouchableOpacity>
-                {showDate && Platform.OS === "android" && <DateTimePicker value={eventDate} mode="date" display="default" onChange={(_, d) => { setShowDate(false); if (d) update("eventDate", d); }} />}
-                {Platform.OS === "ios" && (
-                    <Modal transparent animationType="slide" visible={showDate} onRequestClose={() => setShowDate(false)}>
-                        <View style={fl.dateModal}>
-                            <TouchableOpacity style={fl.dateBackdrop} activeOpacity={1} onPress={() => setShowDate(false)} />
-                            <View style={fl.dateSheet}>
-                                <View style={fl.dateSheetHeader}>
-                                    <TouchableOpacity onPress={() => setShowDate(false)}><Text style={[fl.dateSheetBtn, { color: "#888" }]}>Cancel</Text></TouchableOpacity>
-                                    <TouchableOpacity onPress={() => setShowDate(false)}><Text style={[fl.dateSheetBtn, { color: accent }]}>Done</Text></TouchableOpacity>
-                                </View>
-                                <DateTimePicker value={eventDate} mode="date" display="spinner" style={{ width: "100%" }} onChange={(_, d) => { if (d) update("eventDate", d); }} />
-                            </View>
-                        </View>
-                    </Modal>
-                )}
                 <SectionLabel text="WHAT DO YOU NEED?" muted={muted} />
                 <MultiPill options={["Hair & Makeup", "Outfit Styling", "Transport & Driver", "Accommodation", "Full Preparation"]} selected={services} onToggle={toggle} accent={accent} textColor={textColor} />
                 <SectionLabel text="ANYTHING SPECIFIC?" muted={muted} />
@@ -689,10 +657,9 @@ function HomeForm({ accent, muted, textColor, cardBg, border, onData }: any) {
     );
 }
 
-function BusinessForm({ accent, muted, textColor, cardBg, border, onData }: any) {
+function BusinessForm({ accent, muted, textColor, cardBg, border, onData, onDatePick }: any) {
     const [needs, setNeeds] = useState<string[]>([]);
     const [date, setDate] = useState(new Date());
-    const [showDate, setShowDate] = useState(false);
     const [notes, setNotes] = useState("");
     const [voiceUri, setVoiceUri] = useState<string | null>(null);
 
@@ -723,24 +690,9 @@ function BusinessForm({ accent, muted, textColor, cardBg, border, onData }: any)
                 <SectionLabel text="WHAT DO YOU NEED?" muted={muted} />
                 <MultiPill options={["Corporate Dining", "Meeting Space", "Executive Travel", "Client Event", "Airport Protocol"]} selected={needs} onToggle={toggle} accent={accent} textColor={textColor} />
                 <SectionLabel text="WHEN?" muted={muted} />
-                <TouchableOpacity style={[fl.dateBtn, { borderColor: `${accent}40`, backgroundColor: cardBg }]} onPress={() => setShowDate(true)}>
+                <TouchableOpacity style={[fl.dateBtn, { borderColor: `${accent}40`, backgroundColor: cardBg }]} onPress={() => onDatePick(date, (d: Date) => update("date", d))}>
                     <Text style={[fl.dateBtnText, { color: textColor }]}>{date.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</Text>
                 </TouchableOpacity>
-                {showDate && Platform.OS === "android" && <DateTimePicker value={date} mode="date" display="default" onChange={(_, d) => { setShowDate(false); if (d) update("date", d); }} />}
-                {Platform.OS === "ios" && (
-                    <Modal transparent animationType="slide" visible={showDate} onRequestClose={() => setShowDate(false)}>
-                        <View style={fl.dateModal}>
-                            <TouchableOpacity style={fl.dateBackdrop} activeOpacity={1} onPress={() => setShowDate(false)} />
-                            <View style={fl.dateSheet}>
-                                <View style={fl.dateSheetHeader}>
-                                    <TouchableOpacity onPress={() => setShowDate(false)}><Text style={[fl.dateSheetBtn, { color: "#888" }]}>Cancel</Text></TouchableOpacity>
-                                    <TouchableOpacity onPress={() => setShowDate(false)}><Text style={[fl.dateSheetBtn, { color: accent }]}>Done</Text></TouchableOpacity>
-                                </View>
-                                <DateTimePicker value={date} mode="date" display="spinner" style={{ width: "100%" }} onChange={(_, d) => { if (d) update("date", d); }} />
-                            </View>
-                        </View>
-                    </Modal>
-                )}
                 <SectionLabel text="DETAILS" muted={muted} />
                 <VoiceInput value={notes} onChange={(v: string) => update("notes", v)} voiceUri={voiceUri} onVoiceChange={handleVoiceChange} placeholder="Guests, preferences, specific requirements..." bg={cardBg} border={border} textColor={textColor} accent={accent} />
             </View>
@@ -748,11 +700,10 @@ function BusinessForm({ accent, muted, textColor, cardBg, border, onData }: any)
     );
 }
 
-function EntertainmentForm({ accent, muted, textColor, cardBg, border, onData }: any) {
+function EntertainmentForm({ accent, muted, textColor, cardBg, border, onData, onDatePick }: any) {
     const [eventType, setEventType] = useState("");
     const [guests, setGuests] = useState("");
     const [date, setDate] = useState(new Date());
-    const [showDate, setShowDate] = useState(false);
     const [notes, setNotes] = useState("");
     const [voiceUri, setVoiceUri] = useState<string | null>(null);
 
@@ -785,24 +736,9 @@ function EntertainmentForm({ accent, muted, textColor, cardBg, border, onData }:
                 <SectionLabel text="HOW MANY GUESTS?" muted={muted} />
                 <RadioPill options={["Just Me", "2 guests", "3–5 guests", "Group (6+)"]} selected={guests} onSelect={(v: string) => update("guests", v)} accent={accent} textColor={textColor} />
                 <SectionLabel text="DATE" muted={muted} />
-                <TouchableOpacity style={[fl.dateBtn, { borderColor: `${accent}40`, backgroundColor: cardBg }]} onPress={() => setShowDate(true)}>
+                <TouchableOpacity style={[fl.dateBtn, { borderColor: `${accent}40`, backgroundColor: cardBg }]} onPress={() => onDatePick(date, (d: Date) => update("date", d))}>
                     <Text style={[fl.dateBtnText, { color: textColor }]}>{date.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</Text>
                 </TouchableOpacity>
-                {showDate && Platform.OS === "android" && <DateTimePicker value={date} mode="date" display="default" onChange={(_, d) => { setShowDate(false); if (d) update("date", d); }} />}
-                {Platform.OS === "ios" && (
-                    <Modal transparent animationType="slide" visible={showDate} onRequestClose={() => setShowDate(false)}>
-                        <View style={fl.dateModal}>
-                            <TouchableOpacity style={fl.dateBackdrop} activeOpacity={1} onPress={() => setShowDate(false)} />
-                            <View style={fl.dateSheet}>
-                                <View style={fl.dateSheetHeader}>
-                                    <TouchableOpacity onPress={() => setShowDate(false)}><Text style={[fl.dateSheetBtn, { color: "#888" }]}>Cancel</Text></TouchableOpacity>
-                                    <TouchableOpacity onPress={() => setShowDate(false)}><Text style={[fl.dateSheetBtn, { color: accent }]}>Done</Text></TouchableOpacity>
-                                </View>
-                                <DateTimePicker value={date} mode="date" display="spinner" style={{ width: "100%" }} onChange={(_, d) => { if (d) update("date", d); }} />
-                            </View>
-                        </View>
-                    </Modal>
-                )}
                 <SectionLabel text="ANYTHING ELSE?" muted={muted} />
                 <VoiceInput value={notes} onChange={(v: string) => update("notes", v)} voiceUri={voiceUri} onVoiceChange={handleVoiceChange} placeholder="Specific venues, teams, dietary needs, accessibility..." bg={cardBg} border={border} textColor={textColor} accent={accent} />
             </View>
@@ -845,6 +781,17 @@ export default function LadiesConciergeScreen() {
     const [success, setSuccess] = useState(false);
     const formAnim = useRef(new Animated.Value(0)).current;
     const heroOpacity = useRef(new Animated.Value(1)).current;
+
+    // Screen-level date picker (lifted out of form components to avoid nesting/overflow issues)
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [pickerDate, setPickerDate] = useState(new Date());
+    const [pickerCallback, setPickerCallback] = useState<((d: Date) => void) | null>(null);
+
+    const handleDatePick = (currentDate: Date, onSelect: (d: Date) => void) => {
+        setPickerDate(currentDate);
+        setPickerCallback(() => onSelect);
+        setShowDatePicker(true);
+    };
 
     const currentOccasion = OCCASIONS.find(o => o.id === occasion);
 
@@ -1029,6 +976,7 @@ export default function LadiesConciergeScreen() {
                                 cardBg={isDark ? "#2a2010" : "#f5f0ea"}
                                 border={border}
                                 onData={setFormData}
+                                onDatePick={handleDatePick}
                             />
                         </View>
                         <TouchableOpacity
@@ -1053,6 +1001,32 @@ export default function LadiesConciergeScreen() {
                     </View>
                 )}
             </ScrollView>
+
+            {/* ── Date Picker (screen-level, avoids overflow/nesting issues) ── */}
+            <Modal visible={showDatePicker} transparent animationType="slide" onRequestClose={() => setShowDatePicker(false)}>
+                <View style={{ flex: 1, justifyContent: "flex-end" }}>
+                    <TouchableOpacity style={[StyleSheet.absoluteFillObject, { backgroundColor: "rgba(0,0,0,0.4)" }]} activeOpacity={1} onPress={() => setShowDatePicker(false)} />
+                    <View style={{ backgroundColor: isDark ? "#1e1810" : "#fff", borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 40 }}>
+                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: "rgba(128,128,128,0.15)" }}>
+                            <TouchableOpacity onPress={() => setShowDatePicker(false)}><Text style={{ fontSize: 15, fontWeight: "700", color: "#888" }}>Cancel</Text></TouchableOpacity>
+                            <TouchableOpacity onPress={() => setShowDatePicker(false)}><Text style={{ fontSize: 15, fontWeight: "700", color: C.primary }}>Done</Text></TouchableOpacity>
+                        </View>
+                        <DateTimePicker
+                            value={pickerDate}
+                            mode="date"
+                            display="spinner"
+                            themeVariant={isDark ? "dark" : "light"}
+                            style={{ width: "100%" }}
+                            onChange={(_, d) => {
+                                if (d) {
+                                    setPickerDate(d);
+                                    if (pickerCallback) pickerCallback(d);
+                                }
+                            }}
+                        />
+                    </View>
+                </View>
+            </Modal>
 
             {/* ── Success ── */}
             <Modal visible={success} transparent animationType="fade">

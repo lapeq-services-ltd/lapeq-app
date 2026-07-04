@@ -156,7 +156,7 @@ export default function PackageDetailScreen() {
                 </View>
             </View>
 
-            <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 48 }}>
+            <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}>
 
 
 
@@ -179,16 +179,16 @@ export default function PackageDetailScreen() {
                 </View>
 
                 {/* Empty state — waiting for itinerary */}
-                <View style={{ alignItems: "center", paddingTop: 16, paddingBottom: 32 }}>
+                <View style={{ alignItems: "center", paddingTop: 8, paddingBottom: 16 }}>
                     <Image
                         source={require("@/assets/emptystate/itenaryotw.png")}
-                        style={{ width: W * 0.72, height: W * 0.72 }}
+                        style={{ width: W * 0.26, height: W * 0.26 }}
                         resizeMode="contain"
                     />
-                    <Text style={{ fontSize: 20, fontWeight: "700", color: C.text, textAlign: "center", marginTop: 4 }}>
+                    <Text style={{ fontSize: 16, fontWeight: "700", color: C.text, textAlign: "center", marginTop: 4 }}>
                         Your itinerary is on its way
                     </Text>
-                    <Text style={{ fontSize: 14, color: C.muted, textAlign: "center", marginTop: 8, lineHeight: 22, paddingHorizontal: 24 }}>
+                    <Text style={{ fontSize: 13, color: C.muted, textAlign: "center", marginTop: 6, lineHeight: 20, paddingHorizontal: 24 }}>
                         Your concierge is curating every detail. You'll get a notification when it's ready.
                     </Text>
                 </View>
@@ -224,14 +224,14 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     statusPill: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 99 },
     statusPillText: { fontSize: 11, fontWeight: "700" },
 
-    metaRow: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 20 },
-    metaItem: { flexDirection: "row", alignItems: "center", gap: 6 },
-    metaText: { fontSize: 13, color: C.muted },
+    metaRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 },
+    metaItem: { flexDirection: "row", alignItems: "center", gap: 5 },
+    metaText: { fontSize: 12, color: C.muted },
 
-    conciergeCard: { borderRadius: 20, backgroundColor: theme === "dark" ? "#1a1a1a" : "#1a1a1a", padding: 20, marginBottom: 16 },
-    conciergeCardTitle: { fontSize: 15, fontWeight: "700", color: "#ffffff" },
-    conciergeCardBody: { fontSize: 13, color: "rgba(255,255,255,0.65)", lineHeight: 21 },
+    conciergeCard: { borderRadius: 16, backgroundColor: "#1a1a1a", padding: 14, marginBottom: 10 },
+    conciergeCardTitle: { fontSize: 13, fontWeight: "700", color: "#ffffff" },
+    conciergeCardBody: { fontSize: 12, color: "rgba(255,255,255,0.65)", lineHeight: 19 },
 
-    messageBtn: { borderRadius: 16, paddingVertical: 18, backgroundColor: C.primary, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 },
-    messageBtnText: { fontSize: 16, fontWeight: "700", color: "#0a0a0a" },
+    messageBtn: { borderRadius: 14, paddingVertical: 14, backgroundColor: C.primary, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 },
+    messageBtnText: { fontSize: 15, fontWeight: "700", color: "#0a0a0a" },
 });
