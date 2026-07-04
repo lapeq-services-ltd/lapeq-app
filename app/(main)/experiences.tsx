@@ -1,11 +1,12 @@
-﻿import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import * as Notifications from "expo-notifications";
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Image, Modal } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Image, Modal, ImageBackground } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useFocusEffect } from "expo-router";
 import { ChevronLeft, Plus, Calendar, ChevronRight, X } from "lucide-react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { supabase } from "@/lib/supabase";
+import { LinearGradient } from "expo-linear-gradient";
 
 const GOLD = "#c9a84c";
 
@@ -18,6 +19,7 @@ type Package = {
     type: string;
     status: string;
     created_at: string;
+    reference: string | null;
 };
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
@@ -206,6 +208,7 @@ export default function ExperiencesScreen() {
             type: r.details?.type ?? "custom",
             status: r.status,
             created_at: r.created_at,
+            reference: r.reference ?? null,
         }));
         setPackages(mapped);
         setLoading(false);
@@ -231,8 +234,8 @@ export default function ExperiencesScreen() {
                     <ChevronLeft size={24} color={C.text} />
                 </TouchableOpacity>
                 <View style={{ flex: 1 }}>
-                    <Text style={s.title}>Experiences</Text>
-                    <Text style={s.subtitle}>Curated itineraries, handled end to end</Text>
+                    <Text style={s.title}>Lifestyle</Text>
+                    <Text style={s.subtitle}>Curated itineraries, handled end-to-end</Text>
                 </View>
                 <TouchableOpacity style={s.newBtn} onPress={() => router.push("/services/request-package")}>
                     <Plus size={18} color="#0a0a0a" />
@@ -281,40 +284,85 @@ export default function ExperiencesScreen() {
                             </TouchableOpacity>
                         </>
                     ) : (
-                        <View style={{ gap: 14, marginTop: 8 }}>
+                        <View style={{ gap: 16, marginTop: 8 }}>
+                            {/* Premium Stats Summary Widget */}
+                            <View style={s.summaryCard}>
+                                <View style={s.summaryItem}>
+                                    <Text style={s.summaryVal}>{packages.length}</Text>
+                                    <Text style={s.summaryLbl}>Total Requests</Text>
+                                </View>
+                                <View style={s.summaryDivider} />
+                                <View style={s.summaryItem}>
+                                    <Text style={s.summaryVal}>
+                                        {packages.filter(p => ["pending", "building"].includes(p.status)).length}
+                                    </Text>
+                                    <Text style={s.summaryLbl}>In Curation</Text>
+                                </View>
+                                <View style={s.summaryDivider} />
+                                <View style={s.summaryItem}>
+                                    <Text style={s.summaryVal}>
+                                        {packages.filter(p => p.status === "ready" || p.status === "active").length}
+                                    </Text>
+                                    <Text style={s.summaryLbl}>Ready / Active</Text>
+                                </View>
+                            </View>
+
+                            <TouchableOpacity style={s.premiumNewPackageBtn} onPress={() => router.push("/services/request-package")}>
+                                <Plus size={16} color={GOLD} />
+                                <Text style={s.premiumNewPackageText}>Request Another Package</Text>
+                            </TouchableOpacity>
+
                             {packages.map(pkg => {
                                 const st = STATUS_CONFIG[pkg.status] ?? { label: pkg.status, color: C.muted };
                                 return (
                                     <TouchableOpacity
                                         key={pkg.id}
-                                        style={s.pkgCard}
+                                        style={[s.premiumPkgCard, { borderLeftColor: st.color }]}
                                         onPress={() => router.push({ pathname: "/(main)/package/[id]", params: { id: pkg.id } })}
                                         activeOpacity={0.85}
                                     >
-                                        <View style={s.pkgCardTop}>
-                                            <View style={{ flex: 1 }}>
+                                        <LinearGradient
+                                            colors={isDark ? ["#1a1a1c", "#111112"] : ["#faf6f0", "#f2ede5"]}
+                                            style={StyleSheet.absoluteFillObject}
+                                        />
+                                        <View style={s.pkgCardContent}>
+                                            <View style={s.pkgCardTopRow}>
                                                 <Text style={s.pkgCity}>{pkg.city}</Text>
-                                                <Text style={s.pkgTitle}>{pkg.title ?? TYPE_LABELS[pkg.type] ?? "Custom Experience"}</Text>
+                                                {pkg.reference && (
+                                                    <View style={s.refBadge}>
+                                                        <Text style={s.refText}>#{pkg.reference}</Text>
+                                                    </View>
+                                                )}
                                             </View>
-                                            <View style={[s.statusBadge, { backgroundColor: `${st.color}18` }]}>
-                                                <Text style={[s.statusText, { color: st.color }]}>{st.label}</Text>
+
+                                            <View style={s.pkgCardMiddleArea}>
+                                                <Text style={[s.premiumPkgTitle, { color: C.text }]}>
+                                                    {pkg.title ?? TYPE_LABELS[pkg.type] ?? "Custom Experience"}
+                                                </Text>
+                                                
+                                                <View style={s.statusRow}>
+                                                    <View style={[s.statusDot, { backgroundColor: st.color }]} />
+                                                    <Text style={[s.statusLabelText, { color: C.muted }]}>{st.label}</Text>
+                                                </View>
                                             </View>
-                                        </View>
-                                        <View style={s.pkgCardBottom}>
-                                            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                                                <Calendar size={13} color={C.muted} />
-                                                <Text style={s.pkgMeta}>{formatDateRange(pkg.start_date, pkg.end_date)}</Text>
+
+                                            <View style={s.pkgCardDivider} />
+
+                                            <View style={s.pkgCardBottomRow}>
+                                                <View style={s.dateContainer}>
+                                                    <Calendar size={13} color={C.muted} />
+                                                    <Text style={[s.premiumPkgMeta, { color: C.muted }]}>
+                                                        {formatDateRange(pkg.start_date, pkg.end_date)}
+                                                    </Text>
+                                                </View>
+                                                <View style={s.arrowIconWrap}>
+                                                    <ChevronRight size={14} color={C.text} />
+                                                </View>
                                             </View>
-                                            <ChevronRight size={16} color={C.muted} />
                                         </View>
                                     </TouchableOpacity>
                                 );
                             })}
-
-                            <TouchableOpacity style={s.newPackageRow} onPress={() => router.push("/services/request-package")}>
-                                <Plus size={16} color={C.primary} />
-                                <Text style={s.newPackageText}>Request Another Package</Text>
-                            </TouchableOpacity>
                         </View>
                     )}
                 </ScrollView>
@@ -364,5 +412,34 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     pkgMeta:       { fontSize: 13, color: C.muted },
     newPackageRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, padding: 16 },
     newPackageText:{ fontSize: 14, fontWeight: "600", color: C.primary },
+
+    // Summary widget
+    summaryCard: { flexDirection: "row", alignItems: "center", backgroundColor: C.surface, borderRadius: 20, paddingVertical: 16, paddingHorizontal: 12, marginBottom: 10, borderWidth: 1, borderColor: theme === "dark" ? "#2a2a2a" : "#d8d3ca" },
+    summaryItem: { flex: 1, alignItems: "center" },
+    summaryVal: { fontSize: 20, fontWeight: "800", color: GOLD },
+    summaryLbl: { fontSize: 10, fontWeight: "700", color: C.muted, marginTop: 4, letterSpacing: 0.5, textTransform: "uppercase" },
+    summaryDivider: { width: 1, height: 28, backgroundColor: theme === "dark" ? "#2a2a2a" : "#d8d3ca" },
+
+    // Premium Package cards
+    premiumPkgCard: { height: 170, borderRadius: 20, overflow: "hidden", marginBottom: 12, borderWidth: 1, borderLeftWidth: 4, borderColor: theme === "dark" ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)" },
+    pkgCardContent: { flex: 1, justifyContent: "space-between", paddingVertical: 14, paddingHorizontal: 16 },
+    pkgCardTopRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+    pkgCity: { fontSize: 10, fontWeight: "800", color: GOLD, letterSpacing: 2, textTransform: "uppercase" },
+    refBadge: { backgroundColor: theme === "dark" ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.04)", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: theme === "dark" ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.06)" },
+    refText: { fontSize: 10, fontWeight: "700", color: GOLD, letterSpacing: 0.5 },
+    pkgCardMiddleArea: { gap: 6, marginVertical: 6 },
+    premiumPkgTitle: { fontSize: 17, fontWeight: "700" },
+    statusRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 },
+    statusDot: { width: 6, height: 6, borderRadius: 3 },
+    statusLabelText: { fontSize: 12, fontWeight: "600" },
+    pkgCardDivider: { height: 1, backgroundColor: theme === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)", marginVertical: 4 },
+    pkgCardBottomRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+    dateContainer: { flexDirection: "row", alignItems: "center", gap: 6 },
+    premiumPkgMeta: { fontSize: 12, fontWeight: "500" },
+    arrowIconWrap: { width: 28, height: 28, borderRadius: 14, backgroundColor: theme === "dark" ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.04)", alignItems: "center", justifyContent: "center" },
+
+    // Premium request another package button
+    premiumNewPackageBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 18, borderStyle: "dashed", borderWidth: 1.5, borderColor: GOLD, borderRadius: 16, marginTop: 8, backgroundColor: theme === "dark" ? "rgba(201, 168, 76, 0.04)" : "rgba(201, 168, 76, 0.02)" },
+    premiumNewPackageText: { fontSize: 15, fontWeight: "700", color: GOLD },
 });
 

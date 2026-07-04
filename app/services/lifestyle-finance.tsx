@@ -39,8 +39,15 @@ function DropDown({ value, options, onSelect, placeholder, C, theme }: any) {
     );
 }
 
-const ADVISORY_TYPES = ["Investment Planning", "Wealth Management", "Tax Planning", "Business Finance", "Estate Planning", "Retirement Planning", "Foreign Exchange", "Other"];
-const GOALS = ["Grow my wealth", "Reduce my tax", "Plan for retirement", "Fund a business", "Protect my assets", "Invest abroad", "Other"];
+const ADVISORY_TYPES = [
+    "📈 Investment Planning", "💰 Wealth Management", "⚖️ Tax Planning", 
+    "💼 Business Finance", "🛡️ Estate Planning", "👵 Retirement Planning", 
+    "💱 Foreign Exchange", "🪙 Other"
+];
+const GOALS = [
+    "🌱 Grow my wealth", "💸 Reduce my tax", "👵 Plan for retirement", 
+    "🏢 Fund a business", "🛡️ Protect my assets", "🌍 Invest abroad", "✨ Other"
+];
 const TIMELINES = ["Immediate (1–3 months)", "Short-term (3–12 months)", "Long-term (1 year+)", "Ongoing relationship"];
 const MEET_MODES = ["In-Person", "Video Call", "Phone"];
 
@@ -143,13 +150,29 @@ export default function FinanceScreen() {
                     </View>
 
                     <View style={s.section}>
-                        <Text style={s.label}>Timeline</Text>
-                        <View style={s.wrapRow}>
-                            {TIMELINES.map(t => (
-                                <TouchableOpacity key={t} style={[s.chip, timeline === t && { backgroundColor: GOLD, borderColor: GOLD }]} onPress={() => setTimeline(t)} activeOpacity={0.8}>
-                                    <Text style={[s.chipText, timeline === t && { color: "#0a0a0a", fontWeight: "700" }]}>{t}</Text>
-                                </TouchableOpacity>
-                            ))}
+                        <Text style={s.label}>Risk Appetite / Investment Strategy</Text>
+                        <View style={s.strategyContainer}>
+                            {[
+                                { key: "Preservation", label: "🛡️ Capital Preservation", desc: "Low risk tolerance. Focus on protecting existing capital & steady assets" },
+                                { key: "Balanced", label: "⚖️ Balanced Growth", desc: "Medium risk tolerance. Core mix of growth equities & steady yields" },
+                                { key: "Venture", label: "🚀 High-Yield Venture", desc: "High risk tolerance. Focus on tech startups, private equity & global markets" }
+                            ].map(strat => {
+                                const isSelected = timeline === strat.key;
+                                return (
+                                    <TouchableOpacity
+                                        key={strat.key}
+                                        style={[
+                                            s.strategyCard,
+                                            isSelected && { borderColor: GOLD, backgroundColor: "rgba(201, 168, 76, 0.08)" }
+                                        ]}
+                                        onPress={() => setTimeline(strat.key)}
+                                        activeOpacity={0.8}
+                                    >
+                                        <Text style={[s.strategyLabel, isSelected && { color: GOLD, fontWeight: "700" }]}>{strat.label}</Text>
+                                        <Text style={s.strategyDesc}>{strat.desc}</Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
                         </View>
                     </View>
 
@@ -234,4 +257,10 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     modalBtnTxPri: { color: "#0a0a0a", fontSize: 15, fontWeight: "700" },
     modalBtnSec: { width: "100%", paddingVertical: 14, alignItems: "center" },
     modalBtnTxSec: { color: C.muted, fontSize: 14, fontWeight: "600" },
+
+    // Strategy profile styles
+    strategyContainer: { gap: 10 },
+    strategyCard: { padding: 14, borderRadius: 14, borderWidth: 1, borderColor: theme === "dark" ? "#2a2a2a" : "#e0dbd2", backgroundColor: C.surface, gap: 4 },
+    strategyLabel: { fontSize: 14, fontWeight: "600", color: C.text },
+    strategyDesc: { fontSize: 11, color: C.muted, lineHeight: 15 },
 });

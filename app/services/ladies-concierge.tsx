@@ -15,14 +15,14 @@ import { Audio } from "expo-av";
 const { width: W } = Dimensions.get("window");
 
 const OCCASIONS = [
-    { id: "date", label: "Date Night", emoji: "◎", img: require("@/assets/images/ladies-date-night.png"), desc: "A night to remember, arranged for you" },
-    { id: "spa", label: "Spa Day", emoji: "✿", img: require("@/assets/images/ladies-spa.png"), desc: "Your body deserves the finest care" },
-    { id: "shopping", label: "Shopping", emoji: "✤", img: require("@/assets/images/ladies-shopping.png"), desc: "Curated fashion, personal styling" },
-    { id: "event", label: "Event Prep", emoji: "❋", img: require("@/assets/images/lagos-beach.jpg"), desc: "Arrive flawless, always" },
-    { id: "wellness", label: "Wellness", emoji: "◈", img: require("@/assets/images/onboarding-lifestyle.png"), desc: "Mind, body and soul, restored" },
-    { id: "home", label: "Home", emoji: "⌂", img: require("@/assets/images/lagos-hotel.jpg"), desc: "Your household, perfectly managed" },
-    { id: "business", label: "Business", emoji: "✦", img: require("@/assets/images/onboarding-trust.png"), desc: "Corporate dining, workspace & executive travel" },
-    { id: "entertainment", label: "Entertainment", emoji: "◎", img: require("@/assets/images/lagos-rooftop.jpg"), desc: "Golf, VIP events & private experiences" },
+    { id: "date",          label: "Date Night",    emoji: "◎", color: "#7A3B5E", desc: "A night to remember, arranged for you" },
+    { id: "spa",           label: "Spa Day",        emoji: "✿", color: "#4A7A6A", desc: "Your body deserves the finest care" },
+    { id: "shopping",      label: "Shopping",       emoji: "✤", color: "#8C6844", desc: "Curated fashion, personal styling" },
+    { id: "event",         label: "Event Prep",     emoji: "❋", color: "#6A3F72", desc: "Arrive flawless, always" },
+    { id: "wellness",      label: "Wellness",       emoji: "◈", color: "#5A6A9E", desc: "Mind, body and soul, restored" },
+    { id: "home",          label: "Home",           emoji: "⌂", color: "#8A5C40", desc: "Your household, perfectly managed" },
+    { id: "business",      label: "Business",       emoji: "✦", color: "#3E5068", desc: "Corporate dining, workspace & executive travel" },
+    { id: "entertainment", label: "Entertainment",  emoji: "◎", color: "#2E6655", desc: "VIP events & private experiences" },
 ];
 
 // ── Reusable form primitives ─────────────────────────────────────────────────
@@ -922,12 +922,10 @@ export default function LadiesConciergeScreen() {
                     {!occExpanded ? (
                         currentOccasion ? (
                             <TouchableOpacity
-                                style={s.occSelectedCard}
+                                style={[s.occSelectedCard, { backgroundColor: currentOccasion.color }]}
                                 onPress={() => setOccExpanded(true)}
                                 activeOpacity={0.85}
                             >
-                                <Image source={currentOccasion.img} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
-                                <View style={s.occSelectedCardOverlay} />
                                 <View style={s.occSelectedCardContent}>
                                     <Text style={s.occSelectedCardEmoji}>{currentOccasion.emoji}</Text>
                                     <View style={{ flex: 1 }}>
@@ -966,19 +964,21 @@ export default function LadiesConciergeScreen() {
                                         return (
                                             <TouchableOpacity
                                                 key={o.id}
-                                                style={[s.occListCard, active && { borderColor: C.primary, borderWidth: 1.5 }]}
+                                                style={[
+                                                    s.occListCard,
+                                                    { backgroundColor: o.color },
+                                                    active && { borderColor: C.primary, borderWidth: 2 },
+                                                ]}
                                                 onPress={() => {
                                                     selectOccasion(o.id);
                                                     setOccExpanded(false);
                                                 }}
                                                 activeOpacity={0.85}
                                             >
-                                                <Image source={o.img} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
-                                                <View style={[s.occListCardOverlay, active && { backgroundColor: "rgba(199,168,76,0.3)" }]} />
                                                 <View style={s.occListCardContent}>
                                                     <Text style={s.occListCardEmoji}>{o.emoji}</Text>
                                                     <View style={{ flex: 1 }}>
-                                                        <Text style={[s.occListCardLabel, active && { color: C.primary }]}>{o.label}</Text>
+                                                        <Text style={s.occListCardLabel}>{o.label}</Text>
                                                         <Text style={s.occListCardDesc} numberOfLines={1}>{o.desc}</Text>
                                                     </View>
                                                     <View style={[s.occRadio, active && { borderColor: C.primary }]}>
@@ -1114,16 +1114,14 @@ const s = StyleSheet.create({
     successBtnText: { fontSize: 15, fontWeight: "700", color: "#0a0a0a" },
     successDone: { fontSize: 14 },
 
-    occListCard: { width: "100%", height: 74, borderRadius: 16, overflow: "hidden", position: "relative", borderWidth: 1.5, borderColor: "transparent" },
-    occListCardOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.52)" },
+    occListCard: { width: "100%", height: 74, borderRadius: 16, borderWidth: 1.5, borderColor: "transparent" },
     occListCardContent: { flex: 1, flexDirection: "row", alignItems: "center", paddingHorizontal: 16, gap: 12 },
     occListCardEmoji: { fontSize: 20, color: "#fff", width: 28, textAlign: "center" },
     occListCardLabel: { fontSize: 14, fontWeight: "700", color: "#fff", fontFamily: "PlayfairDisplay_700Bold" },
     occListCardDesc: { fontSize: 11, color: "rgba(255,255,255,0.6)", marginTop: 2, fontStyle: "italic" },
     occRadio: { width: 18, height: 18, borderRadius: 9, borderWidth: 1.5, borderColor: "rgba(255,255,255,0.4)", alignItems: "center", justifyContent: "center" },
     occRadioInner: { width: 10, height: 10, borderRadius: 5 },
-    occSelectedCard: { width: "100%", height: 74, borderRadius: 16, overflow: "hidden", position: "relative" },
-    occSelectedCardOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.42)" },
+    occSelectedCard: { width: "100%", height: 74, borderRadius: 16 },
     occSelectedCardContent: { flex: 1, flexDirection: "row", alignItems: "center", paddingHorizontal: 16, gap: 12 },
     occSelectedCardEmoji: { fontSize: 20, color: "#fff", width: 28, textAlign: "center" },
     occSelectedCardLabel: { fontSize: 14, fontWeight: "700", color: "#fff", fontFamily: "PlayfairDisplay_700Bold" },

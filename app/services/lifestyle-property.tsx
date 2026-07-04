@@ -6,6 +6,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { ChevronLeft, Check, Minus, Plus, ChevronDown } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import VoiceInput from "@/components/VoiceInput";
+import LocationSearch from "@/components/LocationSearch";
 
 const GOLD = "#c9a84c";
 
@@ -42,7 +43,6 @@ function DropDown({ value, options, onSelect, placeholder, C, theme }: any) {
 const NEED_TYPES = ["Buy Property", "Rent / Lease", "Interior Design", "Property Management", "Short-Let Sourcing", "Land Acquisition"];
 const PROP_TYPES = ["Apartment", "Duplex / Townhouse", "Detached House", "Commercial Space", "Land", "Villa / Estate"];
 const BUDGETS = ["Under ₦15M", "₦15M – ₦50M", "₦50M – ₦200M", "₦200M+", "Open Budget"];
-const LOCATIONS = ["Lagos", "Abuja", "Port Harcourt", "Akwa Ibom", "Kano"];
 const TIMELINES = ["ASAP", "1 – 3 months", "3 – 6 months", "6 months+", "Just browsing"];
 
 export default function PropertyScreen() {
@@ -159,17 +159,11 @@ export default function PropertyScreen() {
 
                     <View style={s.section}>
                         <Text style={s.label}>Location</Text>
-                        <View style={s.wrapRow}>
-                            {LOCATIONS.map(loc => {
-                                const isAvailable = loc === "Lagos" || loc === "Abuja";
-                                const displayLabel = isAvailable ? loc : `${loc} (Coming Soon)`;
-                                return (
-                                    <TouchableOpacity key={loc} style={[s.chip, location === loc && { backgroundColor: GOLD, borderColor: GOLD }]} onPress={() => setLocation(loc)} activeOpacity={0.8}>
-                                        <Text style={[s.chipText, location === loc && { color: "#0a0a0a", fontWeight: "700" }]}>{displayLabel}</Text>
-                                    </TouchableOpacity>
-                                );
-                            })}
-                        </View>
+                        <LocationSearch
+                            value={location}
+                            onChangeText={setLocation}
+                            placeholder="Search and select location..."
+                        />
                     </View>
 
                     <View style={s.section}>

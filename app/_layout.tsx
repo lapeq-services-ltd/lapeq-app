@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import Reanimated, { useSharedValue, withTiming, withDelay, useAnimatedStyle, runOnJS, Easing as ReanimatedEasing } from "react-native-reanimated";
 import { Canvas, Path as SkiaPath, Skia, Group } from "@shopify/react-native-skia";
 import { LOGO_PATHS } from "@/assets/logo/logoPaths";
@@ -10,7 +10,7 @@ import { useRouter, useSegments } from "expo-router";
 import { useState, useRef as useReactRef } from "react";
 import * as Linking from "expo-linking";
 import * as Notifications from "expo-notifications";
-import { Animated, TouchableOpacity, Text, Image, Easing, Dimensions } from "react-native";
+import { Animated, TouchableOpacity, Text } from "react-native";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 import { Session } from "@supabase/supabase-js";
 import { usePushToken } from "@/lib/usePushToken";
@@ -37,20 +37,14 @@ SplashScreen.preventAutoHideAsync();
 function useProtectedRoute(session: Session | null, loading: boolean) {
     const segments = useSegments();
     const router = useRouter();
-    const hiddenRef = useRef(false);
 
     useEffect(() => {
         if (loading) return;
         const inAuthGroup = segments[0] === "(auth)";
         if (!session && !inAuthGroup) {
-            router.replace("/(auth)/splash");
+            router.replace("/(auth)/onboarding");
         } else if (session && inAuthGroup) {
             router.replace("/(tabs)");
-        }
-
-        if (!hiddenRef.current) {
-            hiddenRef.current = true;
-            setTimeout(() => SplashScreen.hideAsync().catch(() => {}), 100);
         }
     }, [session, loading, segments]);
 }
@@ -87,10 +81,16 @@ function NotificationBanner() {
                 const data = response.notification.request.content.data as Record<string, any> | undefined;
                 const reqId = data?.target_id || data?.targetId || data?.request_id || data?.requestId;
                 const notifType = data?.type || data?.notification_type;
+                const notifId = data?.notif_id || data?.notifId;
 
-                if (notifType === "request" || notifType === "chat" || notifType === "receipt" || reqId) {
+                if (notifType === "itinerary") {
+                    if (notifId) router.push({ pathname: "/itinerary-view", params: { notifId } } as any);
+                    else router.push("/(main)/notifications");
+                } else if (notifType === "request" || notifType === "receipt") {
                     if (reqId) router.push(`/requests/${reqId}`);
                     else router.push("/requests");
+                } else if (notifType === "chat") {
+                    router.push({ pathname: "/(main)/chat", params: { mode: "concierge" } } as any);
                 } else if (data?.url) {
                     router.push(data.url);
                 } else {
@@ -128,10 +128,16 @@ function NotificationBanner() {
                         const data = notification.request.content.data as Record<string, any> | undefined;
                         const reqId = data?.target_id || data?.targetId || data?.request_id || data?.requestId;
                         const notifType = data?.type || data?.notification_type;
+                        const notifId = data?.notif_id || data?.notifId;
 
-                        if (notifType === "request" || notifType === "chat" || notifType === "receipt" || reqId) {
+                        if (notifType === "itinerary") {
+                            if (notifId) router.push({ pathname: "/itinerary-view", params: { notifId } } as any);
+                            else router.push("/(main)/notifications");
+                        } else if (notifType === "request" || notifType === "receipt") {
                             if (reqId) router.push(`/requests/${reqId}`);
                             else router.push("/requests");
+                        } else if (notifType === "chat") {
+                            router.push({ pathname: "/(main)/chat", params: { mode: "concierge" } } as any);
                         } else if (data?.url) {
                             router.push(data.url);
                         } else {
@@ -160,9 +166,6 @@ function NotificationBanner() {
     );
 }
 
-const { width: SW, height: SH } = Dimensions.get("window");
-const CIRCLE_SIZE = 60;
-const MAX_SCALE = Math.ceil(Math.sqrt(SW * SW + SH * SH) / (CIRCLE_SIZE / 2)) + 2;
 
 const OUTLINE_VERTICAL = "M 158 141 L 228 124 C 234 123 238 126 238 132 L 236 262 C 236 268 232 271 226 272 L 150 293 C 144 294 140 291 140 285 L 141 151 C 141 145 145 142 158 141 Z";
 const OUTLINE_HORIZONTAL = "M 175 323 L 319 274 C 325 272 331 273 334 278 L 366 326 C 370 332 371 333 361 335 L 209 370 C 203 371 198 372 194 365 L 170 333 C 167 329 163 327 175 323 Z";
@@ -337,8 +340,8 @@ function RootContent() {
 
     if (loading) {
         return (
-            <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: C.background }}>
-                <ActivityIndicator color={C.primary} />
+            <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#000000" }}>
+                <ActivityIndicator color="#c9a84c" />
             </View>
         );
     }
@@ -349,7 +352,7 @@ function RootContent() {
             <NotificationBanner />
             <ShakeReport />
             <TermsSheet />
-            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.background }, animation: "fade" }}>
+            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.background }, animation: "slide_from_right" }}>
                 <Stack.Screen name="(auth)" />
                 <Stack.Screen name="(tabs)" />
                 <Stack.Screen name="(main)" />
@@ -387,6 +390,12 @@ export default function RootLayout() {
         Jost_700Bold,
         Jost_800ExtraBold,
     });
+
+    useEffect(() => {
+        if (fontsLoaded) {
+            SplashScreen.hideAsync().catch(() => {});
+        }
+    }, [fontsLoaded]);
 
     if (!fontsLoaded) return null;
 

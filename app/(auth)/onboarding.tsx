@@ -32,14 +32,14 @@ const slides = [
         id: "2",
         tag: "Premium Access",
         title: "Concierge\nAt Your\nCommand",
-        body: "Request any service: driving, logistics, travel and more, through one elegant interface. Your team handles everything.",
+        body: "Transport, lifestyle, dining, events, diaspora support and more. All through one elegant interface. Your concierge team handles everything.",
         image: require("@/assets/images/carsabuja.jpg"),
     },
     {
         id: "3",
         tag: "Always Available",
         title: "Submit.\nTrack.\nRelax.",
-        body: "Every request is documented, every update pushed in real time. Your concierge team is always a message away.",
+        body: "Every request is documented, every update pushed in real time. Your concierge team and lifestyle manager are always a message away.",
         image: require("@/assets/images/ikoyi-bridge.jpg"),
     },
     {

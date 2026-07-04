@@ -127,9 +127,10 @@ export default function HomeScreen() {
             ]);
 
             const needsTrial = (!profile?.tier || profile.tier === "free" || profile.tier === "Standard");
-            setMonthlyRequestsCount(count ?? 0);
+            const requestCount = count ?? 0;
+            setMonthlyRequestsCount(Math.min(requestCount, 5));
 
-            if (needsTrial) {
+            if (needsTrial && requestCount >= 3) {
                 trialShownSession = true;
                 setShowTrialPopup(true);
             } else {
@@ -661,7 +662,7 @@ export default function HomeScreen() {
                 </View>
 
                 <View style={s.sectionRow}>
-                    <Text style={s.sectionTitle}>Monthly Picks</Text>
+                    <Text style={s.sectionTitle}>Lapeq Picks</Text>
                     <TouchableOpacity onPress={() => router.push("/monthly-picks")}>
                         <Text style={s.viewAll}>View All →</Text>
                     </TouchableOpacity>
@@ -752,7 +753,10 @@ export default function HomeScreen() {
                         <Text style={s.trialEyebrow}>COMMUNITY PLAN</Text>
                         <Text style={s.trialTitle}>{monthlyRequestsCount} / 5 Requests Used</Text>
                         <Text style={s.trialBody}>
-                            You have used {monthlyRequestsCount} of your 5 monthly concierge requests on the Community plan. Upgrade to Silver, Gold or Black for unlimited access, priority service, and exclusive member benefits.
+                            {monthlyRequestsCount >= 5
+                                ? "You've reached your monthly limit on the Community plan. Upgrade to continue making requests without restrictions."
+                                : `You've used ${monthlyRequestsCount} of your 5 monthly concierge requests. Upgrade to Silver, Gold or Black for unlimited access, priority service, and exclusive member benefits.`
+                            }
                         </Text>
                         <TouchableOpacity
                             style={s.trialUpgradeBtn}

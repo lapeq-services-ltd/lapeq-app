@@ -43,13 +43,22 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const GOLD = "#c9a84c";
 
 const EVENT_TYPES = [
-    { name: "Wedding", desc: "Celebrate union in bespoke style", img: require("@/assets/images/beautiful-scenery.webp") },
-    { name: "Corporate Summit", desc: "For keynotes, networking & brands", img: require("@/assets/images/lagos-hotel.jpg") },
-    { name: "Gala / Birthday", desc: "Milestone banquets & private galas", img: require("@/assets/images/lagos-rooftop.jpg") },
-    { name: "Concert / Show", desc: "Live audience & stage setup", img: require("@/assets/events/awe-lagos.jpeg") },
-    { name: "Exhibition / Summit", desc: "Art, summits, trade & fashion fairs", img: require("@/assets/events/coresphere.jpeg") },
-    { name: "Other Occasion", desc: "Custom designed event layout", img: require("@/assets/images/exterior-luxury.jpg") },
+    { name: "Wedding", desc: "Celebrate union in bespoke style" },
+    { name: "Corporate Summit", desc: "For keynotes, networking & brands" },
+    { name: "Gala / Birthday", desc: "Milestone banquets & private galas" },
+    { name: "Concert / Show", desc: "Live audience & stage setup" },
+    { name: "Exhibition / Summit", desc: "Art, summits, trade & fashion fairs" },
+    { name: "Other Occasion", desc: "Custom designed event layout" },
 ];
+
+const EVENT_THEMES: Record<string, { bg: string; patternType: "union" | "grid" | "star" | "waves" | "frames" | "wavy" }> = {
+    "Wedding": { bg: "#5c3d46", patternType: "union" },
+    "Corporate Summit": { bg: "#0b1a30", patternType: "grid" },
+    "Gala / Birthday": { bg: "#4a0e17", patternType: "star" },
+    "Concert / Show": { bg: "#200f35", patternType: "waves" },
+    "Exhibition / Summit": { bg: "#07251b", patternType: "frames" },
+    "Other Occasion": { bg: "#5c4d37", patternType: "wavy" }
+};
 
 const FEATURE_OPTIONS = [
     { id: "rsvp", label: "RSVP & Guest Tracker", desc: "Let guests confirm and track attendance", icon: Users },
@@ -266,32 +275,70 @@ export default function LapeqCoBrandScreen() {
                                 <View style={s.gridRow}>
                                     {EVENT_TYPES.map(t => {
                                         const isSelected = eventType === t.name;
+                                        const themeConfig = EVENT_THEMES[t.name] || { bg: "#333", patternType: "wavy" };
                                         return (
                                             <TouchableOpacity
                                                 key={t.name}
-                                                style={[s.eventCard, isSelected && s.eventCardActive]}
+                                                style={[s.eventCard, { backgroundColor: themeConfig.bg, overflow: "hidden" }, isSelected && s.eventCardActive]}
                                                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setEventType(t.name); }}
                                                 activeOpacity={0.9}
                                             >
-                                                <ImageBackground
-                                                    source={t.img}
-                                                    style={StyleSheet.absoluteFillObject}
-                                                    imageStyle={{ borderRadius: 16 }}
-                                                    resizeMode="cover"
+                                                {/* Pattern Overlays */}
+                                                {themeConfig.patternType === "union" && (
+                                                    <>
+                                                        <View style={{ position: "absolute", top: -10, right: -10, width: 120, height: 120, borderRadius: 60, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" }} />
+                                                        <View style={{ position: "absolute", top: 20, right: -40, width: 120, height: 120, borderRadius: 60, borderWidth: 1, borderColor: "rgba(255,255,255,0.05)" }} />
+                                                    </>
+                                                )}
+                                                {themeConfig.patternType === "grid" && (
+                                                    <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.05 }}>
+                                                        <View style={{ width: "100%", height: 1, backgroundColor: "#fff", top: "25%", position: "absolute" }} />
+                                                        <View style={{ width: "100%", height: 1, backgroundColor: "#fff", top: "50%", position: "absolute" }} />
+                                                        <View style={{ width: "100%", height: 1, backgroundColor: "#fff", top: "75%", position: "absolute" }} />
+                                                        <View style={{ height: "100%", width: 1, backgroundColor: "#fff", left: "25%", position: "absolute" }} />
+                                                        <View style={{ height: "100%", width: 1, backgroundColor: "#fff", left: "50%", position: "absolute" }} />
+                                                        <View style={{ height: "100%", width: 1, backgroundColor: "#fff", left: "75%", position: "absolute" }} />
+                                                    </View>
+                                                )}
+                                                {themeConfig.patternType === "star" && (
+                                                    <>
+                                                        <View style={{ position: "absolute", top: "20%", left: "15%", width: 12, height: 12, transform: [{ rotate: "45deg" }], borderWidth: 1, borderColor: "rgba(255,255,255,0.1)" }} />
+                                                        <View style={{ position: "absolute", top: "60%", right: "20%", width: 16, height: 16, transform: [{ rotate: "45deg" }], borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" }} />
+                                                        <View style={{ position: "absolute", top: "15%", right: "30%", width: 6, height: 6, transform: [{ rotate: "45deg" }], backgroundColor: "rgba(255,255,255,0.15)" }} />
+                                                    </>
+                                                )}
+                                                {themeConfig.patternType === "waves" && (
+                                                    <>
+                                                        <View style={{ position: "absolute", bottom: -50, right: -50, width: 200, height: 200, borderRadius: 100, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" }} />
+                                                        <View style={{ position: "absolute", bottom: -30, right: -30, width: 160, height: 160, borderRadius: 80, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)" }} />
+                                                        <View style={{ position: "absolute", bottom: -10, right: -10, width: 120, height: 120, borderRadius: 60, borderWidth: 1, borderColor: "rgba(255,255,255,0.04)" }} />
+                                                    </>
+                                                )}
+                                                {themeConfig.patternType === "frames" && (
+                                                    <>
+                                                        <View style={{ position: "absolute", top: 12, left: 12, right: 12, bottom: 12, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)" }} />
+                                                        <View style={{ position: "absolute", top: 20, left: 20, right: 20, bottom: 20, borderWidth: 0.5, borderColor: "rgba(255,255,255,0.04)" }} />
+                                                    </>
+                                                )}
+                                                {themeConfig.patternType === "wavy" && (
+                                                    <>
+                                                        <View style={{ position: "absolute", top: -20, left: "20%", width: 80, height: 200, borderRadius: 40, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)", transform: [{ skewX: "-15deg" }] }} />
+                                                        <View style={{ position: "absolute", top: -10, left: "30%", width: 80, height: 200, borderRadius: 40, borderWidth: 1, borderColor: "rgba(255,255,255,0.03)", transform: [{ skewX: "-15deg" }] }} />
+                                                    </>
+                                                )}
+
+                                                <LinearGradient
+                                                    colors={["rgba(0,0,0,0.15)", "rgba(0,0,0,0.75)"]}
+                                                    style={s.eventCardGradient}
                                                 >
-                                                    <LinearGradient
-                                                        colors={["rgba(0,0,0,0.3)", "rgba(0,0,0,0.85)"]}
-                                                        style={s.eventCardGradient}
-                                                    >
-                                                        <View style={[s.checkboxCircle, isSelected && s.checkboxCircleActive]}>
-                                                            {isSelected && <Check size={10} color="#000" strokeWidth={4} />}
-                                                        </View>
-                                                        <View style={{ marginTop: "auto" }}>
-                                                            <Text style={s.eventName}>{t.name}</Text>
-                                                            <Text style={s.eventDesc}>{t.desc}</Text>
-                                                        </View>
-                                                    </LinearGradient>
-                                                </ImageBackground>
+                                                    <View style={[s.checkboxCircle, isSelected && s.checkboxCircleActive]}>
+                                                        {isSelected && <Check size={10} color="#000" strokeWidth={4} />}
+                                                    </View>
+                                                    <View style={{ marginTop: "auto" }}>
+                                                        <Text style={s.eventName}>{t.name}</Text>
+                                                        <Text style={s.eventDesc}>{t.desc}</Text>
+                                                    </View>
+                                                </LinearGradient>
                                             </TouchableOpacity>
                                         );
                                     })}

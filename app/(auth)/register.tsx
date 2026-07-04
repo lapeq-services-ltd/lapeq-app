@@ -105,13 +105,6 @@ export default function RegisterScreen() {
     const [passwordFocused, setPasswordFocused] = useState(false);
     const [confirmFocused, setConfirmFocused] = useState(false);
 
-    const [otpSent, setOtpSent] = useState(false);
-    const [otpSending, setOtpSending] = useState(false);
-    const [otpCountdown, setOtpCountdown] = useState(0);
-    const [otpCode, setOtpCode] = useState(["", "", "", "", "", ""]);
-    const [otpVerified, setOtpVerified] = useState(false);
-    const otpRefs = useRef<Array<TextInput | null>>(Array(6).fill(null));
-
     const [showDialModal, setShowDialModal] = useState(false);
     const [showCountryModal, setShowCountryModal] = useState(false);
     const [showRegionModal, setShowRegionModal] = useState(false);
@@ -150,54 +143,9 @@ export default function RegisterScreen() {
         }
     }, []);
 
-    useEffect(() => {
-        if (otpCountdown <= 0) return;
-        const timer = setInterval(() => {
-            setOtpCountdown(c => {
-                if (c <= 1) { clearInterval(timer); return 0; }
-                return c - 1;
-            });
-        }, 1000);
-        return () => clearInterval(timer);
-    }, [otpCountdown]);
-
     const strength = getStrength(password);
     const passwordsMismatch = confirmPassword.length > 0 && password !== confirmPassword;
     const selectedCountry = COUNTRIES.find(c => c.name === country);
-
-    const sendOTP = async () => {
-        if (!phone.trim() || otpSending || otpCountdown > 0) return;
-        setOtpSending(true);
-        const fullPhone = `${dialCode.code}${phone.trim()}`;
-        const { error } = await supabase.auth.signInWithOtp({ phone: fullPhone });
-        setOtpSending(false);
-        if (!error) {
-            setOtpSent(true);
-            setOtpCountdown(60);
-        }
-    };
-
-    const handleOtpChange = async (val: string, idx: number) => {
-        if (!/^\d*$/.test(val)) return;
-        const next = [...otpCode];
-        next[idx] = val.slice(-1);
-        setOtpCode(next);
-        if (val && idx < 5) otpRefs.current[idx + 1]?.focus();
-        if (next.every(d => d)) {
-            const fullPhone = `${dialCode.code}${phone.trim()}`;
-            const { error } = await supabase.auth.verifyOtp({ phone: fullPhone, token: next.join(""), type: "sms" });
-            if (!error) setOtpVerified(true);
-        }
-    };
-
-    const handleOtpKeyPress = (e: any, idx: number) => {
-        if (e.nativeEvent.key === "Backspace" && !otpCode[idx] && idx > 0) {
-            const next = [...otpCode];
-            next[idx - 1] = "";
-            setOtpCode(next);
-            otpRefs.current[idx - 1]?.focus();
-        }
-    };
 
     const triggerModal = (isError: boolean, msg?: string) => {
         if (isError && msg) setErrorMsg(msg);
@@ -269,7 +217,8 @@ export default function RegisterScreen() {
         if (data.user) {
             const savedAnswers = await AsyncStorage.getItem("onboarding_answers");
             const onboardingAnswers = savedAnswers ? JSON.parse(savedAnswers) : null;
-            await supabase.from("profiles").upsert({
+
+            const { error: profileError } = await supabase.from("profiles").upsert({
                 id: data.user.id,
                 full_name: fullName,
                 preferred_name: firstName.trim(),
@@ -279,6 +228,14 @@ export default function RegisterScreen() {
                 phone: phone.trim() ? `${dialCode.code}${phone.trim()}` : null,
                 ...(onboardingAnswers && { onboarding_answers: onboardingAnswers }),
             }, { onConflict: "id" });
+
+            if (profileError) {
+                setLoading(false);
+                triggerModal(true, "Your account was created but we couldn't save your profile details. Please sign in and update your profile.");
+                return;
+            }
+
+            // Welcome notification — non-critical, failure doesn't block the user
             await supabase.from("notifications").insert({
                 user_id: data.user.id,
                 title: "Welcome to Lapeq",
@@ -426,47 +383,12 @@ export default function RegisterScreen() {
                                                 onChangeText={setPhone}
                                                 onFocus={() => setPhoneFocused(true)}
                                                 onBlur={() => setPhoneFocused(false)}
+                                                returnKeyType="next"
+                                                onSubmitEditing={() => passwordRef.current?.focus()}
                                             />
-                                            {otpVerified ? (
-                                                <Text style={s.verifiedCheck}>✓</Text>
-                                            ) : phone.trim().length >= 7 ? (
-                                                <TouchableOpacity
-                                                    style={[s.sendBtn, (otpSending || otpCountdown > 0) && s.sendBtnDisabled]}
-                                                    onPress={sendOTP}
-                                                    disabled={otpSending || otpCountdown > 0}
-                                                >
-                                                    <Text style={s.sendBtnText}>
-                                                        {otpSending ? "..." : otpCountdown > 0 ? `${otpCountdown}s` : otpSent ? "Resend" : "Send"}
-                                                    </Text>
-                                                </TouchableOpacity>
-                                            ) : null}
                                         </View>
                                     </View>
                                 </View>
-
-                                {/* OTP boxes */}
-                                {!otpVerified && (
-                                    <View style={s.fieldWrap}>
-                                        <Text style={s.inputLabel}>VERIFICATION CODE</Text>
-                                        <View style={s.otpRow}>
-                                            {otpCode.map((digit, i) => (
-                                                <View key={i} style={[s.otpBox, digit ? s.otpBoxFilled : null]}>
-                                                    <TextInput
-                                                        ref={r => { otpRefs.current[i] = r; }}
-                                                        style={s.otpInput}
-                                                        value={digit}
-                                                        onChangeText={v => handleOtpChange(v, i)}
-                                                        onKeyPress={e => handleOtpKeyPress(e, i)}
-                                                        keyboardType="number-pad"
-                                                        maxLength={1}
-                                                        selectTextOnFocus
-                                                        textAlign="center"
-                                                    />
-                                                </View>
-                                            ))}
-                                        </View>
-                                    </View>
-                                )}
 
                                 {/* Country + State - side by side */}
                                 <View style={s.twoCol}>
@@ -753,27 +675,6 @@ const s = StyleSheet.create({
     dialFlag: { fontSize: isAndroid ? 16 : 18 },
     dialCodeText: { fontSize: isAndroid ? 12 : 14, fontFamily: "Jost_500Medium", color: "#fff" },
     dialDivider: { width: 1, height: 18, backgroundColor: BORDER },
-    sendBtn: {
-        backgroundColor: GOLD, borderRadius: 8,
-        paddingHorizontal: 10, paddingVertical: isAndroid ? 4 : 5, marginLeft: 8,
-    },
-    sendBtnDisabled: { opacity: 0.45 },
-    sendBtnText: { color: DARK, fontSize: 11, fontFamily: "Jost_700Bold", letterSpacing: 0.4 },
-    verifiedCheck: { color: "#50c878", fontSize: 18, fontFamily: "Jost_600SemiBold", marginLeft: 8 },
-
-    // OTP
-    otpRow: { flexDirection: "row", gap: isAndroid ? 7 : 9 },
-    otpBox: {
-        flex: 1, height: isAndroid ? 44 : 50,
-        borderWidth: 1, borderColor: BORDER, borderRadius: 12,
-        backgroundColor: CARD, justifyContent: "center", alignItems: "center",
-    },
-    otpBoxFilled: { borderColor: BORDER_ACTIVE, backgroundColor: "rgba(201,168,76,0.06)" },
-    otpInput: {
-        fontSize: isAndroid ? 17 : 19, fontFamily: "Jost_700Bold",
-        color: GOLD, width: "100%", textAlign: "center",
-    },
-
     // Gender
     genderRow: { flexDirection: "row", flexWrap: "wrap", gap: isAndroid ? 7 : 9 },
     genderPill: {

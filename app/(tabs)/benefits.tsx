@@ -18,7 +18,7 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 const ANALYTICS = [
     { label: "Privilege index", val: 98, color: GOLD },
-    { label: "Access rate", val: 100, color: "#ffffff" },
+    { label: "Access rate", val: 100, color: GOLD },
     { label: "Priority score", val: 95, color: GOLD },
 ];
 
@@ -37,6 +37,7 @@ const REDESIGNED_PERKS = [
         icon: Plane,
         badge: "Premium Travel",
         img: require("@/assets/images/mercedes-sedan.png"),
+        route: "/services/driving" as const,
     },
     {
         title: "VIP Dining",
@@ -44,6 +45,7 @@ const REDESIGNED_PERKS = [
         icon: Utensils,
         badge: "Fine Gastronomy",
         img: require("@/assets/images/lagos-restaurant.jpg"),
+        route: "/explore" as const,
     },
     {
         title: "Curated Hotels",
@@ -51,6 +53,7 @@ const REDESIGNED_PERKS = [
         icon: Hotel,
         badge: "Luxury Stays",
         img: require("@/assets/images/lagos-hotel.jpg"),
+        route: "/services/lifestyle-travel" as const,
     },
     {
         title: "Bespoke Care",
@@ -58,13 +61,14 @@ const REDESIGNED_PERKS = [
         icon: Shield,
         badge: "Elite Protection",
         img: require("@/assets/images/exterior-luxury.jpg"),
+        route: "/services/lifestyle-security" as const,
     },
 ];
 
 const PARTNER_BANNERS = [
-    { title: "VistaJet Partnership", sub: "Save 15% on empty leg flight bookings worldwide.", btn: "View flights" },
-    { title: "Waldorf Astoria Upgrades", sub: "Complimentary breakfast & double-tier room upgrades.", btn: "Explore hotels" },
-    { title: "Lagos VIP Beach Club", sub: "Priority cabanas, champagne welcome & zero entrance fees.", btn: "Claim entry" },
+    { title: "VistaJet Partnership", sub: "Save 15% on empty leg flight bookings worldwide.", btn: "View flights", route: "/services/lifestyle-travel" as const },
+    { title: "Waldorf Astoria Upgrades", sub: "Complimentary breakfast & double-tier room upgrades.", btn: "Explore hotels", route: "/services/lifestyle-travel" as const },
+    { title: "Lagos VIP Beach Club", sub: "Priority cabanas, champagne welcome & zero entrance fees.", btn: "Claim entry", route: "/explore" as const },
 ];
 
 const WHAT_WE_DO = [
@@ -81,10 +85,10 @@ const WHAT_WE_DO = [
 ];
 
 const ProgressRing = ({ percentage, size = 64, strokeWidth = 5, color = GOLD }: { percentage: number; size?: number; strokeWidth?: number; color?: string }) => {
+    const { C } = useTheme();
     const radius = (size - strokeWidth) / 2;
     const circumference = radius * 2 * Math.PI;
 
-    // Animated value for circle fill
     const animVal = useRef(new Animated.Value(0)).current;
     const [displayVal, setDisplayVal] = useState(0);
 
@@ -127,7 +131,7 @@ const ProgressRing = ({ percentage, size = 64, strokeWidth = 5, color = GOLD }: 
         <View style={{ width: size, height: size, justifyContent: "center", alignItems: "center" }}>
             <Svg width={size} height={size}>
                 <Circle
-                    stroke="rgba(255,255,255,0.06)"
+                    stroke={C.border}
                     fill="transparent"
                     cx={size / 2}
                     cy={size / 2}
@@ -148,7 +152,7 @@ const ProgressRing = ({ percentage, size = 64, strokeWidth = 5, color = GOLD }: 
                 />
             </Svg>
             <View style={{ position: "absolute" }}>
-                <Text style={{ color: "#fff", fontSize: 11, fontFamily: "Jost_700Bold" }}>{displayVal}%</Text>
+                <Text style={{ color: C.text, fontSize: 11, fontFamily: "Jost_700Bold" }}>{displayVal}%</Text>
             </View>
         </View>
     );
@@ -273,7 +277,7 @@ export default function BenefitsScreen() {
                                 key={i} 
                                 style={s.perkCard} 
                                 activeOpacity={0.88}
-                                onPress={() => router.push("/services/lifestyle" as any)}
+                                onPress={() => router.push(perk.route)}
                             >
                                 <Image source={perk.img} style={s.perkCardBg} resizeMode="cover" />
                                 <LinearGradient
@@ -319,7 +323,11 @@ export default function BenefitsScreen() {
                             </View>
                             <Text style={s.bannerTitle}>{PARTNER_BANNERS[partnerIndex].title}</Text>
                             <Text style={s.bannerSub}>{PARTNER_BANNERS[partnerIndex].sub}</Text>
-                            <TouchableOpacity style={s.bannerBtn} activeOpacity={0.8}>
+                            <TouchableOpacity 
+                                style={s.bannerBtn} 
+                                activeOpacity={0.8}
+                                onPress={() => router.push(PARTNER_BANNERS[partnerIndex].route)}
+                            >
                                 <Text style={s.bannerBtnText}>{PARTNER_BANNERS[partnerIndex].btn}</Text>
                             </TouchableOpacity>
                         </View>
@@ -335,7 +343,7 @@ export default function BenefitsScreen() {
                                 key={i} 
                                 style={s.perkCard} 
                                 activeOpacity={0.88}
-                                onPress={() => router.push("/services/lifestyle" as any)}
+                                onPress={() => router.push(perk.route)}
                             >
                                 <Image source={perk.img} style={s.perkCardBg} resizeMode="cover" />
                                 <LinearGradient
@@ -419,20 +427,22 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
 
     // Metrics panel (Mockup 4 style)
     metricsCard: {
-        backgroundColor: "rgba(201,168,76,0.03)", borderRadius: 24, padding: 20,
-        borderWidth: 1.2, borderColor: "rgba(201,168,76,0.12)",
+        backgroundColor: theme === "dark" ? "rgba(201,168,76,0.03)" : C.surface,
+        borderRadius: 24, padding: 20,
+        borderWidth: 1.2,
+        borderColor: theme === "dark" ? "rgba(201,168,76,0.12)" : C.border,
     },
     metricsHeader: { fontSize: 18, fontFamily: "PlayfairDisplay_700Bold", color: GOLD },
     metricsSub: { fontSize: 12, fontFamily: "Jost_400Regular", color: C.muted, marginTop: 2 },
     metricsRow: { flexDirection: "row", justifyContent: "space-around", alignItems: "center", marginTop: 8 },
     metricItem: { alignItems: "center", gap: 10 },
-    metricLabel: { fontSize: 10, fontFamily: "Jost_700Bold", color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: 1 },
+    metricLabel: { fontSize: 10, fontFamily: "Jost_700Bold", color: C.muted, textTransform: "uppercase", letterSpacing: 1 },
 
     // Section standards
     sectionPad: { paddingHorizontal: 20, marginBottom: 28 },
     gridHeader: { marginBottom: 16 },
     sectionEyebrow: { fontSize: 9, fontFamily: "Jost_700Bold", color: GOLD, letterSpacing: 2.5, marginBottom: 6 },
-    sectionTitle: { fontSize: 26, fontFamily: "PlayfairDisplay_700Bold", color: "#fff", letterSpacing: -0.5 },
+    sectionTitle: { fontSize: 26, fontFamily: "PlayfairDisplay_700Bold", color: C.text, letterSpacing: -0.5 },
 
     // 2x2 perks grid (Mockup 1 style)
     perksGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },

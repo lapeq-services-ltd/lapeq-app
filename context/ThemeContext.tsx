@@ -27,7 +27,7 @@ function getSystemTheme(): ThemeType {
 }
 
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
-    const [themeMode, setThemeModeState] = useState<ThemeMode>("auto");
+    const [themeMode, setThemeModeState] = useState<ThemeMode>("light");
     const [systemTheme, setSystemTheme] = useState<ThemeType>(getSystemTheme());
 
     // Listen for OS appearance changes
@@ -40,7 +40,7 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
 
     // Load saved preference
     useEffect(() => {
-        AsyncStorage.getItem("@theme").then((saved: string | null) => {
+        AsyncStorage.getItem("@theme_v2").then((saved: string | null) => {
             if (saved === "light" || saved === "dark" || saved === "auto") {
                 setThemeModeState(saved);
             }
@@ -49,7 +49,7 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
 
     const setThemeMode = async (mode: ThemeMode) => {
         setThemeModeState(mode);
-        await AsyncStorage.setItem("@theme", mode);
+        await AsyncStorage.setItem("@theme_v2", mode);
     };
 
     const theme: ThemeType = themeMode === "auto" ? systemTheme : themeMode;

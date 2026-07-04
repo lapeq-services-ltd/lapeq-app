@@ -211,13 +211,19 @@ export default function ProfileScreen() {
                         {loadingStats
                             ? <Skeleton width={40} height={28} borderRadius={6} />
                             : <Text style={s.statVal}>{requestCount ?? 0}</Text>}
-                        <Text style={s.statLabel}>Requests</Text>
+                        <Text style={s.statLabel}>Experiences</Text>
                     </View>
                     <View style={s.statBox}>
                         {loadingStats
                             ? <Skeleton width={40} height={28} borderRadius={6} />
                             : <Text style={s.statVal}>{savedCount ?? 0}</Text>}
-                        <Text style={s.statLabel}>Saved</Text>
+                        <Text style={s.statLabel}>Events</Text>
+                    </View>
+                    <View style={s.statBox}>
+                        {loadingStats
+                            ? <Skeleton width={40} height={28} borderRadius={6} />
+                            : <Text style={s.statVal}>0</Text>}
+                        <Text style={s.statLabel}>Cities</Text>
                     </View>
                 </View>
 

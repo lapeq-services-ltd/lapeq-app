@@ -115,7 +115,6 @@ export default function RequestDetailsScreen() {
     const [userEmail, setUserEmail] = useState("");
     const [payingOption, setPayingOption] = useState<{ title: string; price: number } | null>(null);
     const [verifying, setVerifying] = useState(false);
-    const [itineraryNotifId, setItineraryNotifId] = useState<string | null>(null);
 
     useEffect(() => {
         const fetch = async () => {
@@ -138,7 +137,8 @@ export default function RequestDetailsScreen() {
             if (reqData) setRequest(reqData as Request);
             if (recData) setReceipt(recData as ReceiptType);
             if (itineraryNotifs && itineraryNotifs.length > 0) {
-                setItineraryNotifId(itineraryNotifs[0].id);
+                router.replace({ pathname: "/itinerary-view", params: { notifId: itineraryNotifs[0].id } } as any);
+                return;
             }
             if (profileData) {
                 setUserName(profileData.full_name ?? "Member");
@@ -287,57 +287,6 @@ export default function RequestDetailsScreen() {
                                 </Text>
                             </LinearGradient>
                         </View>
-                    )}
-
-                    {/* Itinerary Ready Banner */}
-                    {itineraryNotifId && (
-                        <TouchableOpacity
-                            onPress={() => router.push(`/itinerary-view?notifId=${itineraryNotifId}`)}
-                            activeOpacity={0.85}
-                            style={{
-                                marginHorizontal: 20,
-                                marginBottom: 16,
-                                borderRadius: 16,
-                                borderWidth: 1,
-                                borderColor: GOLD,
-                                overflow: "hidden",
-                                backgroundColor: isDark ? "#1a1400" : "#fffbf0",
-                                shadowColor: GOLD,
-                                shadowOffset: { width: 0, height: 2 },
-                                shadowOpacity: 0.15,
-                                shadowRadius: 6,
-                                elevation: 3,
-                            }}
-                        >
-                            <LinearGradient
-                                colors={isDark ? [`${GOLD}25`, "transparent"] : [`${GOLD}10`, "transparent"]}
-                                style={{ padding: 18, flexDirection: "row", alignItems: "center", gap: 14 }}
-                            >
-                                <View style={{
-                                    width: 38,
-                                    height: 38,
-                                    borderRadius: 19,
-                                    backgroundColor: `${GOLD}20`,
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    borderWidth: 1,
-                                    borderColor: `${GOLD}40`,
-                                }}>
-                                    <Sparkles size={16} color={GOLD} />
-                                </View>
-                                <View style={{ flex: 1 }}>
-                                    <Text style={{ fontSize: 15, fontWeight: "700", color: C.text, marginBottom: 2 }}>
-                                        Itinerary Is Ready!
-                                    </Text>
-                                    <Text style={{ fontSize: 12, color: C.muted, lineHeight: 16 }}>
-                                        Your personalised schedule is prepared. Tap to view the timeline.
-                                    </Text>
-                                </View>
-                                <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: `${GOLD}15`, alignItems: "center", justifyContent: "center" }}>
-                                    <ChevronLeft size={16} color={GOLD} style={{ transform: [{ rotate: "180deg" }] }} />
-                                </View>
-                            </LinearGradient>
-                        </TouchableOpacity>
                     )}
 
                     {/* Hero Card */}

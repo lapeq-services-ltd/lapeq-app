@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "lapeq-app",
+    "name": "Lapeq",
     "slug": "lapeq-app",
     "scheme": "lapeq",
     "version": "1.0.0",
@@ -13,11 +13,20 @@
       "backgroundColor": "#f7f4ee"
     },
     "ios": {
-      "supportsTablet": true,
-      "usesAppleSignIn": true
+      "bundleIdentifier": "com.lapeq.app",
+      "buildNumber": "1",
+      "supportsTablet": false,
+      "usesAppleSignIn": true,
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Lapeq uses your photo library to set your profile picture.",
+        "NSPhotoLibraryAddUsageDescription": "Lapeq saves images to your photo library.",
+        "NSLocationWhenInUseUsageDescription": "Lapeq uses your location to auto-fill your pickup address.",
+        "NSMicrophoneUsageDescription": "Lapeq uses the microphone to record voice notes for your concierge requests."
+      }
     },
     "android": {
       "package": "com.lapeq.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#0a0a0a",
         "foregroundImage": "./assets/logo/Gemini_Generated_Image_ht0yyyht0yyyht0y-removebg-preview.png"
@@ -33,6 +42,24 @@
       "expo-font",
       "expo-web-browser",
       "expo-apple-authentication",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Lapeq uses your photo library to set your profile picture."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Lapeq uses your location to auto-fill your pickup address."
+        }
+      ],
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Lapeq uses the microphone to record voice notes for your concierge requests."
+        }
+      ],
       [
         "expo-notifications",
         {

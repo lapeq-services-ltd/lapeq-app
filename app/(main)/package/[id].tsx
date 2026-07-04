@@ -1,10 +1,12 @@
 import { useState, useMemo, useEffect } from "react";
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Image, Dimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { ChevronLeft, Crown, Clock, MapPin, Car, Calendar, MessageCircle, Coffee, Star, CheckCircle2 } from "lucide-react-native";
+import { ChevronLeft, Crown, Calendar, MessageCircle } from "lucide-react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { supabase } from "@/lib/supabase";
+
+const { width: W } = Dimensions.get("window");
 
 type Package = {
     id: string;
@@ -21,41 +23,6 @@ type Package = {
 
 const GOLD = "#c9a84c";
 
-const ACTIVITY_CONFIG: Record<string, { icon: any; label: string }> = {
-    "Hotel / Villa Stay": { icon: <MapPin size={16} color="#c9a84c" />, label: "Accommodation" },
-    "Private Dining": { icon: <Coffee size={16} color="#c9a84c" />, label: "Private Dining reservations" },
-    "Spa & Wellness": { icon: <Star size={16} color="#c9a84c" />, label: "Spa & Wellness appointments" },
-    "Nightlife & Lounges": { icon: <Star size={16} color="#c9a84c" />, label: "Nightlife & Lounge reservations" },
-    "Private Chef at Home": { icon: <Coffee size={16} color="#c9a84c" />, label: "Private Chef at Home" },
-    "Chauffeur & Transport": { icon: <Car size={16} color="#c9a84c" />, label: "Private Chauffeur & Transport" },
-    "Shopping & Styling": { icon: <Star size={16} color="#c9a84c" />, label: "Personal Shopping & Styling" },
-    "Exclusive Events": { icon: <Star size={16} color="#c9a84c" />, label: "VIP Event tickets & access" },
-    "Cultural Experiences": { icon: <Star size={16} color="#c9a84c" />, label: "Cultural tours & sightseeing" },
-    "Business Dinner": { icon: <Coffee size={16} color="#c9a84c" />, label: "Business Dinner planning" },
-    "Boat / Yacht": { icon: <Car size={16} color="#c9a84c" />, label: "Boat & Yacht charter" },
-    "Photography Session": { icon: <Star size={16} color="#c9a84c" />, label: "Photography session" },
-    "Golf & Recreation": { icon: <Star size={16} color="#c9a84c" />, label: "Golf & Recreational bookings" },
-    "Airport Protocol": { icon: <Car size={16} color="#c9a84c" />, label: "VIP Airport Protocol & reception" },
-};
-
-type PackageItem = {
-    id: string;
-    day_number: number;
-    day_label: string | null;
-    time_slot: string | null;
-    title: string;
-    description: string | null;
-    category: string | null;
-    is_vip: boolean;
-    tag: string | null;
-    sort_order: number;
-};
-
-type DayGroup = {
-    day_number: number;
-    day_label: string | null;
-    items: PackageItem[];
-};
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; desc: string }> = {
     pending: {
@@ -104,26 +71,15 @@ function formatDate(d: string | null) {
     return new Date(d).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
 }
 
-function getCategoryIcon(category: string | null, color: string) {
-    switch (category) {
-        case "dining": return <Coffee size={18} color={color} />;
-        case "transport": return <Car size={18} color={color} />;
-        case "activity": return <Star size={18} color={color} />;
-        default: return <MapPin size={18} color={color} />;
-    }
-}
 
 export default function PackageDetailScreen() {
     const router = useRouter();
     const { id } = useLocalSearchParams<{ id: string }>();
     const { C, theme } = useTheme();
-    const isDark = theme === "dark";
     const s = useMemo(() => getStyles(C, theme), [C, theme]);
 
     const [pkg, setPkg] = useState<Package | null>(null);
-    const [items, setItems] = useState<PackageItem[]>([]);
     const [loading, setLoading] = useState(true);
-    const [itineraryNotifId, setItineraryNotifId] = useState<string | null>(null);
 
     useEffect(() => {
         if (!id) return;
@@ -153,51 +109,12 @@ export default function PackageDetailScreen() {
                 });
             }
             if (itineraryNotifs && itineraryNotifs.length > 0) {
-                const notif = itineraryNotifs[0];
-                setItineraryNotifId(notif.id);
-                
-                // Map the itinerary days to package items so they render dynamically on the screen
-                const rawItin = notif.data?.itinerary;
-                if (rawItin && Array.isArray(rawItin.days)) {
-                    const mappedItems: PackageItem[] = [];
-                    rawItin.days.forEach((day: any, dayIdx: number) => {
-                        const dayItems = Array.isArray(day.items) ? day.items : [];
-                        dayItems.forEach((item: any, itemIdx: number) => {
-                            mappedItems.push({
-                                id: item.id || `item-${dayIdx}-${itemIdx}`,
-                                day_number: dayIdx + 1,
-                                day_label: day.title || `Day ${dayIdx + 1}`,
-                                time_slot: item.time || "Flexible",
-                                title: item.label,
-                                description: item.description || null,
-                                category: item.category || null,
-                                is_vip: item.category === "nightlife" || !!item.badge?.toLowerCase().includes("priority") || !!item.badge?.toLowerCase().includes("vip"),
-                                tag: item.badge || null,
-                                sort_order: itemIdx
-                            });
-                        });
-                    });
-                    setItems(mappedItems);
-                } else {
-                    setItems([]);
-                }
-            } else {
-                setItems([]);
+                router.replace({ pathname: "/itinerary-view", params: { notifId: itineraryNotifs[0].id } } as any);
+                return;
             }
             setLoading(false);
         })();
     }, [id]);
-
-    const days = useMemo<DayGroup[]>(() => {
-        const map: Record<number, DayGroup> = {};
-        for (const item of items) {
-            if (!map[item.day_number]) {
-                map[item.day_number] = { day_number: item.day_number, day_label: item.day_label, items: [] };
-            }
-            map[item.day_number].items.push(item);
-        }
-        return Object.values(map).sort((a, b) => a.day_number - b.day_number);
-    }, [items]);
 
     if (loading) {
         return (
@@ -223,8 +140,6 @@ export default function PackageDetailScreen() {
     }
 
     const st = STATUS_CONFIG[pkg.status] ?? { label: pkg.status, color: C.muted, desc: "" };
-    const isCrafting = ["pending", "building"].includes(pkg.status);
-    const hasItinerary = days.length > 0;
 
     return (
         <SafeAreaView style={s.root}>
@@ -263,101 +178,20 @@ export default function PackageDetailScreen() {
                     </View>
                 </View>
 
-                {/* Status card */}
-                <View style={[s.statusCard, { borderLeftColor: st.color }]}>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                        <View style={[s.statusDot, { backgroundColor: st.color }]} />
-                        <Text style={[s.statusCardLabel, { color: st.color }]}>{st.label}</Text>
-                    </View>
-                    <Text style={s.statusCardDesc}>{st.desc}</Text>
+                {/* Empty state — waiting for itinerary */}
+                <View style={{ alignItems: "center", paddingTop: 16, paddingBottom: 32 }}>
+                    <Image
+                        source={require("@/assets/emptystate/itenaryotw.png")}
+                        style={{ width: W * 0.72, height: W * 0.72 }}
+                        resizeMode="contain"
+                    />
+                    <Text style={{ fontSize: 20, fontWeight: "700", color: C.text, textAlign: "center", marginTop: 4 }}>
+                        Your itinerary is on its way
+                    </Text>
+                    <Text style={{ fontSize: 14, color: C.muted, textAlign: "center", marginTop: 8, lineHeight: 22, paddingHorizontal: 24 }}>
+                        Your concierge is curating every detail. You'll get a notification when it's ready.
+                    </Text>
                 </View>
-
-                {/* Crafting state */}
-                {isCrafting && (
-                    <>
-                        <View style={s.craftingSection}>
-                            <Text style={s.craftingTitle}>What We're Arranging</Text>
-                            {(() => {
-                                const rows = [];
-                                if (pkg.activities && pkg.activities.length > 0) {
-                                    pkg.activities.forEach(act => {
-                                        const cfg = ACTIVITY_CONFIG[act] ?? { icon: <Star size={16} color={C.primary} />, label: act };
-                                        rows.push({ icon: cfg.icon, label: cfg.label });
-                                    });
-                                } else {
-                                    rows.push({ icon: <Star size={16} color={C.primary} />, label: "Curated activities in " + pkg.city });
-                                }
-                                return rows.map((row, i) => (
-                                    <View key={i} style={s.craftingRow}>
-                                        <View style={s.craftingIconWrap}>{row.icon}</View>
-                                        <Text style={s.craftingRowText}>{row.label}</Text>
-                                    </View>
-                                ));
-                            })()}
-                        </View>
-
-                        {pkg.notes ? (
-                            <View style={s.notesCard}>
-                                <Text style={s.notesLabel}>YOUR BRIEF</Text>
-                                <Text style={s.notesText}>{pkg.notes}</Text>
-                            </View>
-                        ) : null}
-                    </>
-                )}
-
-                {/* Ready/active: day-by-day itinerary */}
-                {!isCrafting && hasItinerary && days.map((day) => (
-                    <View key={day.day_number} style={{ marginBottom: 24 }}>
-                        <View style={s.dayHeader}>
-                            <View style={s.dayBadge}>
-                                <Text style={s.dayBadgeNum}>{day.day_number}</Text>
-                            </View>
-                            <Text style={s.dayTitle}>{day.day_label ?? `Day ${day.day_number}`}</Text>
-                        </View>
-
-                        <View style={s.timeline}>
-                            {day.items.map((item) => (
-                                <View key={item.id} style={[s.timelineItem, item.is_vip && s.timelineItemVip]}>
-                                    <View style={s.timelineItemTop}>
-                                        <View style={s.timelineIconWrap}>
-                                            {getCategoryIcon(item.category, item.is_vip ? C.primary : C.muted)}
-                                        </View>
-                                        <Text style={s.itemTitle} numberOfLines={2}>{item.title}</Text>
-                                        {item.is_vip && (
-                                            <View style={s.vipBadge}>
-                                                <Crown size={10} color={C.primary} />
-                                                <Text style={s.vipBadgeText}>VIP</Text>
-                                            </View>
-                                        )}
-                                    </View>
-                                    {item.time_slot && (
-                                        <View style={s.timeRow}>
-                                            <Clock size={12} color={C.muted} />
-                                            <Text style={s.itemTime}>{item.time_slot}</Text>
-                                        </View>
-                                    )}
-                                    {item.description ? (
-                                        <Text style={s.itemDesc}>{item.description}</Text>
-                                    ) : null}
-                                    {item.tag ? (
-                                        <View style={s.tagBadge}>
-                                            <Text style={s.tagBadgeText}>{item.tag}</Text>
-                                        </View>
-                                    ) : null}
-                                </View>
-                            ))}
-                        </View>
-                    </View>
-                ))}
-
-                {/* Empty itinerary when ready but no items yet */}
-                {!isCrafting && !hasItinerary && (
-                    <View style={s.emptyItinerary}>
-                        <CheckCircle2 size={32} color={C.primary} />
-                        <Text style={s.emptyItineraryTitle}>Itinerary Ready</Text>
-                        <Text style={s.emptyItineraryDesc}>Your concierge is finalising the details. Check back shortly or send a message.</Text>
-                    </View>
-                )}
 
                 {/* Concierge note */}
                 <View style={s.conciergeCard}>
@@ -393,44 +227,6 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     metaRow: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 20 },
     metaItem: { flexDirection: "row", alignItems: "center", gap: 6 },
     metaText: { fontSize: 13, color: C.muted },
-
-    statusCard: { borderRadius: 14, backgroundColor: C.surface, padding: 16, marginBottom: 24, borderLeftWidth: 3, borderWidth: 1, borderColor: theme === "dark" ? "#2a2a2a" : "#d8d3ca" },
-    statusDot: { width: 8, height: 8, borderRadius: 4 },
-    statusCardLabel: { fontSize: 13, fontWeight: "700" },
-    statusCardDesc: { fontSize: 14, color: C.muted, lineHeight: 21 },
-
-    craftingSection: { marginBottom: 20 },
-    craftingTitle: { fontSize: 14, fontWeight: "700", color: C.text, marginBottom: 14, letterSpacing: 0.2 },
-    craftingRow: { flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: theme === "dark" ? "#2a2a2a" : "#ece8de" },
-    craftingIconWrap: { width: 34, height: 34, borderRadius: 10, backgroundColor: `${C.primary}15`, alignItems: "center", justifyContent: "center" },
-    craftingRowText: { fontSize: 14, color: C.text, fontWeight: "500" },
-
-    notesCard: { backgroundColor: C.surface, borderRadius: 14, padding: 16, marginBottom: 24, borderWidth: 1, borderColor: theme === "dark" ? "#2a2a2a" : "#d8d3ca" },
-    notesLabel: { fontSize: 10, fontWeight: "800", color: C.primary, letterSpacing: 2, marginBottom: 8 },
-    notesText: { fontSize: 14, color: C.muted, lineHeight: 22 },
-
-    dayHeader: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 14 },
-    dayBadge: { width: 32, height: 32, borderRadius: 16, backgroundColor: C.primary, alignItems: "center", justifyContent: "center" },
-    dayBadgeNum: { fontSize: 14, fontWeight: "700", color: "#0a0a0a" },
-    dayTitle: { fontSize: 18, fontWeight: "700", color: C.text },
-
-    timeline: { marginLeft: 16, paddingLeft: 20, borderLeftWidth: 2, borderLeftColor: `${C.primary}33`, gap: 14 },
-    timelineItem: { borderRadius: 16, borderWidth: 1, borderColor: theme === "dark" ? "#2a2a2a" : "#d8d3ca", backgroundColor: C.surface, padding: 14 },
-    timelineItemVip: { borderColor: `${C.primary}4d`, backgroundColor: `${C.primary}0d` },
-    timelineItemTop: { flexDirection: "row", alignItems: "flex-start", gap: 10, marginBottom: 8 },
-    timelineIconWrap: { width: 28, height: 28, borderRadius: 8, backgroundColor: theme === "dark" ? "#2a2a2a" : "#f0ece4", alignItems: "center", justifyContent: "center", flexShrink: 0 },
-    itemTitle: { flex: 1, fontSize: 15, fontWeight: "600", color: C.text, lineHeight: 21 },
-    vipBadge: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 99, backgroundColor: `${C.primary}18` },
-    vipBadgeText: { fontSize: 10, fontWeight: "800", color: C.primary },
-    timeRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 },
-    itemTime: { fontSize: 12, color: C.muted, fontWeight: "500" },
-    itemDesc: { fontSize: 13, color: C.muted, lineHeight: 20 },
-    tagBadge: { marginTop: 10, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: `${C.primary}18`, alignSelf: "flex-start" },
-    tagBadgeText: { fontSize: 11, fontWeight: "600", color: C.primary },
-
-    emptyItinerary: { alignItems: "center", padding: 32, gap: 12 },
-    emptyItineraryTitle: { fontSize: 18, fontWeight: "700", color: C.text },
-    emptyItineraryDesc: { fontSize: 14, color: C.muted, textAlign: "center", lineHeight: 22 },
 
     conciergeCard: { borderRadius: 20, backgroundColor: theme === "dark" ? "#1a1a1a" : "#1a1a1a", padding: 20, marginBottom: 16 },
     conciergeCardTitle: { fontSize: 15, fontWeight: "700", color: "#ffffff" },

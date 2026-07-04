@@ -101,7 +101,7 @@ export default function MonthlyPicksScreen() {
                     <ChevronLeft size={24} color={C.text} />
                 </TouchableOpacity>
                 <View style={{ flex: 1 }}>
-                    <Text style={s.title}>Monthly Picks</Text>
+                    <Text style={s.title}>Lapeq Picks</Text>
                     <Text style={s.subtitle}>April 2026 · Curated by LAPEQ Concierge</Text>
                 </View>
             </View>

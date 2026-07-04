@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
     View, Text, StyleSheet, ScrollView, TextInput,
     TouchableOpacity, Image, Dimensions, Modal,
@@ -214,26 +214,6 @@ export default function ExploreScreen() {
                     </ScrollView>
                 </View>
 
-                {/* Experiences Banner */}
-                <TouchableOpacity
-                    style={s.expBanner}
-                    onPress={() => router.push("/explore/experiences" as any)}
-                    activeOpacity={0.88}
-                >
-                    <Image source={require("@/assets/images/lagos-hotel.jpg")} style={s.expBannerImg} resizeMode="cover" />
-                    <View style={s.expBannerOverlay} />
-                    <View style={s.expBannerContent}>
-                        <View style={{ flex: 1 }}>
-                            <Text style={s.expBannerEyebrow}>CURATED PACKAGES</Text>
-                            <Text style={s.expBannerTitle}>Experiences</Text>
-                            <Text style={s.expBannerSub}>Date nights, weekend getaways & more - fully arranged.</Text>
-                        </View>
-                        <View style={s.expBannerBtn}>
-                            <Text style={s.expBannerBtnText}>Browse</Text>
-                            <ChevronRight size={14} color="#0a0a0a" />
-                        </View>
-                    </View>
-                </TouchableOpacity>
 
                 {/* Results label */}
                 <View style={s.resultsRow}>
@@ -338,16 +318,6 @@ const s = StyleSheet.create({
     catPill: { flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 22, borderWidth: 1 },
     catPillLabel: { fontSize: 13, fontFamily: "Jost_600SemiBold" },
 
-    // Experiences banner
-    expBanner: { marginHorizontal: 20, marginTop: 20, borderRadius: 18, overflow: "hidden", height: 110, position: "relative" },
-    expBannerImg: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%" },
-    expBannerOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.6)" },
-    expBannerContent: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 18, gap: 12 },
-    expBannerEyebrow: { fontSize: 9, fontWeight: "800", color: GOLD, letterSpacing: 2.5, marginBottom: 4 },
-    expBannerTitle: { fontSize: 22, fontWeight: "700", color: "#fff", fontFamily: "PlayfairDisplay_700Bold", marginBottom: 4 },
-    expBannerSub: { fontSize: 11, color: "rgba(255,255,255,0.55)", lineHeight: 16 },
-    expBannerBtn: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: GOLD, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12 },
-    expBannerBtnText: { fontSize: 13, fontWeight: "700", color: "#ffffff" },
 
     // Results
     resultsRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingTop: 20, paddingBottom: 14 },

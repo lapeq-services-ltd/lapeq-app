@@ -4,7 +4,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { ChevronLeft, ChevronRight, Send, HelpCircle, MessageCircle, X, ChevronDown, ChevronUp } from "lucide-react-native";
+import { ChevronLeft, Send, MessageCircle, X, ChevronDown, ChevronUp } from "lucide-react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { supabase } from "@/lib/supabase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -300,59 +300,6 @@ export default function ConciergeChatScreen() {
         return "Concierge Chat";
     };
 
-    // Entry screen - pick a mode
-    if (!mode) {
-        return (
-            <SafeAreaView style={s.root}>
-                <View style={s.header}>
-                    <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-                        <ChevronLeft size={28} color={C.text} />
-                    </TouchableOpacity>
-                    <View style={s.headerTitleContainer}>
-                        <Text style={s.headerTitle}>LAPEQ Concierge</Text>
-                        <View style={s.onlineBadgeContainer}>
-                            <View style={s.onlineDot} />
-                            <Text style={s.onlineText}>Available 24/7</Text>
-                        </View>
-                    </View>
-                    <Image
-                        source={require("@/assets/logo/Gemini_Generated_Image_ht0yyyht0yyyht0y-removebg-preview.png")}
-                        style={{ width: 36, height: 36, opacity: 0.95 }}
-                        resizeMode="contain"
-                    />
-                </View>
-
-                <View style={s.modeContainer}>
-                    <Text style={s.modeTitle}>How can we help you today?</Text>
-                    <Text style={s.modeSub}>Choose how you'd like to connect with your concierge.</Text>
-
-                    <View style={s.modeList}>
-                        <TouchableOpacity style={s.modeItem} onPress={() => setMode("question")} activeOpacity={0.7}>
-                            <View style={s.modeIconBox}>
-                                <HelpCircle size={22} color={C.primary} />
-                            </View>
-                            <View style={s.modeTextContainer}>
-                                <Text style={s.modeItemTitle}>Ask a Question</Text>
-                                <Text style={s.modeItemSub}>Membership, services, cities we cover - ask anything.</Text>
-                            </View>
-                            <ChevronRight size={18} color={C.muted} />
-                        </TouchableOpacity>
-
-                        <TouchableOpacity style={s.modeItem} onPress={() => setMode("concierge")} activeOpacity={0.7}>
-                            <View style={s.modeIconBox}>
-                                <MessageCircle size={22} color={C.primary} />
-                            </View>
-                            <View style={s.modeTextContainer}>
-                                <Text style={s.modeItemTitle}>Talk to My Concierge</Text>
-                                <Text style={s.modeItemSub}>Direct line to your dedicated concierge. No forms needed.</Text>
-                            </View>
-                            <ChevronRight size={18} color={C.muted} />
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </SafeAreaView>
-        );
-    }
 
     const renderMessageContent = (content: string, senderType: "client" | "admin") => {
         if (!content) return null;
@@ -612,16 +559,6 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     onlineDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#22c55e" },
     onlineText: { fontSize: 12, color: C.muted, fontWeight: "500" },
     center: { flex: 1, justifyContent: "center", alignItems: "center" },
-
-    modeContainer: { flex: 1, padding: 24, paddingTop: 36 },
-    modeTitle: { fontSize: 26, fontWeight: "700", color: C.text, marginBottom: 8, letterSpacing: -0.5 },
-    modeSub: { fontSize: 14, color: C.muted, marginBottom: 24, lineHeight: 22 },
-    modeList: { borderTopWidth: 1, borderTopColor: C.border, marginTop: 16 },
-    modeItem: { flexDirection: "row", alignItems: "center", paddingVertical: 20, borderBottomWidth: 1, borderBottomColor: C.border },
-    modeIconBox: { width: 48, height: 48, borderRadius: 24, backgroundColor: "transparent", alignItems: "center", justifyContent: "center", marginRight: 16 },
-    modeTextContainer: { flex: 1 },
-    modeItemTitle: { fontSize: 16, fontWeight: "600", color: C.text, marginBottom: 4 },
-    modeItemSub: { fontSize: 13, color: C.muted, lineHeight: 18 },
 
     messageList: { padding: 20, paddingBottom: 10 },
     emptyChat: { backgroundColor: C.surface, borderRadius: 16, padding: 20, marginBottom: 20, borderWidth: 1, borderColor: C.border },

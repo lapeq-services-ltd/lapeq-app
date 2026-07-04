@@ -369,6 +369,11 @@ function PaymentSheet({ tier, userName, userEmail, onClose, onSuccess }: any) {
                                 amount,
                                 currency: "NGN",
                                 payment_options: "card,banktransfer,ussd",
+                                customization: {
+                                    title: `Lapeq ${tier.name} Membership`,
+                                    description: `${selectedDuration?.label ?? ""} · Unlimited concierge access`,
+                                    logo: "https://iwedpnipbuurohaqibag.supabase.co/storage/v1/object/public/avatars/lapeq-logo.png",
+                                },
                             }}
                             customButton={(props: any) => (
                                 <TouchableOpacity

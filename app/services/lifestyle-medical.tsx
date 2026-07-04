@@ -6,11 +6,15 @@ import { useTheme } from "@/context/ThemeContext";
 import { ChevronLeft, Check, Heart } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import VoiceInput from "@/components/VoiceInput";
+import LocationSearch from "@/components/LocationSearch";
 
 const GOLD = "#c9a84c";
 
-const CARE_TYPES = ["GP Appointment", "Specialist Referral", "Full Health Check", "Mental Health", "Dental", "Eye Care", "Medical Tourism", "Emergency Abroad", "Other"];
-const LOCATIONS = ["Lagos", "Abuja", "Port Harcourt", "Akwa Ibom", "Kano"];
+const CARE_TYPES = [
+    "🩺 GP Appointment", "🧬 Specialist Referral", "🏥 Full Health Check", 
+    "🧠 Mental Health", "🦷 Dental", "👁️ Eye Care", 
+    "✈️ Medical Tourism", "🚨 Emergency Abroad", "🩹 Other"
+];
 const URGENCY = ["Flexible", "This Week", "Today / Urgent"];
 const GENDER_PREF = ["No Preference", "Male Doctor", "Female Doctor"];
 
@@ -114,37 +118,43 @@ export default function MedicalConciergeScreen() {
 
                     <View style={s.section}>
                         <Text style={s.label}>Preferred Location</Text>
-                        <View style={s.wrapRow}>
-                            {LOCATIONS.map(loc => {
-                                const isAvailable = loc === "Lagos" || loc === "Abuja";
-                                const displayLabel = isAvailable ? loc : `${loc} (Coming Soon)`;
-                                return (
-                                    <TouchableOpacity
-                                        key={loc}
-                                        style={[s.chip, location === loc && { backgroundColor: GOLD, borderColor: GOLD }]}
-                                        onPress={() => setLocation(loc)}
-                                        activeOpacity={0.8}
-                                    >
-                                        <Text style={[s.chipText, location === loc && { color: "#0a0a0a", fontWeight: "700" }]}>{displayLabel}</Text>
-                                    </TouchableOpacity>
-                                );
-                            })}
-                        </View>
+                        <LocationSearch
+                            value={location}
+                            onChangeText={setLocation}
+                            placeholder="Search and select location..."
+                        />
                     </View>
 
                     <View style={s.section}>
-                        <Text style={s.label}>How Soon?</Text>
-                        <View style={{ flexDirection: "row", gap: 10 }}>
-                            {URGENCY.map(u => (
-                                <TouchableOpacity
-                                    key={u}
-                                    style={[s.pill, urgency === u && { backgroundColor: GOLD, borderColor: GOLD }]}
-                                    onPress={() => setUrgency(u)}
-                                    activeOpacity={0.8}
-                                >
-                                    <Text style={[s.pillText, urgency === u && { color: "#0a0a0a", fontWeight: "700" }]}>{u}</Text>
-                                </TouchableOpacity>
-                            ))}
+                        <Text style={s.label}>Priority / Urgency</Text>
+                        <View style={s.urgencyContainer}>
+                            {[
+                                { key: "Flexible", label: "🟢 Flexible", desc: "Routine checks & non-urgent bookings" },
+                                { key: "This Week", label: "🟡 This Week", desc: "For appointments needed within 7 days" },
+                                { key: "Today / Urgent", label: "🔴 Today / Urgent", desc: "Time-critical and immediate medical needs" }
+                            ].map(u => {
+                                const isSelected = urgency === u.key;
+                                let borderClr = theme === "dark" ? "#2a2a2a" : "#e0dbd2";
+                                let bgClr = C.background;
+                                if (isSelected) {
+                                    borderClr = u.key === "Flexible" ? "#10b981" : u.key === "This Week" ? GOLD : "#ef4444";
+                                    bgClr = u.key === "Flexible" ? "rgba(16, 185, 129, 0.08)" : u.key === "This Week" ? "rgba(201, 168, 76, 0.08)" : "rgba(239, 68, 68, 0.08)";
+                                }
+                                return (
+                                    <TouchableOpacity
+                                        key={u.key}
+                                        style={[
+                                            s.urgencyCard,
+                                            { borderColor: borderClr, backgroundColor: bgClr }
+                                        ]}
+                                        onPress={() => setUrgency(u.key)}
+                                        activeOpacity={0.8}
+                                    >
+                                        <Text style={[s.urgencyLabel, isSelected && { color: GOLD, fontWeight: "700" }]}>{u.label}</Text>
+                                        <Text style={s.urgencyDesc}>{u.desc}</Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
                         </View>
                     </View>
 
@@ -252,4 +262,10 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     modalBtnTxPri: { color: "#0a0a0a", fontSize: 15, fontWeight: "700" },
     modalBtnSec: { width: "100%", paddingVertical: 14, alignItems: "center" },
     modalBtnTxSec: { color: C.muted, fontSize: 14, fontWeight: "600" },
+
+    // Urgency Card Styles
+    urgencyContainer: { gap: 10 },
+    urgencyCard: { padding: 14, borderRadius: 14, borderWidth: 1, gap: 4 },
+    urgencyLabel: { fontSize: 14, fontWeight: "600", color: C.text },
+    urgencyDesc: { fontSize: 11, color: C.muted, lineHeight: 15 },
 });

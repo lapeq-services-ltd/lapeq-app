@@ -7,13 +7,25 @@ import { useTheme } from "@/context/ThemeContext";
 import { ChevronLeft, Check, Calendar } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import VoiceInput from "@/components/VoiceInput";
+import { LinearGradient } from "expo-linear-gradient";
 
 const { width: W } = Dimensions.get("window");
 const GOLD = "#c9a84c";
 
-const OCCASIONS = ["Birthday", "Anniversary", "Mother's Day", "Father's Day", "Valentine's", "Sympathy", "Celebration", "Corporate Gift", "Just Because", "Other"];
-const GIFT_TYPES = ["Fresh Flowers", "Floral Arrangement", "Luxury Hamper", "Personalised Gift", "Gift Basket", "Cake & Flowers", "Custom Package"];
-const BUDGETS = ["₦20k – ₦50k", "₦50k – ₦150k", "₦150k – ₦500k", "₦500k+", "Open Budget"];
+const OCCASIONS = [
+    "🎂 Birthday", "💍 Anniversary", "💐 Mother's Day", "👔 Father's Day", 
+    "💝 Valentine's", "🕊️ Sympathy", "🥂 Celebration", "💼 Corporate Gift", 
+    "✨ Just Because", "🎈 Other"
+];
+const GIFT_TYPES = [
+    "🌹 Fresh Flowers", "💐 Floral Arrangement", "🧺 Luxury Hamper", 
+    "🎁 Personalised Gift", "🧺 Gift Basket", "🎂 Cake & Flowers", 
+    "💎 Custom Package"
+];
+const BUDGETS = [
+    "💵 ₦20k – ₦50k", "💰 ₦50k – ₦150k", "💎 ₦150k – ₦500k", 
+    "👑 ₦500k+", "✨ Open Budget"
+];
 
 export default function GiftsFlowersScreen() {
     const router = useRouter();
@@ -172,6 +184,36 @@ export default function GiftsFlowersScreen() {
                         />
                     </View>
 
+                    {/* Interactive Calligraphic Greeting Card Preview */}
+                    {(message.trim().length > 0 || recipient.trim().length > 0) && (
+                        <View style={s.section}>
+                            <Text style={s.label}>Gift Card Preview</Text>
+                            <View style={s.greetingCardBox}>
+                                <LinearGradient
+                                    colors={isDark ? ["#1c1c1f", "#121214"] : ["#faf8f5", "#f5f0e6"]}
+                                    style={StyleSheet.absoluteFillObject}
+                                />
+                                <View style={s.greetingCardInner}>
+                                    <Text style={s.greetingCardTitle}>LAPEQ GREETING CARD</Text>
+                                    <View style={s.greetingCardContent}>
+                                        <Text style={s.greetingRecipient}>
+                                            To: {recipient.trim() ? recipient : "_________________"}
+                                        </Text>
+                                        <Text style={s.greetingMessage}>
+                                            "{message.trim() ? message : "Your custom message will be hand-written here in gold calligraphy..."}"
+                                        </Text>
+                                        <Text style={s.greetingSender}>
+                                            With warm regards,
+                                        </Text>
+                                        <Text style={s.greetingSenderName}>
+                                            Lapeq Member
+                                        </Text>
+                                    </View>
+                                </View>
+                            </View>
+                        </View>
+                    )}
+
                     <View style={s.section}>
                         <Text style={s.label}>Preferences and Notes</Text>
                         <VoiceInput
@@ -275,4 +317,58 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     modalBtnTxPri: { color: "#0a0a0a", fontSize: 15, fontWeight: "700" },
     modalBtnSec: { width: "100%", paddingVertical: 14, alignItems: "center" },
     modalBtnTxSec: { color: C.muted, fontSize: 14, fontWeight: "600" },
+
+    // Greeting Card Preview Styles
+    greetingCardBox: {
+        borderRadius: 18,
+        borderWidth: 1.5,
+        borderColor: GOLD,
+        padding: 24,
+        overflow: "hidden",
+        position: "relative",
+        elevation: 3,
+        shadowColor: "#000",
+        shadowOpacity: 0.15,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 4 },
+    },
+    greetingCardInner: {
+        alignItems: "center",
+    },
+    greetingCardTitle: {
+        fontSize: 10,
+        fontWeight: "800",
+        color: GOLD,
+        letterSpacing: 3,
+        marginBottom: 20,
+    },
+    greetingCardContent: {
+        width: "100%",
+        gap: 14,
+    },
+    greetingRecipient: {
+        fontSize: 14,
+        fontWeight: "700",
+        color: C.text,
+        fontFamily: "PlayfairDisplay_700Bold",
+    },
+    greetingMessage: {
+        fontSize: 15,
+        color: C.text,
+        lineHeight: 24,
+        fontFamily: "PlayfairDisplay_400Regular_Italic",
+        marginVertical: 6,
+    },
+    greetingSender: {
+        fontSize: 12,
+        color: C.muted,
+        marginTop: 10,
+        fontStyle: "italic",
+    },
+    greetingSenderName: {
+        fontSize: 14,
+        fontWeight: "700",
+        color: GOLD,
+        fontFamily: "PlayfairDisplay_700Bold",
+    },
 });

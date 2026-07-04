@@ -6,6 +6,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { ChevronLeft, Shield, ChevronDown, Plus, Minus } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import VoiceInput from "@/components/VoiceInput";
+import LocationSearch from "@/components/LocationSearch";
 
 const GOLD = "#c9a84c";
 const isAndroid = Platform.OS === "android";
@@ -156,13 +157,10 @@ export default function SecurityProtocolScreen() {
 
                     <View style={s.field}>
                         <Text style={[s.label, { color: C.muted }]}>Location / City</Text>
-                        <DropDown
+                        <LocationSearch
                             value={location}
-                            options={LOCATIONS}
-                            onSelect={setLocation}
-                            placeholder="Select location"
-                            C={C}
-                            theme={theme}
+                            onChangeText={setLocation}
+                            placeholder="Search and select location..."
                         />
                     </View>
 

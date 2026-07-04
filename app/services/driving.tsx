@@ -664,7 +664,16 @@ export default function DrivingServiceScreen() {
                             {flightMode === "commercial" && (
                                 <View style={{ paddingHorizontal: 20, marginTop: 16 }}>
 
-                                    {/* Trip Type Pills */}
+                                    {/* Concierge badge */}
+                                    <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 20 }}>
+                                        <View style={{ flex: 1, height: 1, backgroundColor: border }} />
+                                        <View style={{ paddingHorizontal: 12, paddingVertical: 5, borderRadius: 99, borderWidth: 1, borderColor: `${GOLD}50`, backgroundColor: `${GOLD}10` }}>
+                                            <Text style={{ fontSize: 9, fontWeight: "800", color: GOLD, letterSpacing: 2 }}>CONCIERGE MANAGED BOOKING</Text>
+                                        </View>
+                                        <View style={{ flex: 1, height: 1, backgroundColor: border }} />
+                                    </View>
+
+                                    {/* Trip Type */}
                                     <View style={{ flexDirection: "row", gap: 8, marginBottom: 20 }}>
                                         {(["round", "oneway", "multi"] as const).map(type => {
                                             const active = comTripType === type;
@@ -673,84 +682,159 @@ export default function DrivingServiceScreen() {
                                                 <TouchableOpacity
                                                     key={type}
                                                     onPress={() => setComTripType(type)}
-                                                    style={{ flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: "center", borderWidth: 1, borderColor: active ? GOLD : border, backgroundColor: active ? `${GOLD}14` : C.surface }}
+                                                    style={{ flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: "center", borderWidth: 1.5, borderColor: active ? GOLD : border, backgroundColor: active ? `${GOLD}14` : C.surface }}
                                                     activeOpacity={0.8}
                                                 >
-                                                    <Text style={{ fontSize: 12, fontWeight: "700", color: active ? GOLD : C.muted }}>{labels[type]}</Text>
+                                                    <Text style={{ fontSize: 11, fontWeight: "800", color: active ? GOLD : C.muted, letterSpacing: 0.3 }}>{labels[type]}</Text>
                                                 </TouchableOpacity>
                                             );
                                         })}
                                     </View>
 
-                                    {/* From / To Card */}
-                                    <View style={{ backgroundColor: C.surface, borderRadius: 16, borderWidth: 1, borderColor: border, marginBottom: 16, overflow: "hidden" }}>
-                                        <View style={{ padding: 16, borderBottomWidth: 1, borderBottomColor: border }}>
-                                            <Text style={{ fontSize: 10, fontWeight: "700", color: C.muted, letterSpacing: 1.5, marginBottom: 6 }}>FROM</Text>
+                                    {/* Route Card */}
+                                    <View style={{ borderRadius: 20, borderWidth: 1.5, borderColor: border, backgroundColor: C.surface, marginBottom: 16, overflow: "hidden" }}>
+                                        <View style={{ padding: 16 }}>
+                                            <Text style={{ fontSize: 9, fontWeight: "800", color: GOLD, letterSpacing: 2, marginBottom: 8 }}>FROM</Text>
                                             <LocationSearch value={comFrom} onChangeText={setComFrom} placeholder="Departure city or airport..." onSelect={setComFrom} />
                                         </View>
-                                        <View style={{ position: "absolute", right: 20, top: "50%", marginTop: -18, zIndex: 2 }}>
+                                        <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16 }}>
+                                            <View style={{ flex: 1, height: 1, backgroundColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)" }} />
                                             <TouchableOpacity
                                                 onPress={() => { const t = comFrom; setComFrom(comTo); setComTo(t); }}
-                                                style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: C.background, borderWidth: 1, borderColor: border, alignItems: "center", justifyContent: "center" }}
+                                                style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: C.background, borderWidth: 1.5, borderColor: GOLD, alignItems: "center", justifyContent: "center", marginHorizontal: 12 }}
+                                                activeOpacity={0.75}
                                             >
-                                                <Plane size={16} color={GOLD} style={{ transform: [{ rotate: "90deg" }] }} />
+                                                <Plane size={15} color={GOLD} style={{ transform: [{ rotate: "90deg" }] }} />
                                             </TouchableOpacity>
+                                            <View style={{ flex: 1, height: 1, backgroundColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)" }} />
                                         </View>
                                         <View style={{ padding: 16 }}>
-                                            <Text style={{ fontSize: 10, fontWeight: "700", color: C.muted, letterSpacing: 1.5, marginBottom: 6 }}>TO</Text>
+                                            <Text style={{ fontSize: 9, fontWeight: "800", color: C.muted, letterSpacing: 2, marginBottom: 8 }}>TO</Text>
                                             <LocationSearch value={comTo} onChangeText={setComTo} placeholder="Destination city or airport..." onSelect={setComTo} />
                                         </View>
                                     </View>
 
-                                    {/* Dates */}
-                                    <View style={s.dtRow}>
-                                        <View style={{ flex: 1 }}>
-                                            <Text style={[s.label, { color: C.text }]}>Departure *</Text>
-                                            <TouchableOpacity style={[s.inputRow, { backgroundColor: C.surface, borderColor: border }]} onPress={() => { Keyboard.dismiss(); setShowComDepDate(true); }}>
-                                                <Clock size={18} color={GOLD} style={{ marginRight: 8 }} />
-                                                <Text style={{ color: C.text, fontSize: 14 }}>{comDepDate.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</Text>
+                                    {/* Date Cards */}
+                                    <View style={{ flexDirection: "row", gap: 12, marginBottom: 20 }}>
+                                        <TouchableOpacity
+                                            onPress={() => { Keyboard.dismiss(); setShowComDepDate(true); }}
+                                            style={{ flex: 1, padding: 16, borderRadius: 16, borderWidth: 1.5, borderColor: GOLD, backgroundColor: `${GOLD}08` }}
+                                            activeOpacity={0.8}
+                                        >
+                                            <Text style={{ fontSize: 9, fontWeight: "800", color: GOLD, letterSpacing: 1.5, marginBottom: 8 }}>DEPART</Text>
+                                            <Text style={{ fontSize: 20, fontWeight: "800", color: C.text }}>
+                                                {comDepDate.toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}
+                                            </Text>
+                                            <Text style={{ fontSize: 12, color: C.muted, marginTop: 3 }}>
+                                                {comDepDate.toLocaleDateString("en-GB", { weekday: "short", year: "numeric" })}
+                                            </Text>
+                                        </TouchableOpacity>
+                                        {comTripType === "round" ? (
+                                            <TouchableOpacity
+                                                onPress={() => { Keyboard.dismiss(); setShowComRetDate(true); }}
+                                                style={{ flex: 1, padding: 16, borderRadius: 16, borderWidth: 1.5, borderColor: border, backgroundColor: C.surface }}
+                                                activeOpacity={0.8}
+                                            >
+                                                <Text style={{ fontSize: 9, fontWeight: "800", color: C.muted, letterSpacing: 1.5, marginBottom: 8 }}>RETURN</Text>
+                                                <Text style={{ fontSize: 20, fontWeight: "800", color: C.text }}>
+                                                    {comRetDate.toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}
+                                                </Text>
+                                                <Text style={{ fontSize: 12, color: C.muted, marginTop: 3 }}>
+                                                    {comRetDate.toLocaleDateString("en-GB", { weekday: "short", year: "numeric" })}
+                                                </Text>
                                             </TouchableOpacity>
-                                        </View>
-                                        {comTripType === "round" && (
-                                            <View style={{ flex: 1 }}>
-                                                <Text style={[s.label, { color: C.text }]}>Return *</Text>
-                                                <TouchableOpacity style={[s.inputRow, { backgroundColor: C.surface, borderColor: border }]} onPress={() => { Keyboard.dismiss(); setShowComRetDate(true); }}>
-                                                    <Clock size={18} color={GOLD} style={{ marginRight: 8 }} />
-                                                    <Text style={{ color: C.text, fontSize: 14 }}>{comRetDate.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</Text>
-                                                </TouchableOpacity>
-                                            </View>
+                                        ) : (
+                                            <View style={{ flex: 1 }} />
                                         )}
                                     </View>
-                                    {showComDepDate && <DateTimePicker mode="date" value={comDepDate} minimumDate={new Date()} onChange={(_, d) => { if (d) setComDepDate(d); if (Platform.OS === "android") setShowComDepDate(false); }} />}
-                                    {showComRetDate && <DateTimePicker mode="date" value={comRetDate} minimumDate={comDepDate} onChange={(_, d) => { if (d) setComRetDate(d); if (Platform.OS === "android") setShowComRetDate(false); }} />}
+                                    {/* Commercial Flight Date Pickers (Android) */}
+                                    {Platform.OS === "android" && showComDepDate && (
+                                        <DateTimePicker
+                                            value={comDepDate}
+                                            mode="date"
+                                            display="default"
+                                            minimumDate={new Date()}
+                                            onChange={(_, d) => {
+                                                setShowComDepDate(false);
+                                                if (d) setComDepDate(d);
+                                            }}
+                                        />
+                                    )}
+                                    {Platform.OS === "android" && showComRetDate && (
+                                        <DateTimePicker
+                                            value={comRetDate}
+                                            mode="date"
+                                            display="default"
+                                            minimumDate={comDepDate}
+                                            onChange={(_, d) => {
+                                                setShowComRetDate(false);
+                                                if (d) setComRetDate(d);
+                                            }}
+                                        />
+                                    )}
 
                                     {/* Passengers */}
-                                    <Text style={[s.label, { color: C.text }]}>Passengers</Text>
-                                    <View style={[s.stepperRow, { backgroundColor: C.surface, borderColor: border, marginBottom: 20 }]}>
-                                        <Users size={18} color={GOLD} />
-                                        <TouchableOpacity style={[s.stepperBtn, { borderColor: border }]} onPress={() => setComPassengers(p => Math.max(1, p - 1))}><Minus size={16} color={C.text} /></TouchableOpacity>
-                                        <Text style={[s.stepperVal, { color: C.text }]}>{comPassengers}</Text>
-                                        <TouchableOpacity style={[s.stepperBtn, { borderColor: border }]} onPress={() => setComPassengers(p => p + 1)}><Plus size={16} color={C.text} /></TouchableOpacity>
-                                        <Text style={{ flex: 1, textAlign: "right", color: C.muted, fontSize: 13 }}>{comPassengers === 1 ? "1 Passenger" : `${comPassengers} Passengers`}</Text>
+                                    <View style={{ backgroundColor: C.surface, borderRadius: 16, borderWidth: 1, borderColor: border, padding: 16, marginBottom: 20 }}>
+                                        <Text style={{ fontSize: 9, fontWeight: "800", color: C.muted, letterSpacing: 1.5, marginBottom: 12 }}>PASSENGERS</Text>
+                                        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                                            <TouchableOpacity
+                                                onPress={() => setComPassengers(p => Math.max(1, p - 1))}
+                                                style={{ width: 36, height: 36, borderRadius: 10, borderWidth: 1, borderColor: border, alignItems: "center", justifyContent: "center", backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)" }}
+                                            >
+                                                <Minus size={15} color={C.text} />
+                                            </TouchableOpacity>
+                                            <View style={{ alignItems: "center" }}>
+                                                <Text style={{ fontSize: 32, fontWeight: "800", color: GOLD, lineHeight: 38 }}>{comPassengers}</Text>
+                                                <Text style={{ fontSize: 11, color: C.muted }}>{comPassengers === 1 ? "passenger" : "passengers"}</Text>
+                                            </View>
+                                            <TouchableOpacity
+                                                onPress={() => setComPassengers(p => p + 1)}
+                                                style={{ width: 36, height: 36, borderRadius: 10, borderWidth: 1, borderColor: border, alignItems: "center", justifyContent: "center", backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)" }}
+                                            >
+                                                <Plus size={15} color={C.text} />
+                                            </TouchableOpacity>
+                                        </View>
                                     </View>
 
                                     {/* Cabin Class */}
                                     <Text style={[s.label, { color: C.text }]}>Cabin Class</Text>
-                                    <View style={{ flexDirection: "row", gap: 10, marginBottom: 20 }}>
-                                        {(["economy", "business", "first"] as const).map(cls => {
-                                            const active = comCabin === cls;
-                                            const labels = { economy: "Economy", business: "Business", first: "First Class" } as { [k: string]: string };
+                                    <View style={{ gap: 10, marginBottom: 20 }}>
+                                        {([
+                                            { id: "economy" as const, label: "Economy", sub: "Standard seating · Best value fares", sym: "◎" },
+                                            { id: "business" as const, label: "Business Class", sub: "Lie-flat seats · Lounge access · Priority boarding", sym: "◆" },
+                                            { id: "first" as const, label: "First Class", sub: "Private suite · Exclusive service · Ultimate comfort", sym: "✦" },
+                                        ]).map(cls => {
+                                            const active = comCabin === cls.id;
                                             return (
                                                 <TouchableOpacity
-                                                    key={cls}
-                                                    onPress={() => setComCabin(cls)}
-                                                    style={{ flex: 1, paddingVertical: 16, borderRadius: 14, alignItems: "center", borderWidth: 1, borderColor: active ? GOLD : border, backgroundColor: active ? `${GOLD}12` : C.surface }}
+                                                    key={cls.id}
+                                                    onPress={() => setComCabin(cls.id)}
+                                                    style={{ flexDirection: "row", alignItems: "center", gap: 14, padding: 16, borderRadius: 16, borderWidth: 1.5, borderColor: active ? GOLD : border, backgroundColor: active ? `${GOLD}10` : C.surface }}
                                                     activeOpacity={0.8}
                                                 >
-                                                    <Text style={{ fontSize: 13, fontWeight: "700", color: active ? GOLD : C.muted }}>{labels[cls]}</Text>
+                                                    <View style={{ width: 42, height: 42, borderRadius: 13, backgroundColor: active ? `${GOLD}22` : (isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)"), alignItems: "center", justifyContent: "center" }}>
+                                                        <Text style={{ fontSize: 18, color: active ? GOLD : C.muted }}>{cls.sym}</Text>
+                                                    </View>
+                                                    <View style={{ flex: 1 }}>
+                                                        <Text style={{ fontSize: 14, fontWeight: "700", color: active ? GOLD : C.text, marginBottom: 3 }}>{cls.label}</Text>
+                                                        <Text style={{ fontSize: 11, color: C.muted, lineHeight: 16 }}>{cls.sub}</Text>
+                                                    </View>
+                                                    {active && (
+                                                        <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: GOLD, alignItems: "center", justifyContent: "center" }}>
+                                                            <Check size={12} color="#000" strokeWidth={3} />
+                                                        </View>
+                                                    )}
                                                 </TouchableOpacity>
                                             );
                                         })}
+                                    </View>
+
+                                    {/* Advisor note */}
+                                    <View style={{ flexDirection: "row", gap: 10, padding: 14, borderRadius: 14, borderWidth: 1, borderColor: `${GOLD}35`, backgroundColor: `${GOLD}08`, marginBottom: 8 }}>
+                                        <Plane size={14} color={GOLD} style={{ marginTop: 2, flexShrink: 0, transform: [{ rotate: "45deg" }] }} />
+                                        <Text style={{ flex: 1, fontSize: 12, color: C.muted, lineHeight: 18 }}>
+                                            A Lapeq travel advisor will source the best available fares, manage your booking, and handle any changes or upgrades.
+                                        </Text>
                                     </View>
 
                                     {/* Special Requests */}
@@ -936,6 +1020,52 @@ export default function DrivingServiceScreen() {
                             themeVariant={isDark ? "dark" : "light"}
                             style={{ width: "100%" }}
                             onChange={onJetRetDateChange}
+                        />
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Commercial Flight Departure Date Modal (iOS) */}
+            <Modal visible={Platform.OS === "ios" && showComDepDate} transparent animationType="slide" onRequestClose={() => setShowComDepDate(false)}>
+                <View style={{ flex: 1, justifyContent: "flex-end" }}>
+                    <TouchableOpacity style={[StyleSheet.absoluteFillObject, { backgroundColor: "rgba(0,0,0,0.4)" }]} activeOpacity={1} onPress={() => setShowComDepDate(false)} />
+                    <View style={[s.pickerSheet, { backgroundColor: C.surface }]}>
+                        <View style={s.pickerHeader}>
+                            <TouchableOpacity onPress={() => setShowComDepDate(false)}><Text style={{ color: C.muted, fontSize: 15 }}>Cancel</Text></TouchableOpacity>
+                            <Text style={{ color: C.text, fontWeight: "700", fontSize: 15 }}>Departure Date</Text>
+                            <TouchableOpacity onPress={() => setShowComDepDate(false)}><Text style={{ color: GOLD, fontWeight: "700", fontSize: 15 }}>Done</Text></TouchableOpacity>
+                        </View>
+                        <DateTimePicker
+                            value={comDepDate}
+                            mode="date"
+                            display="spinner"
+                            minimumDate={new Date()}
+                            themeVariant={isDark ? "dark" : "light"}
+                            style={{ width: "100%" }}
+                            onChange={(_, d) => { if (d) setComDepDate(d); }}
+                        />
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Commercial Flight Return Date Modal (iOS) */}
+            <Modal visible={Platform.OS === "ios" && showComRetDate} transparent animationType="slide" onRequestClose={() => setShowComRetDate(false)}>
+                <View style={{ flex: 1, justifyContent: "flex-end" }}>
+                    <TouchableOpacity style={[StyleSheet.absoluteFillObject, { backgroundColor: "rgba(0,0,0,0.4)" }]} activeOpacity={1} onPress={() => setShowComRetDate(false)} />
+                    <View style={[s.pickerSheet, { backgroundColor: C.surface }]}>
+                        <View style={s.pickerHeader}>
+                            <TouchableOpacity onPress={() => setShowComRetDate(false)}><Text style={{ color: C.muted, fontSize: 15 }}>Cancel</Text></TouchableOpacity>
+                            <Text style={{ color: C.text, fontWeight: "700", fontSize: 15 }}>Return Date</Text>
+                            <TouchableOpacity onPress={() => setShowComRetDate(false)}><Text style={{ color: GOLD, fontWeight: "700", fontSize: 15 }}>Done</Text></TouchableOpacity>
+                        </View>
+                        <DateTimePicker
+                            value={comRetDate}
+                            mode="date"
+                            display="spinner"
+                            minimumDate={comDepDate}
+                            themeVariant={isDark ? "dark" : "light"}
+                            style={{ width: "100%" }}
+                            onChange={(_, d) => { if (d) setComRetDate(d); }}
                         />
                     </View>
                 </View>

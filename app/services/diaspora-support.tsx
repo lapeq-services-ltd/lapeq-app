@@ -7,7 +7,7 @@ import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
-import { Briefcase, Check, FileText, ChevronLeft, ChevronDown, ChevronUp, Globe, Heart, Home, Minus, Plus, TrendingUp, CalendarDays, Shield } from "lucide-react-native";
+import { Briefcase, Check, FileText, ChevronLeft, ChevronDown, ChevronUp, Globe, Heart, Home, Minus, Plus, TrendingUp, CalendarDays, Shield, CreditCard, BookOpen } from "lucide-react-native";
 import VoiceInput from "@/components/VoiceInput";
 
 const SUGGESTIONS = [
@@ -96,6 +96,20 @@ const PACKAGES = [
         desc: "Stay informed and protected. We provide on-ground security assessments, safe travel routing, location risk reports, and emergency evacuation coordination for Nigeria visits.",
         bullet: "Risk reports · Safe routing · Emergency extraction",
         Icon: Shield
+    },
+    {
+        id: "Passport Renewal",
+        label: "Passport Renewal",
+        desc: "We handle your Nigerian passport renewal end-to-end — from application booking and document submission to collection and courier delivery — while you remain abroad.",
+        bullet: "Application booking · Processing liaison · Courier delivery",
+        Icon: BookOpen
+    },
+    {
+        id: "Bank Account Opening",
+        label: "Bank Account Opening",
+        desc: "Open a Nigerian bank account remotely. We represent you, submit documentation on your behalf, and liaise with the bank until your account is fully active.",
+        bullet: "Document submission · Bank liaison · Account activation",
+        Icon: CreditCard
     }
 ];
 
@@ -165,7 +179,7 @@ export default function DiasporaScreen() {
     const isDark = theme === "dark";
     const border = isDark ? "rgba(255,255,255,0.09)" : "#e0dbd2";
 
-    const [serviceType, setServiceType] = useState("Homecoming Protocol");
+    const [serviceType, setServiceType] = useState<string | null>(null);
     const [country, setCountry] = useState("");
     const [isOtherSelected, setIsOtherSelected] = useState(false);
     const [otherCountry, setOtherCountry] = useState("");
@@ -225,6 +239,18 @@ export default function DiasporaScreen() {
     const [secExtraction, setSecExtraction] = useState(false);
     const [secIntel, setSecIntel] = useState(false);
 
+    // Passport Renewal Sub-options
+    const [prStandard, setPrStandard] = useState(true);
+    const [prEnhanced, setPrEnhanced] = useState(false);
+    const [prExpress, setPrExpress] = useState(false);
+    const [prCourier, setPrCourier] = useState(false);
+
+    // Bank Account Opening Sub-options
+    const [baoCurrent, setBaoCurrent] = useState(true);
+    const [baoSavings, setBaoSavings] = useState(false);
+    const [baoDom, setBaoDom] = useState(false);
+    const [baoCorporate, setBaoCorporate] = useState(false);
+
     const scrollRef = useRef<ScrollView>(null);
     const detailsY = useRef(0);
     const alertOpacity = useRef(new Animated.Value(0)).current;
@@ -252,7 +278,7 @@ export default function DiasporaScreen() {
     };
 
     const handleSubmit = async () => {
-        if (!country || (isOtherSelected && !otherCountry.trim()) || !details) {
+        if (!country || !serviceType || (isOtherSelected && !otherCountry.trim()) || !details) {
             setShowError(true);
             return;
         }
@@ -327,6 +353,20 @@ export default function DiasporaScreen() {
                 "Safe Routing & Movement": secRouting,
                 "Emergency Extraction Plan": secExtraction,
                 "Intelligence & Threat Monitoring": secIntel
+            };
+        } else if (serviceType === "Passport Renewal") {
+            detailsPayload.options = {
+                "Standard Passport (Green Booklet)": prStandard,
+                "Enhanced E-Passport": prEnhanced,
+                "Express Processing": prExpress,
+                "Courier Collection & Delivery": prCourier
+            };
+        } else if (serviceType === "Bank Account Opening") {
+            detailsPayload.options = {
+                "Current Account": baoCurrent,
+                "Savings Account": baoSavings,
+                "Domiciliary (DOM) Account": baoDom,
+                "Corporate / Business Account": baoCorporate
             };
         }
 
@@ -480,27 +520,43 @@ export default function DiasporaScreen() {
                             {!pkgExpanded ? (
                                 /* Collapsed selected card */
                                 <View>
-                                    {(() => {
-                                        const selectedPkg = PACKAGES.find(p => p.id === serviceType) || PACKAGES[0];
-                                        const IconComponent = selectedPkg.Icon;
-                                        return (
-                                            <TouchableOpacity
-                                                style={[s.packageCard, { borderColor: border }, s.packageCardActive]}
-                                                onPress={() => setPkgExpanded(true)}
-                                                activeOpacity={0.8}
-                                            >
-                                                <View style={s.packageHeader}>
-                                                    <View style={[s.packageIconWrap, s.packageIconWrapActive]}>
-                                                        <IconComponent size={18} color={GOLD} />
-                                                    </View>
-                                                    <Text style={[s.packageLabel, { color: C.text, flex: 1 }]}>{selectedPkg.label}</Text>
-                                                    <ChevronDown size={20} color={GOLD} />
+                                    {serviceType === null ? (
+                                        <TouchableOpacity
+                                            style={[s.packageCard, { borderColor: showError ? "#ef5350" : border, backgroundColor: C.surface }]}
+                                            onPress={() => setPkgExpanded(true)}
+                                            activeOpacity={0.8}
+                                        >
+                                            <View style={s.packageHeader}>
+                                                <View style={s.packageIconWrap}>
+                                                    <Briefcase size={18} color={C.muted} />
                                                 </View>
-                                                <Text style={[s.packageDesc, { color: C.muted }]}>{selectedPkg.desc}</Text>
-                                                <Text style={s.packageBullet}>• {selectedPkg.bullet}</Text>
-                                            </TouchableOpacity>
-                                        );
-                                    })()}
+                                                <Text style={[s.packageLabel, { color: C.muted, flex: 1, fontWeight: "400", fontSize: 14 }]}>Select a concierge service...</Text>
+                                                <ChevronDown size={20} color={GOLD} />
+                                            </View>
+                                        </TouchableOpacity>
+                                    ) : (
+                                        (() => {
+                                            const selectedPkg = PACKAGES.find(p => p.id === serviceType)!;
+                                            const IconComponent = selectedPkg.Icon;
+                                            return (
+                                                <TouchableOpacity
+                                                    style={[s.packageCard, { borderColor: border }, s.packageCardActive]}
+                                                    onPress={() => setPkgExpanded(true)}
+                                                    activeOpacity={0.8}
+                                                >
+                                                    <View style={s.packageHeader}>
+                                                        <View style={[s.packageIconWrap, s.packageIconWrapActive]}>
+                                                            <IconComponent size={18} color={GOLD} />
+                                                        </View>
+                                                        <Text style={[s.packageLabel, { color: C.text, flex: 1 }]}>{selectedPkg.label}</Text>
+                                                        <ChevronDown size={20} color={GOLD} />
+                                                    </View>
+                                                    <Text style={[s.packageDesc, { color: C.muted }]}>{selectedPkg.desc}</Text>
+                                                    <Text style={s.packageBullet}>• {selectedPkg.bullet}</Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })()
+                                    )}
                                 </View>
                             ) : (
                                 /* Expanded package choices */
@@ -534,12 +590,19 @@ export default function DiasporaScreen() {
                             )}
 
                             {/* ── EXPANDABLE DETAILED CHECKLIST SUB-OPTIONS ── */}
-                            {!pkgExpanded && (
+                            {!pkgExpanded && serviceType !== null && (
                                 <View style={[s.subOptionsCard, { borderColor: border }]}>
                                     <Text style={s.subOptionsTitle}>
                                         {serviceType === "Homecoming Protocol" && "Homecoming custom add-ons"}
                                         {serviceType === "Family Welfare Concierge" && "Family Care custom add-ons"}
                                         {serviceType === "Property Custodianship" && "Oversight custom add-ons"}
+                                        {serviceType === "Document & Legal Affairs" && "Document & legal add-ons"}
+                                        {serviceType === "Remote Business Liaison" && "Business liaison add-ons"}
+                                        {serviceType === "Investment & Finance Watch" && "Finance watch add-ons"}
+                                        {serviceType === "Event & Ceremony Coordination" && "Event coordination add-ons"}
+                                        {serviceType === "Security & Risk Advisory" && "Security & risk add-ons"}
+                                        {serviceType === "Passport Renewal" && "Passport renewal options"}
+                                        {serviceType === "Bank Account Opening" && "Account type options"}
                                     </Text>
                                     
                                     {serviceType === "Homecoming Protocol" && (
@@ -805,6 +868,72 @@ export default function DiasporaScreen() {
                                             </View>
                                         </View>
                                     )}
+
+                                    {serviceType === "Passport Renewal" && (
+                                        <View style={{ gap: 4 }}>
+                                            <View style={s.toggleRow}>
+                                                <View style={{ flex: 1, paddingRight: 10 }}>
+                                                    <Text style={[s.toggleLabel, { color: C.text }]}>Standard Passport (Green Booklet)</Text>
+                                                    <Text style={s.toggleSub}>Regular 32-page Nigerian passport</Text>
+                                                </View>
+                                                <Switch value={prStandard} onValueChange={setPrStandard} trackColor={{ false: border, true: `${GOLD}80` }} thumbColor={prStandard ? GOLD : "#888"} />
+                                            </View>
+                                            <View style={s.toggleRow}>
+                                                <View style={{ flex: 1, paddingRight: 10 }}>
+                                                    <Text style={[s.toggleLabel, { color: C.text }]}>Enhanced E-Passport</Text>
+                                                    <Text style={s.toggleSub}>64-page biometric e-passport with chip</Text>
+                                                </View>
+                                                <Switch value={prEnhanced} onValueChange={setPrEnhanced} trackColor={{ false: border, true: `${GOLD}80` }} thumbColor={prEnhanced ? GOLD : "#888"} />
+                                            </View>
+                                            <View style={s.toggleRow}>
+                                                <View style={{ flex: 1, paddingRight: 10 }}>
+                                                    <Text style={[s.toggleLabel, { color: C.text }]}>Express Processing</Text>
+                                                    <Text style={s.toggleSub}>Priority queue & expedited processing</Text>
+                                                </View>
+                                                <Switch value={prExpress} onValueChange={setPrExpress} trackColor={{ false: border, true: `${GOLD}80` }} thumbColor={prExpress ? GOLD : "#888"} />
+                                            </View>
+                                            <View style={[s.toggleRow, { borderBottomWidth: 0 }]}>
+                                                <View style={{ flex: 1, paddingRight: 10 }}>
+                                                    <Text style={[s.toggleLabel, { color: C.text }]}>Courier Collection & Delivery</Text>
+                                                    <Text style={s.toggleSub}>We collect the passport and courier it to you abroad</Text>
+                                                </View>
+                                                <Switch value={prCourier} onValueChange={setPrCourier} trackColor={{ false: border, true: `${GOLD}80` }} thumbColor={prCourier ? GOLD : "#888"} />
+                                            </View>
+                                        </View>
+                                    )}
+
+                                    {serviceType === "Bank Account Opening" && (
+                                        <View style={{ gap: 4 }}>
+                                            <View style={s.toggleRow}>
+                                                <View style={{ flex: 1, paddingRight: 10 }}>
+                                                    <Text style={[s.toggleLabel, { color: C.text }]}>Current Account</Text>
+                                                    <Text style={s.toggleSub}>Standard transactional account for daily use</Text>
+                                                </View>
+                                                <Switch value={baoCurrent} onValueChange={setBaoCurrent} trackColor={{ false: border, true: `${GOLD}80` }} thumbColor={baoCurrent ? GOLD : "#888"} />
+                                            </View>
+                                            <View style={s.toggleRow}>
+                                                <View style={{ flex: 1, paddingRight: 10 }}>
+                                                    <Text style={[s.toggleLabel, { color: C.text }]}>Savings Account</Text>
+                                                    <Text style={s.toggleSub}>Interest-bearing savings account</Text>
+                                                </View>
+                                                <Switch value={baoSavings} onValueChange={setBaoSavings} trackColor={{ false: border, true: `${GOLD}80` }} thumbColor={baoSavings ? GOLD : "#888"} />
+                                            </View>
+                                            <View style={s.toggleRow}>
+                                                <View style={{ flex: 1, paddingRight: 10 }}>
+                                                    <Text style={[s.toggleLabel, { color: C.text }]}>Domiciliary (DOM) Account</Text>
+                                                    <Text style={s.toggleSub}>Foreign currency account — USD, GBP, EUR</Text>
+                                                </View>
+                                                <Switch value={baoDom} onValueChange={setBaoDom} trackColor={{ false: border, true: `${GOLD}80` }} thumbColor={baoDom ? GOLD : "#888"} />
+                                            </View>
+                                            <View style={[s.toggleRow, { borderBottomWidth: 0 }]}>
+                                                <View style={{ flex: 1, paddingRight: 10 }}>
+                                                    <Text style={[s.toggleLabel, { color: C.text }]}>Corporate / Business Account</Text>
+                                                    <Text style={s.toggleSub}>Business banking for registered companies</Text>
+                                                </View>
+                                                <Switch value={baoCorporate} onValueChange={setBaoCorporate} trackColor={{ false: border, true: `${GOLD}80` }} thumbColor={baoCorporate ? GOLD : "#888"} />
+                                            </View>
+                                        </View>
+                                    )}
                                 </View>
                             )}
                         </View>
@@ -861,7 +990,7 @@ export default function DiasporaScreen() {
                             />
                         </View>
 
-                        {showError && (!country || (isOtherSelected && !otherCountry.trim()) || !details) && (
+                        {showError && (!country || !serviceType || (isOtherSelected && !otherCountry.trim()) || !details) && (
                             <Text style={s.errorText}>Please fill in all required fields.</Text>
                         )}
 

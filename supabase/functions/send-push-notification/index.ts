@@ -14,6 +14,17 @@ serve(async (req) => {
   }
 
   try {
+    // Verify the internal webhook secret — only our DB trigger knows this value.
+    // Set INTERNAL_WEBHOOK_SECRET in Dashboard → Settings → Edge Function Secrets.
+    const webhookSecret = Deno.env.get('INTERNAL_WEBHOOK_SECRET');
+    const incomingSecret = req.headers.get('x-webhook-secret');
+    if (!webhookSecret || incomingSecret !== webhookSecret) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 401,
+      });
+    }
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? "",
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ""
@@ -57,6 +68,7 @@ serve(async (req) => {
       data: {
         type: record.type || 'request',
         target_id: record.target_id || null,
+        notif_id: record.id || null,
       },
     }))
 

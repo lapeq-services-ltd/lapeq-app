@@ -1,16 +1,18 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import {
     Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
     View, Platform, Image, Modal, Animated, Alert, Dimensions, Switch,
 } from "react-native";
 import LocationSearch from "@/components/LocationSearch";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
+import { takePendingService } from "@/lib/serviceStore";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
-import { ChevronLeft, ChevronRight, Calendar, Check, Plane, Plus, Minus } from "lucide-react-native";
+import { ChevronLeft, ChevronRight, Calendar, Check, Plane, Plus, Minus, Lock } from "lucide-react-native";
 import VoiceInput from "@/components/VoiceInput";
+import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 
 
@@ -40,6 +42,8 @@ const SERVICE_TYPES = [
     { id: "Childcare & Family",     label: "Childcare & Family",emoji: "△", desc: "Nanny sourcing, school admissions & childcare",        img: require("@/assets/images/onboarding-lifestyle.png") },
     { id: "Security & Protocol",    label: "Security",          emoji: "◉", desc: "Personal protection & VIP security arrangements",    img: require("@/assets/images/ikoyi-bridge.jpg") },
     { id: "Bespoke Request",        label: "Bespoke Request",   emoji: "✦", desc: "Any custom request or premium service not listed",  img: require("@/assets/images/onboarding-lifestyle.png") },
+    { id: "Passport Renewal",       label: "Passport Renewal",  emoji: "◈", desc: "End-to-end passport renewal & document processing",  img: require("@/assets/images/onboarding-trust.png") },
+    { id: "Bank Account Opening",   label: "Bank Account",      emoji: "◆", desc: "Open a Nigerian bank account remotely",              img: require("@/assets/images/lagos-rooftop.jpg") },
 ];
 
 const MOODS           = ["Romantic", "Adventure", "Business", "Wellness", "Celebration", "Family"];
@@ -94,6 +98,24 @@ export default function LifestyleTravelScreen() {
 
     const [serviceType, setServiceType] = useState(SERVICE_TYPES[0].id);
 
+    // Sub-form state variables
+    const [giftOccasion, setGiftOccasion] = useState("");
+    const [giftType, setGiftType] = useState("");
+    const [giftRecipient, setGiftRecipient] = useState("");
+    const [giftMessage, setGiftMessage] = useState("");
+
+    const [recreationActivity, setRecreationActivity] = useState("");
+    const [recreationLevel, setRecreationLevel] = useState("Beginner");
+    const [recreationGroupSize, setRecreationGroupSize] = useState(1);
+
+    const [medicalCareType, setMedicalCareType] = useState("");
+    const [medicalUrgency, setMedicalUrgency] = useState("Flexible");
+
+    const [financeGoal, setFinanceGoal] = useState("");
+    const [financeStrategy, setFinanceStrategy] = useState("Balanced");
+
+    const [legalMatterType, setLegalMatterType] = useState("");
+
     const startOfToday = useMemo(() => {
         const d = new Date();
         d.setHours(0, 0, 0, 0);
@@ -129,6 +151,11 @@ export default function LifestyleTravelScreen() {
             }
         }
     }, []);
+
+    useFocusEffect(useCallback(() => {
+        const pending = takePendingService();
+        if (pending) setServiceType(pending);
+    }, []));
 
     useEffect(() => {
         const loadUserTier = async () => {
@@ -228,7 +255,12 @@ export default function LifestyleTravelScreen() {
         "Childcare & Family",
         "Security & Protocol",
         "Bespoke Request",
+        "Passport Renewal",
+        "Bank Account Opening",
     ].includes(serviceType);
+
+    const isFreeUser = !userTier || !["silver", "gold", "black"].includes(userTier.toLowerCase());
+    const limitReached = isFreeUser && monthlyRequestsCount >= 5;
 
     const fmtDate = (d: Date | null) => d ? d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : null;
     const fmtTime = (d: Date | null) => d ? d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : null;
@@ -237,6 +269,7 @@ export default function LifestyleTravelScreen() {
         setList(list.includes(val) ? list.filter(x => x !== val) : [...list, val]);
 
     const handleSubmit = async () => {
+        if (limitReached) { Alert.alert("Limit Reached", "You've used all 5 of your monthly requests. Upgrade to Premium to continue."); return; }
         if (isJets) {
             if (!jetDeparture || !jetDestination) { Alert.alert("Add Route", "Please enter departure and destination."); return; }
         } else if (isStays) {
@@ -246,6 +279,11 @@ export default function LifestyleTravelScreen() {
         } else if (isVIPProtocol) {
             if (!protocolType || !protocolCity) { Alert.alert("Add Details", "Please select a service type and city."); return; }
         } else if (isLifestyleService) {
+            if (serviceType === "Gift & Florals" && !giftOccasion) { Alert.alert("Select Occasion", "Please choose an occasion."); return; }
+            if (serviceType === "Recreational Activities" && !recreationActivity) { Alert.alert("Select Activity", "Please choose an activity."); return; }
+            if (serviceType === "Medical Concierge" && !medicalCareType) { Alert.alert("Select Care Type", "Please choose a care type."); return; }
+            if (serviceType === "Financial Advisory" && !financeGoal) { Alert.alert("Select Goal", "Please choose a goal."); return; }
+            if (serviceType === "Legal Advisory" && !legalMatterType) { Alert.alert("Select Matter Type", "Please choose a matter type."); return; }
             if (preferences.trim().length === 0) { Alert.alert("Add Details", "Please describe what you need."); return; }
         } else {
             if (!destination && preferences.trim().length === 0) { Alert.alert("Add Details", "Please enter a destination or describe your experience."); return; }
@@ -264,7 +302,19 @@ export default function LifestyleTravelScreen() {
                     : isVIPProtocol
                     ? { serviceType, protocolType, city: protocolCity, date: fmtDate(dateFromObj), time: fmtTime(eventTime), persons: protocolPersons, requirements: protocolReqs }
                     : isLifestyleService
-                    ? { serviceType, city: destination, date: fmtDate(dateFromObj), budget: curatedBudget, description: preferences }
+                    ? {
+                        serviceType,
+                        city: destination,
+                        date: fmtDate(dateFromObj),
+                        budget: curatedBudget,
+                        description: preferences,
+                        // Add serialized details for sub-forms
+                        ...(serviceType === "Gift & Florals" ? { giftOccasion, giftType, giftRecipient, giftMessage } : {}),
+                        ...(serviceType === "Recreational Activities" ? { recreationActivity, recreationLevel, recreationGroupSize } : {}),
+                        ...(serviceType === "Medical Concierge" ? { medicalCareType, medicalUrgency } : {}),
+                        ...(serviceType === "Financial Advisory" ? { financeGoal, financeStrategy } : {}),
+                        ...(serviceType === "Legal Advisory" ? { legalMatterType } : {})
+                      }
                     : { serviceType, mood, destination, dateFrom: fmtDate(dateFromObj), dateTo: fmtDate(dateToObj), budget: curatedBudget, preferences }),
                 targetVenue: params.prefillVenue || null
               };
@@ -310,23 +360,31 @@ export default function LifestyleTravelScreen() {
                 <View style={s.section}>
                     <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                         <Text style={[s.sectionLabel, { marginBottom: 0 }]}>Select a Service</Text>
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
-                            <Text style={{ fontSize: 11, color: C.muted, opacity: 0.55, letterSpacing: 0.5 }}>swipe</Text>
-                            <ChevronRight size={13} color={C.muted} opacity={0.55} />
-                        </View>
+                        <TouchableOpacity
+                            onPress={() => router.push({ pathname: "/services/all-services" as any, params: { currentType: serviceType } })}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                            <Text style={{ fontSize: 12, color: GOLD, fontWeight: "700" }}>View all</Text>
+                        </TouchableOpacity>
                     </View>
+
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingRight: 4 }}>
                         {SERVICE_TYPES.map(svc => {
                             const active = serviceType === svc.id;
                             return (
                                 <TouchableOpacity
                                     key={svc.id}
-                                    style={[s.svcChip, active && { backgroundColor: GOLD, borderColor: GOLD }]}
+                                    style={[
+                                        s.svcChip,
+                                        active 
+                                            ? { backgroundColor: "#000", borderColor: "#000" } 
+                                            : { backgroundColor: GOLD, borderColor: GOLD }
+                                    ]}
                                     onPress={() => setServiceType(svc.id)}
                                     activeOpacity={0.8}
                                 >
-                                    <Image source={svc.img} style={{ width: 20, height: 20, borderRadius: 10 }} />
-                                    <Text style={[s.svcChipText, active && { color: "#0a0a0a" }]}>{svc.label}</Text>
+                                    <Image source={svc.img} style={{ width: 20, height: 20, borderRadius: 10, opacity: active ? 1 : 0.8 }} />
+                                    <Text style={[s.svcChipText, active ? { color: GOLD } : { color: "#000" }]}>{svc.label}</Text>
                                 </TouchableOpacity>
                             );
                         })}
@@ -752,22 +810,11 @@ export default function LifestyleTravelScreen() {
                     <>
                         <View style={s.section}>
                             <Text style={s.sectionLabel}>City / Location</Text>
-                            <View style={s.wrapRow}>
-                                {CITIES.map(c => {
-                                    const isAvailable = c === "Lagos" || c === "Abuja" || c === "Other";
-                                    const displayLabel = isAvailable ? c : `${c} (Coming Soon)`;
-                                    return (
-                                        <TouchableOpacity
-                                            key={c}
-                                            style={[s.chip, destination === c && s.chipActive]}
-                                            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setDestination(c); }}
-                                            activeOpacity={0.8}
-                                        >
-                                            <Text style={[s.chipText, destination === c && s.chipTextActive]}>{displayLabel}</Text>
-                                        </TouchableOpacity>
-                                    );
-                                })}
-                            </View>
+                            <LocationSearch
+                                value={destination}
+                                onChangeText={setDestination}
+                                placeholder="Search and select location..."
+                            />
                         </View>
 
                         <View style={s.section}>
@@ -791,22 +838,311 @@ export default function LifestyleTravelScreen() {
                             )}
                         </View>
 
-                        <View style={s.section}>
-                            <Text style={s.sectionLabel}>Budget Limit</Text>
-                            <BudgetStepper value={curatedBudget} onChange={setCuratedBudget} min={10000} step={10000} C={C} theme={theme} />
-                        </View>
+                        {serviceType === "Gift & Florals" ? (
+                            /* ── GIFT & FLORALS INLINE ── */
+                            <>
+                                <View style={s.section}>
+                                    <Text style={s.sectionLabel}>What is the Occasion?</Text>
+                                    <View style={s.wrapRow}>
+                                        {[
+                                            "Birthday", "Anniversary", "Mother's Day", "Father's Day", 
+                                            "Valentine's", "Sympathy", "Celebration", "Corporate Gift", 
+                                            "Just Because", "Other"
+                                        ].map(occ => (
+                                            <TouchableOpacity
+                                                key={occ}
+                                                style={[s.chip, giftOccasion === occ && s.chipActive]}
+                                                onPress={() => setGiftOccasion(occ)}
+                                                activeOpacity={0.8}
+                                            >
+                                                <Text style={[s.chipText, giftOccasion === occ && s.chipTextActive]}>{occ}</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                </View>
+
+                                <View style={s.section}>
+                                    <Text style={s.sectionLabel}>Type of Gift</Text>
+                                    <View style={s.wrapRow}>
+                                        {[
+                                            "Fresh Flowers", "Floral Arrangement", "Luxury Hamper", 
+                                            "Personalised Gift", "Gift Basket", "Cake & Flowers", 
+                                            "Custom Package"
+                                        ].map(g => (
+                                            <TouchableOpacity
+                                                key={g}
+                                                style={[s.chip, giftType === g && s.chipActive]}
+                                                onPress={() => setGiftType(g)}
+                                                activeOpacity={0.8}
+                                            >
+                                                <Text style={[s.chipText, giftType === g && s.chipTextActive]}>{g}</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                </View>
+
+                                <View style={s.section}>
+                                    <Text style={s.sectionLabel}>Who is it for?</Text>
+                                    <TextInput
+                                        style={s.textInput}
+                                        placeholder="e.g. My mum, Sarah, a business partner..."
+                                        placeholderTextColor={C.muted}
+                                        value={giftRecipient}
+                                        onChangeText={setGiftRecipient}
+                                    />
+                                </View>
+
+                                <View style={s.section}>
+                                    <Text style={s.sectionLabel}>Personal Message (optional)</Text>
+                                    <TextInput
+                                        style={s.textInput}
+                                        placeholder="Message to include on the gift card..."
+                                        placeholderTextColor={C.muted}
+                                        value={giftMessage}
+                                        onChangeText={setGiftMessage}
+                                        multiline
+                                    />
+                                </View>
+
+                                {/* Interactive Calligraphic Greeting Card Preview */}
+                                {(giftMessage.trim().length > 0 || giftRecipient.trim().length > 0) && (
+                                    <View style={s.section}>
+                                        <Text style={s.sectionLabel}>Gift Card Preview</Text>
+                                        <View style={s.greetingCardBox}>
+                                            <LinearGradient
+                                                colors={isDark ? ["#1c1c1f", "#121214"] : ["#faf8f5", "#f5f0e6"]}
+                                                style={StyleSheet.absoluteFillObject}
+                                            />
+                                            <View style={s.greetingCardInner}>
+                                                <Text style={s.greetingCardTitle}>LAPEQ GREETING CARD</Text>
+                                                <View style={s.greetingCardContent}>
+                                                    <Text style={s.greetingRecipient}>
+                                                        To: {giftRecipient.trim() ? giftRecipient : "_________________"}
+                                                    </Text>
+                                                    <Text style={s.greetingMessage}>
+                                                        "{giftMessage.trim() ? giftMessage : "Your message here..."}"
+                                                    </Text>
+                                                    <Text style={s.greetingSender}>
+                                                        With warm regards,
+                                                    </Text>
+                                                    <Text style={s.greetingSenderName}>
+                                                        Lapeq Member
+                                                    </Text>
+                                                </View>
+                                            </View>
+                                        </View>
+                                    </View>
+                                )}
+                            </>
+
+                        ) : serviceType === "Recreational Activities" ? (
+                            /* ── RECREATION INLINE ── */
+                            <>
+                                <View style={s.section}>
+                                    <Text style={s.sectionLabel}>Choose an Activity</Text>
+                                    <View style={s.wrapRow}>
+                                        {[
+                                            "Golf", "Tennis", "Swimming", "Water Sports", "Hiking",
+                                            "Horse Riding", "Skydiving", "Boat Cruise", "Cycling",
+                                            "Spa Day", "Clay Shooting", "Other"
+                                        ].map(act => (
+                                            <TouchableOpacity
+                                                key={act}
+                                                style={[s.chip, recreationActivity === act && s.chipActive]}
+                                                onPress={() => setRecreationActivity(act)}
+                                                activeOpacity={0.8}
+                                            >
+                                                <Text style={[s.chipText, recreationActivity === act && s.chipTextActive]}>{act}</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                </View>
+
+                                <View style={s.section}>
+                                    <Text style={s.sectionLabel}>Experience Level</Text>
+                                    <View style={s.wrapRow}>
+                                        {["First Time", "Beginner", "Intermediate", "Advanced"].map(l => (
+                                            <TouchableOpacity
+                                                key={l}
+                                                style={[s.chip, recreationLevel === l && s.chipActive]}
+                                                onPress={() => setRecreationLevel(l)}
+                                                activeOpacity={0.8}
+                                            >
+                                                <Text style={[s.chipText, recreationLevel === l && s.chipTextActive]}>{l}</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                </View>
+
+                                <View style={s.section}>
+                                    <Text style={s.sectionLabel}>Group Size</Text>
+                                    <View style={s.stepperRow}>
+                                        <TouchableOpacity style={s.stepBtn} onPress={() => setRecreationGroupSize(g => Math.max(1, g - 1))} activeOpacity={0.8}><Text style={s.stepBtnText}>−</Text></TouchableOpacity>
+                                        <Text style={s.stepVal}>{recreationGroupSize}</Text>
+                                        <TouchableOpacity style={s.stepBtn} onPress={() => setRecreationGroupSize(g => Math.min(20, g + 1))} activeOpacity={0.8}><Text style={s.stepBtnText}>+</Text></TouchableOpacity>
+                                        <Text style={s.stepLabel}>{recreationGroupSize === 1 ? "Solo" : `${recreationGroupSize} people`}</Text>
+                                    </View>
+                                </View>
+                            </>
+
+                        ) : serviceType === "Medical Concierge" ? (
+                            /* ── MEDICAL INLINE ── */
+                            <>
+                                <View style={s.section}>
+                                    <Text style={s.sectionLabel}>Type of Care</Text>
+                                    <View style={s.wrapRow}>
+                                        {[
+                                            "GP Appointment", "Specialist Referral", "Full Health Check", 
+                                            "Mental Health", "Dental", "Eye Care", 
+                                            "Medical Tourism", "Emergency Abroad", "Other"
+                                        ].map(c => (
+                                            <TouchableOpacity
+                                                key={c}
+                                                style={[s.chip, medicalCareType === c && s.chipActive]}
+                                                onPress={() => setMedicalCareType(c)}
+                                                activeOpacity={0.8}
+                                            >
+                                                <Text style={[s.chipText, medicalCareType === c && s.chipTextActive]}>{c}</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                </View>
+
+                                <View style={s.section}>
+                                    <Text style={s.sectionLabel}>Priority / Urgency</Text>
+                                    <View style={s.urgencyContainer}>
+                                        {[
+                                            { key: "Flexible", label: "Flexible", desc: "Routine checks & non-urgent bookings" },
+                                            { key: "This Week", label: "This Week", desc: "For appointments needed within 7 days" },
+                                            { key: "Today / Urgent", label: "Today / Urgent", desc: "Time-critical and immediate medical needs" }
+                                        ].map(u => {
+                                            const isSelected = medicalUrgency === u.key;
+                                            let borderClr = theme === "dark" ? "#2a2a2a" : "#e0dbd2";
+                                            let bgClr = C.background;
+                                            if (isSelected) {
+                                                borderClr = u.key === "Flexible" ? "#10b981" : u.key === "This Week" ? GOLD : "#ef4444";
+                                                bgClr = u.key === "Flexible" ? "rgba(16, 185, 129, 0.08)" : u.key === "This Week" ? "rgba(201, 168, 76, 0.08)" : "rgba(239, 68, 68, 0.08)";
+                                            }
+                                            return (
+                                                <TouchableOpacity
+                                                    key={u.key}
+                                                    style={[
+                                                        s.urgencyCard,
+                                                        { borderColor: borderClr, backgroundColor: bgClr }
+                                                    ]}
+                                                    onPress={() => setMedicalUrgency(u.key)}
+                                                    activeOpacity={0.8}
+                                                >
+                                                    <Text style={[s.urgencyLabel, isSelected && { color: GOLD, fontWeight: "700" }]}>{u.label}</Text>
+                                                    <Text style={s.urgencyDesc}>{u.desc}</Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </View>
+                                </View>
+                            </>
+
+                        ) : serviceType === "Financial Advisory" ? (
+                            /* ── FINANCE INLINE ── */
+                            <>
+                                <View style={s.section}>
+                                    <Text style={s.sectionLabel}>Type of Advisory Goal</Text>
+                                    <View style={s.wrapRow}>
+                                        {[
+                                            "Grow my wealth", "Reduce my tax", "Plan for retirement", 
+                                            "Fund a business", "Protect my assets", "Invest abroad", "Other"
+                                        ].map(goal => (
+                                            <TouchableOpacity
+                                                key={goal}
+                                                style={[s.chip, financeGoal === goal && s.chipActive]}
+                                                onPress={() => setFinanceGoal(goal)}
+                                                activeOpacity={0.8}
+                                            >
+                                                <Text style={[s.chipText, financeGoal === goal && s.chipTextActive]}>{goal}</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                </View>
+
+                                <View style={s.section}>
+                                    <Text style={s.sectionLabel}>Investment Strategy</Text>
+                                    <View style={s.strategyContainer}>
+                                        {[
+                                            { key: "Preservation", label: "Capital Preservation", desc: "Low risk tolerance. Focus on protecting existing capital & steady assets" },
+                                            { key: "Balanced", label: "Balanced Growth", desc: "Medium risk tolerance. Core mix of growth equities & steady yields" },
+                                            { key: "Venture", label: "High-Yield Venture", desc: "High risk tolerance. Focus on tech startups, private equity & global markets" }
+                                        ].map(strat => {
+                                            const isSelected = financeStrategy === strat.key;
+                                            return (
+                                                <TouchableOpacity
+                                                    key={strat.key}
+                                                    style={[
+                                                        s.strategyCard,
+                                                        isSelected && { borderColor: GOLD, backgroundColor: "rgba(201, 168, 76, 0.08)" }
+                                                    ]}
+                                                    onPress={() => setFinanceStrategy(strat.key)}
+                                                    activeOpacity={0.8}
+                                                >
+                                                    <Text style={[s.strategyLabel, isSelected && { color: GOLD, fontWeight: "700" }]}>{strat.label}</Text>
+                                                    <Text style={s.strategyDesc}>{strat.desc}</Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </View>
+                                </View>
+                            </>
+
+                        ) : serviceType === "Legal Advisory" ? (
+                            /* ── LEGAL INLINE ── */
+                            <>
+                                <View style={s.section}>
+                                    <Text style={s.sectionLabel}>Area of Law</Text>
+                                    <View style={s.wrapRow}>
+                                        {[
+                                            "Business Law", "Property Law", "Family Law", "Employment", 
+                                            "Contract Review", "Criminal Law", "Immigration", "Other"
+                                        ].map(m => (
+                                            <TouchableOpacity
+                                                key={m}
+                                                style={[s.chip, legalMatterType === m && s.chipActive]}
+                                                onPress={() => setLegalMatterType(m)}
+                                                activeOpacity={0.8}
+                                            >
+                                                <Text style={[s.chipText, legalMatterType === m && s.chipTextActive]}>{m}</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                </View>
+
+                                {/* Encryption Confidentiality Banner */}
+                                <View style={s.lockBanner}>
+                                    <Lock size={14} color={GOLD} />
+                                    <Text style={s.lockBannerText}>NDA Protection Active • Encrypted Client Briefing Channel</Text>
+                                </View>
+                            </>
+                        ) : null}
+
+                        {/* Fallback budget step for non-special services */}
+                        {serviceType !== "Gift & Florals" && serviceType !== "Recreational Activities" && serviceType !== "Medical Concierge" && serviceType !== "Financial Advisory" && (
+                            <View style={s.section}>
+                                <Text style={s.sectionLabel}>Budget Limit</Text>
+                                <BudgetStepper value={curatedBudget} onChange={setCuratedBudget} min={10000} step={10000} C={C} theme={theme} />
+                            </View>
+                        )}
 
                         <View style={s.section}>
-                            <Text style={s.sectionLabel}>Describe Your Request</Text>
+                            <Text style={s.sectionLabel}>
+                                {serviceType === "Legal Advisory" ? "Brief your Case" : "Describe Your Request"}
+                            </Text>
                             <Text style={s.sectionSub}>Please describe what you need in detail for your concierge team to curate it.</Text>
                             <VoiceInput
-                                placeholder="e.g., I need a corporate lawyer to review an apartment lease contract..."
+                                placeholder={serviceType === "Legal Advisory" ? "Describe your legal situation in strict confidentiality..." : "e.g., specific requirements, brands, details..."}
                                 value={preferences}
                                 onChange={setPreferences}
                                 accent={GOLD}
-                                textColor={C.text}
-                                border={isDark ? "#2a2a2a" : "#e0dbd2"}
-                                inputBg={C.surface}
+                                textColor={serviceType === "Legal Advisory" && !isDark ? "#1a1a1a" : C.text}
+                                border={serviceType === "Legal Advisory" ? GOLD : (isDark ? "#2a2a2a" : "#e0dbd2")}
+                                inputBg={serviceType === "Legal Advisory" ? (isDark ? "#201d14" : "#fffdeb") : C.surface}
                             />
                         </View>
                     </>
@@ -889,19 +1225,35 @@ export default function LifestyleTravelScreen() {
                     )}
                 </View>
 
-                {(!userTier || !["silver", "gold", "black"].includes(userTier.toLowerCase())) && (
+                {isFreeUser && (
                     <View style={{ paddingHorizontal: 24, paddingTop: 12 }}>
                         <Text style={{ fontSize: 12, color: C.muted, textAlign: "center" }}>
-                            Community Plan: This will use 1 of your 5 monthly concierge requests ({monthlyRequestsCount}/5 used this month).
+                            Community Plan · {monthlyRequestsCount}/5 monthly requests used
                         </Text>
                     </View>
                 )}
 
                 {/* Submit */}
-                <View style={{ paddingHorizontal: 24, paddingTop: 16 }}>
-                    <TouchableOpacity style={[s.submitBtn, loading && { opacity: 0.7 }]} onPress={handleSubmit} disabled={loading} activeOpacity={0.85}>
-                        <Text style={s.submitText}>{loading ? "Orchestrating..." : "Submit Inquiry"}</Text>
-                    </TouchableOpacity>
+                <View style={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 8 }}>
+                    {limitReached ? (
+                        <View style={{ borderRadius: 18, padding: 24, alignItems: "center", gap: 10, borderWidth: 1, borderColor: `${GOLD}40`, backgroundColor: `${GOLD}08` }}>
+                            <Text style={{ fontSize: 15, fontWeight: "800", color: GOLD, letterSpacing: -0.2 }}>Monthly Limit Reached</Text>
+                            <Text style={{ fontSize: 13, color: C.muted, textAlign: "center", lineHeight: 20 }}>
+                                You've used all 5 of your monthly concierge requests. Upgrade to Lapeq Premium for unlimited access.
+                            </Text>
+                            <TouchableOpacity
+                                style={{ marginTop: 6, backgroundColor: GOLD, paddingHorizontal: 32, paddingVertical: 14, borderRadius: 12 }}
+                                onPress={() => router.push("/(main)/membership" as any)}
+                                activeOpacity={0.85}
+                            >
+                                <Text style={{ color: "#0a0a0a", fontSize: 14, fontWeight: "800" }}>Upgrade to Premium</Text>
+                            </TouchableOpacity>
+                        </View>
+                    ) : (
+                        <TouchableOpacity style={[s.submitBtn, loading && { opacity: 0.7 }]} onPress={handleSubmit} disabled={loading} activeOpacity={0.85}>
+                            <Text style={s.submitText}>{loading ? "Orchestrating..." : "Submit Inquiry"}</Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
 
             </ScrollView>
@@ -989,9 +1341,7 @@ export default function LifestyleTravelScreen() {
             {Platform.OS === "android" && showDepTime && (
                 <DateTimePicker value={depTime ?? new Date()} mode="time" display="default" onChange={(_, d) => { setShowDepTime(false); if (d) setDepTime(d); }} />
             )}
-            {Platform.OS === "android" && showRetTime && (
-                <DateTimePicker value={retTime ?? new Date()} mode="time" display="default" onChange={(_, d) => { setShowRetTime(false); if (d) setRetTime(d); }} />
-            )}
+
 
             {/* Jets date/time pickers (iOS) */}
             <Modal visible={Platform.OS === "ios" && showDepDate} transparent animationType="slide">
@@ -1121,4 +1471,78 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     stepBtnText: { fontSize: 20, color: C.text, lineHeight: 24 },
     stepVal: { fontSize: 24, fontWeight: "700", color: C.text, minWidth: 36, textAlign: "center" },
     stepMax: { fontSize: 12, color: C.muted, marginLeft: 4 },
+
+    // Custom request forms inline styles
+    textInput: { backgroundColor: C.surface, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, fontSize: 15, color: C.text, borderWidth: 1, borderColor: theme === "dark" ? "#2a2a2a" : "#e0dbd2" },
+    greetingCardBox: {
+        borderRadius: 18,
+        borderWidth: 1.5,
+        borderColor: GOLD,
+        padding: 24,
+        overflow: "hidden",
+        position: "relative",
+        elevation: 3,
+        shadowColor: "#000",
+        shadowOpacity: 0.15,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 4 },
+        marginTop: 14,
+    },
+    greetingCardInner: {
+        alignItems: "center",
+    },
+    greetingCardTitle: {
+        fontSize: 10,
+        fontWeight: "800",
+        color: GOLD,
+        letterSpacing: 3,
+        marginBottom: 20,
+    },
+    greetingCardContent: {
+        width: "100%",
+        gap: 14,
+    },
+    greetingRecipient: {
+        fontSize: 14,
+        fontWeight: "700",
+        color: C.text,
+        fontFamily: "PlayfairDisplay_700Bold",
+    },
+    greetingMessage: {
+        fontSize: 15,
+        color: C.text,
+        lineHeight: 24,
+        fontFamily: "PlayfairDisplay_400Regular_Italic",
+        marginVertical: 6,
+    },
+    greetingSender: {
+        fontSize: 12,
+        color: C.muted,
+        marginTop: 10,
+        fontStyle: "italic",
+    },
+    greetingSenderName: {
+        fontSize: 14,
+        fontWeight: "700",
+        color: GOLD,
+        fontFamily: "PlayfairDisplay_700Bold",
+    },
+
+    stepLabel: { fontSize: 13, color: C.muted, fontWeight: "600", marginLeft: 8 },
+    silhouetteRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 12, backgroundColor: theme === "dark" ? "#111" : "#f7f3eb", padding: 12, borderRadius: 12, borderWidth: 1, borderColor: theme === "dark" ? "#2a2a2a" : "#e0dbd2" },
+    silhouetteText: { fontSize: 16 },
+    silhouetteExtraText: { fontSize: 12, color: C.muted, fontWeight: "600", marginLeft: 6 },
+
+    urgencyContainer: { gap: 10 },
+    urgencyCard: { padding: 14, borderRadius: 14, borderWidth: 1, gap: 4 },
+    urgencyLabel: { fontSize: 14, fontWeight: "600", color: C.text },
+    urgencyDesc: { fontSize: 11, color: C.muted, lineHeight: 15 },
+
+    strategyContainer: { gap: 10 },
+    strategyCard: { padding: 14, borderRadius: 14, borderWidth: 1, borderColor: theme === "dark" ? "#2a2a2a" : "#e0dbd2", backgroundColor: C.surface, gap: 4 },
+    strategyLabel: { fontSize: 14, fontWeight: "600", color: C.text },
+    strategyDesc: { fontSize: 11, color: C.muted, lineHeight: 15 },
+
+    lockBanner: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "rgba(201, 168, 76, 0.1)", paddingVertical: 10, paddingHorizontal: 16, borderBottomWidth: 1, borderTopWidth: 1, borderColor: "rgba(201, 168, 76, 0.15)", marginTop: 20 },
+    lockBannerText: { fontSize: 11, fontWeight: "700", color: GOLD, letterSpacing: 0.5 },
 });

@@ -3,15 +3,18 @@ import { ScrollView, View, Text, TextInput, TouchableOpacity, StyleSheet, Platfo
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTheme } from "@/context/ThemeContext";
-import { ChevronLeft, Check, Scale, ChevronDown } from "lucide-react-native";
+import { ChevronLeft, Check, Scale, ChevronDown, Lock } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import VoiceInput from "@/components/VoiceInput";
 
 const GOLD = "#c9a84c";
 
-const MATTER_TYPES = ["Business Law", "Property Law", "Family Law", "Employment", "Contract Review", "Criminal", "Immigration", "Other"];
-const NEED_TYPES = ["Consultation", "Document Review", "Drafting", "Representation", "Referral"];
-const CONSULT_MODES = ["In-Person", "Video Call", "Phone"];
+const MATTER_TYPES = [
+    "💼 Business Law", "🏠 Property Law", "👨‍👩‍👧‍👦 Family Law", "👔 Employment", 
+    "📝 Contract Review", "🛡️ Criminal Law", "✈️ Immigration", "⚖️ Other"
+];
+const NEED_TYPES = ["💬 Consultation", "🔍 Document Review", "📝 Drafting", "🏛️ Representation", "🤝 Referral"];
+const CONSULT_MODES = ["👤 In-Person", "🎥 Video Call", "📞 Phone"];
 
 function DropDown({ value, options, onSelect, placeholder, C, theme }: any) {
     const [open, setOpen] = useState(false);
@@ -105,6 +108,12 @@ export default function LegalAdvisoryScreen() {
                         </View>
                     </View>
 
+                    {/* Encryption Confidentiality Banner */}
+                    <View style={s.lockBanner}>
+                        <Lock size={14} color={GOLD} />
+                        <Text style={s.lockBannerText}>NDA Protection Active • Encrypted Client Briefing Channel</Text>
+                    </View>
+
                     <View style={s.section}>
                         <Text style={s.label}>Area of Law</Text>
                         <View style={s.wrapRow}>
@@ -141,9 +150,9 @@ export default function LegalAdvisoryScreen() {
                             value={description}
                             onChange={setDescription}
                             accent={GOLD}
-                            textColor={C.text}
-                            border={isDark ? "#2a2a2a" : "#e0dbd2"}
-                            inputBg={C.surface}
+                            textColor={isDark ? "#ffffff" : "#1a1a1a"}
+                            border={GOLD}
+                            inputBg={isDark ? "#201d14" : "#fffdeb"}
                         />
                     </View>
 
@@ -235,4 +244,8 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     modalBtnTxPri: { color: "#0a0a0a", fontSize: 15, fontWeight: "700" },
     modalBtnSec: { width: "100%", paddingVertical: 14, alignItems: "center" },
     modalBtnTxSec: { color: C.muted, fontSize: 14, fontWeight: "600" },
+
+    // Lock banner styles
+    lockBanner: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "rgba(201, 168, 76, 0.1)", paddingVertical: 10, paddingHorizontal: 16, borderBottomWidth: 1, borderTopWidth: 1, borderColor: "rgba(201, 168, 76, 0.15)" },
+    lockBannerText: { fontSize: 11, fontWeight: "700", color: GOLD, letterSpacing: 0.5 },
 });

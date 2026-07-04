@@ -7,18 +7,18 @@ import { useTheme } from "@/context/ThemeContext";
 import { ChevronLeft, Check, Calendar, Minus, Plus } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import VoiceInput from "@/components/VoiceInput";
+import LocationSearch from "@/components/LocationSearch";
 
 const { width: W } = Dimensions.get("window");
 const GOLD = "#c9a84c";
 
 const ACTIVITIES = [
-    "Golf", "Tennis", "Swimming", "Water Sports", "Hiking",
-    "Horse Riding", "Skydiving", "Boat Cruise", "Cycling",
-    "Spa Day", "Clay Shooting", "Other",
+    "🏌️‍♂️ Golf", "🎾 Tennis", "🏊‍♂️ Swimming", "🏄‍♂️ Water Sports", "🥾 Hiking",
+    "🏇 Horse Riding", "🪂 Skydiving", "🚢 Boat Cruise", "🚴‍♂️ Cycling",
+    "💆‍♂️ Spa Day", "🎯 Clay Shooting", "🎈 Other",
 ];
 
-const LEVELS = ["First Time", "Beginner", "Intermediate", "Advanced"];
-const LOCATIONS = ["Lagos", "Abuja", "Port Harcourt", "Akwa Ibom", "Kano"];
+const LEVELS = ["🟩 First Time", "🌱 Beginner", "⚡ Intermediate", "🔥 Advanced"];
 
 export default function RecreationScreen() {
     const router = useRouter();
@@ -127,26 +127,22 @@ export default function RecreationScreen() {
                             </TouchableOpacity>
                             <Text style={s.stepLabel}>{groupSize === 1 ? "Solo" : `${groupSize} people`}</Text>
                         </View>
+                        {/* Dynamic Silhouette Row */}
+                        <View style={s.silhouetteRow}>
+                            {Array.from({ length: Math.min(8, groupSize) }).map((_, idx) => (
+                                <Text key={idx} style={s.silhouetteText}>👤</Text>
+                            ))}
+                            {groupSize > 8 && <Text style={s.silhouetteExtraText}>+{groupSize - 8} more</Text>}
+                        </View>
                     </View>
 
                     <View style={s.section}>
                         <Text style={s.label}>Preferred Location</Text>
-                        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-                            {LOCATIONS.map(loc => {
-                                const isAvailable = loc === "Lagos" || loc === "Abuja";
-                                const displayLabel = isAvailable ? loc : `${loc} (Coming Soon)`;
-                                return (
-                                    <TouchableOpacity
-                                        key={loc}
-                                        style={[s.chip, location === loc && { backgroundColor: GOLD, borderColor: GOLD }]}
-                                        onPress={() => setLocation(loc)}
-                                        activeOpacity={0.8}
-                                    >
-                                        <Text style={[s.chipText, location === loc && { color: "#0a0a0a", fontWeight: "700" }]}>{displayLabel}</Text>
-                                    </TouchableOpacity>
-                                );
-                            })}
-                        </View>
+                        <LocationSearch
+                            value={location}
+                            onChangeText={setLocation}
+                            placeholder="Search and select location..."
+                        />
                     </View>
 
                     <View style={s.section}>
@@ -267,4 +263,9 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     modalBtnTxPri: { color: "#0a0a0a", fontSize: 15, fontWeight: "700" },
     modalBtnSec: { width: "100%", paddingVertical: 14, alignItems: "center" },
     modalBtnTxSec: { color: C.muted, fontSize: 14, fontWeight: "600" },
+
+    // Silhouette visualizer
+    silhouetteRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 12, backgroundColor: theme === "dark" ? "#111" : "#f7f3eb", padding: 12, borderRadius: 12, borderWidth: 1, borderColor: theme === "dark" ? "#2a2a2a" : "#e0dbd2" },
+    silhouetteText: { fontSize: 16 },
+    silhouetteExtraText: { fontSize: 12, color: C.muted, fontWeight: "600", marginLeft: 6 },
 });
