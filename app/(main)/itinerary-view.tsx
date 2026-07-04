@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import {
     View, Text, ScrollView, TouchableOpacity,
     ActivityIndicator, Animated, TextInput, Image, StyleSheet
@@ -6,7 +6,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTheme } from "@/context/ThemeContext";
-import { ChevronLeft, Calendar, Clock, Check, X, Plus, ArrowLeft } from "lucide-react-native";
+import { ChevronLeft, Calendar, Clock, Check, X, Plus, ArrowLeft, MapPin, Coffee, Crown, Star, Car } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 
 const GOLD = "#c9a84c";
@@ -41,6 +41,36 @@ const dayImages: Record<string, any> = {
     "beach": require("@/assets/images/lagos-beach.jpg"),
     "restaurant": require("@/assets/images/lagos-restaurant.jpg"),
 };
+
+function guessCategory(title: string): string {
+    const t = title.toLowerCase();
+    if (t.includes("flight") || t.includes("transfer") || t.includes("airport") || t.includes("taxi") || t.includes("car hire") || t.includes("drive") || t.includes("chauffeur")) {
+        return "travel";
+    }
+    if (t.includes("dinner") || t.includes("lunch") || t.includes("breakfast") || t.includes("dining") || t.includes("restaurant") || t.includes("food") || t.includes("sommelier") || t.includes("nok by alara")) {
+        return "dining";
+    }
+    if (t.includes("club") || t.includes("bar") || t.includes("nightlife") || t.includes("lounge") || t.includes("vip evening") || t.includes("quilox") || t.includes("bottle service")) {
+        return "nightlife";
+    }
+    if (t.includes("spa") || t.includes("treatment") || t.includes("art") || t.includes("gallery") || t.includes("tour") || t.includes("sightseeing") || t.includes("nike art")) {
+        return "activity";
+    }
+    return "hotel";
+}
+
+function getCategoryIcon(category: string | undefined, title: string, color: string) {
+    const cat = category || guessCategory(title);
+    switch (cat) {
+        case "dining": return <Coffee size={18} color={color} />;
+        case "nightlife": return <Crown size={18} color={color} />;
+        case "activity": return <Star size={18} color={color} />;
+        case "travel": return <Car size={18} color={color} />;
+        case "hotel":
+        default:
+            return <MapPin size={18} color={color} />;
+    }
+}
 
 // Normalize legacy formats (weekday/weekend) to sequential day-by-day format
 const normalizeItinerary = (data: any): ItineraryDay[] => {
@@ -115,6 +145,8 @@ export default function ItineraryViewScreen() {
     const [itinerary, setItinerary] = useState<Itinerary | null>(null);
     const [requestTitle, setRequestTitle] = useState("");
     const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
+    const [pkgCity, setPkgCity] = useState("Lagos");
+    const s = useMemo(() => getStyles(C), [C]);
 
     const surface = isDark ? "#111318" : "#fff";
     const border = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
@@ -137,6 +169,21 @@ export default function ItineraryViewScreen() {
                 setItinerary({
                     days: normalizeItinerary(d.itinerary)
                 });
+            }
+            
+            // Dynamically load the city from the related request
+            if (d?.requestId) {
+                const { data: req } = await supabase
+                    .from("requests")
+                    .select("title, details")
+                    .eq("id", d.requestId)
+                    .single();
+                if (req) {
+                    const reqTitle = req.title || "";
+                    if (reqTitle.toLowerCase().includes("abuja")) setPkgCity("Abuja");
+                    else if (reqTitle.toLowerCase().includes("port harcourt")) setPkgCity("Port Harcourt");
+                    else setPkgCity(req.details?.city || "Lagos");
+                }
             }
             setLoading(false);
         };
@@ -258,12 +305,12 @@ export default function ItineraryViewScreen() {
 
     if (!itinerary || itinerary.days.length === 0) {
         return (
-            <SafeAreaView style={{ flex: 1, backgroundColor: C.background }}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 20 }}>
-                    <TouchableOpacity onPress={() => router.back()} style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" }}>
-                        <ChevronLeft size={20} color={C.text} />
+            <SafeAreaView style={s.root}>
+                <View style={s.header}>
+                    <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+                        <ChevronLeft size={24} color={C.text} />
                     </TouchableOpacity>
-                    <Text style={{ fontSize: 18, fontWeight: "700", color: C.text }}>Itinerary</Text>
+                    <Text style={s.headerTitle}>Your Experience</Text>
                 </View>
                 <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
                     <Text style={{ color: C.muted, fontSize: 14 }}>No active itinerary found.</Text>
@@ -272,311 +319,163 @@ export default function ItineraryViewScreen() {
         );
     }
 
-    const activeDay = itinerary.days.find(d => d.id === selectedDayId);
-
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: C.background }}>
-            {selectedDayId === null ? (
-                /* TRIP INFO - FIRST LOOK (Days list) */
-                <View style={{ flex: 1 }}>
-                    {/* Header */}
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16 }}>
-                        <TouchableOpacity onPress={() => router.back()} style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" }}>
-                            <ChevronLeft size={20} color={C.text} />
-                        </TouchableOpacity>
-                        <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 10, fontWeight: "700", color: GOLD, letterSpacing: 2.5 }}>ITINERARY</Text>
-                            <Text style={{ fontSize: 24, fontWeight: "800", color: C.text, letterSpacing: -0.5 }}>Trip Info</Text>
-                        </View>
-                        <View style={{ width: 34, height: 34, borderRadius: 8, backgroundColor: `${GOLD}15`, alignItems: "center", justifyContent: "center" }}>
-                            <Calendar size={16} color={GOLD} />
-                        </View>
-                    </View>
+        <SafeAreaView style={s.root}>
+            <View style={s.header}>
+                <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+                    <ChevronLeft size={24} color={C.text} />
+                </TouchableOpacity>
+                <Text style={s.headerTitle}>Your Experience</Text>
+            </View>
 
-                    {requestTitle ? (
-                        <View style={{ marginHorizontal: 20, marginBottom: 12 }}>
-                            <Text style={{ fontSize: 14, color: muted, fontWeight: "500" }}>{requestTitle}</Text>
-                        </View>
-                    ) : null}
-
-                    {/* Scrollable list of Day Cards */}
-                    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}>
-                        {itinerary.days.map((day) => {
-                            const dateInfo = parseDateString(day.date);
-                            const imgSource = dayImages[day.image || ""] ?? dayImages["scenery"];
-
+            <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}>
+                {/* Horizontal City selector */}
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
+                    <View style={{ flexDirection: "row", gap: 8 }}>
+                        {["Lagos", "Abuja", "Port Harcourt", "Akwa Ibom", "Kano"].map((city) => {
+                            const isAvailable = city === "Lagos" || city === "Abuja" || city === "Port Harcourt";
+                            const displayLabel = isAvailable ? city : `${city} (Soon)`;
+                            const isActive = city.toLowerCase() === pkgCity.toLowerCase();
                             return (
-                                <TouchableOpacity
-                                    key={day.id}
-                                    onPress={() => setSelectedDayId(day.id)}
-                                    activeOpacity={0.85}
-                                    style={{
-                                        flexDirection: "row",
-                                        backgroundColor: surface,
-                                        borderRadius: 16,
-                                        marginBottom: 16,
-                                        borderWidth: 1,
-                                        borderColor: border,
-                                        overflow: "hidden",
-                                        shadowColor: "#000",
-                                        shadowOffset: { width: 0, height: 2 },
-                                        shadowOpacity: isDark ? 0.25 : 0.05,
-                                        shadowRadius: 8,
-                                        elevation: 2,
-                                    }}
-                                >
-                                    {/* Left Side: Large Date box */}
-                                    <View style={{
-                                        width: 90,
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                        paddingVertical: 20,
-                                        borderRightWidth: 1,
-                                        borderRightColor: border,
-                                        backgroundColor: isDark ? "#161920" : "#faf9f6"
-                                    }}>
-                                        {dateInfo.weekday ? (
-                                            <Text style={{ fontSize: 12, fontWeight: "700", color: C.muted, textTransform: "uppercase", letterSpacing: 1 }}>
-                                                {dateInfo.weekday}
-                                            </Text>
-                                        ) : null}
-                                        <Text style={{ fontSize: dateInfo.day ? 14 : 11, fontWeight: "800", color: GOLD, marginVertical: 3, textTransform: "uppercase", textAlign: "center" }}>
-                                            {dateInfo.month}
-                                        </Text>
-                                        {dateInfo.day ? (
-                                            <Text style={{ fontSize: 26, fontWeight: "800", color: C.text }}>
-                                                {dateInfo.day}
-                                            </Text>
-                                        ) : null}
-                                    </View>
-
-                                    {/* Right Side: Image background with overlay */}
-                                    <View style={{ flex: 1, height: 110, position: "relative" }}>
-                                        <Image
-                                            source={imgSource}
-                                            style={{ width: "100%", height: "100%" }}
-                                            resizeMode="cover"
-                                        />
-                                        <View style={{
-                                            position: "absolute",
-                                            top: 0,
-                                            left: 0,
-                                            right: 0,
-                                            bottom: 0,
-                                            backgroundColor: "rgba(0,0,0,0.45)",
-                                            padding: 16,
-                                            justifyContent: "flex-end"
-                                        }}>
-                                            <Text style={{ fontSize: 16, fontWeight: "800", color: "#fff", letterSpacing: -0.3 }} numberOfLines={1}>
-                                                {day.title}
-                                            </Text>
-                                            <Text style={{ fontSize: 11, color: "rgba(255,255,255,0.75)", marginTop: 4 }}>
-                                                {day.items.length} {day.items.length === 1 ? "activity" : "activities"} scheduled
-                                            </Text>
-                                        </View>
-                                    </View>
-                                </TouchableOpacity>
-                            );
-                        })}
-                    </ScrollView>
-                </View>
-            ) : activeDay ? (
-                /* DETAILED SCHEDULE VIEW (For active day) */
-                <View style={{ flex: 1 }}>
-                    {/* Header */}
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16 }}>
-                        <TouchableOpacity onPress={() => setSelectedDayId(null)} style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" }}>
-                            <ArrowLeft size={18} color={C.text} />
-                        </TouchableOpacity>
-                        <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 10, fontWeight: "700", color: GOLD, letterSpacing: 2.5 }}>SCHEDULE</Text>
-                            <Text style={{ fontSize: 20, fontWeight: "800", color: C.text }} numberOfLines={1}>
-                                {activeDay.date}
-                            </Text>
-                        </View>
-                    </View>
-
-                    <View style={{ marginHorizontal: 20, marginBottom: 12 }}>
-                        <Text style={{ fontSize: 14, color: muted, fontWeight: "600" }}>{activeDay.title}</Text>
-                    </View>
-
-                    {/* Timeline list of items */}
-                    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 140 }}>
-                        {activeDay.items.map((item, index) => {
-                            const isChecked = item.checked;
-                            return (
-                                <View key={item.id} style={{ flexDirection: "row", minHeight: 70 }}>
-                                    {/* Timeline graphics */}
-                                    <View style={{ width: 24, alignItems: "center" }}>
-                                        <View style={{
-                                            width: 12,
-                                            height: 12,
-                                            borderRadius: 6,
-                                            backgroundColor: isChecked ? "#10b981" : GOLD,
-                                            borderWidth: 2,
-                                            borderColor: surface,
-                                            marginTop: 14,
-                                            zIndex: 2
-                                        }} />
-                                        {index < activeDay.items.length - 1 && (
-                                            <View style={{
-                                                position: "absolute",
-                                                top: 20,
-                                                bottom: -15,
-                                                width: 1.5,
-                                                backgroundColor: isChecked ? "rgba(16,185,129,0.35)" : `${GOLD}30`,
-                                                zIndex: 1
-                                            }} />
-                                        )}
-                                    </View>
-
-                                    {/* Event Card Content */}
-                                    <View style={{ flex: 1, marginLeft: 12, marginBottom: 16 }}>
-                                        <View style={{
-                                            flexDirection: "row",
-                                            backgroundColor: isChecked ? (isDark ? "#101d18" : "#f0fbf7") : surface,
-                                            borderRadius: 14,
-                                            borderWidth: 1,
-                                            borderColor: isChecked ? "rgba(16,185,129,0.25)" : border,
-                                            padding: 14,
-                                            alignItems: "center",
-                                            gap: 12,
-                                        }}>
-                                            <View style={{ flex: 1 }}>
-                                                <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6, flexWrap: "wrap", marginBottom: 3 }}>
-                                                    <Text style={{ fontSize: 11, fontWeight: "800", color: isChecked ? "#10b981" : GOLD, letterSpacing: 0.5 }}>
-                                                        {item.time}
-                                                    </Text>
-                                                    <Text style={{
-                                                        fontSize: 14,
-                                                        fontWeight: "700",
-                                                        color: isChecked ? C.muted : C.text,
-                                                        textDecorationLine: isChecked ? "line-through" : "none",
-                                                        opacity: isChecked ? 0.75 : 1
-                                                    }}>
-                                                        {item.label}
-                                                    </Text>
-                                                </View>
-                                                {item.description ? (
-                                                    <Text style={{
-                                                        fontSize: 12,
-                                                        color: C.muted,
-                                                        lineHeight: 18,
-                                                        textDecorationLine: isChecked ? "line-through" : "none",
-                                                        opacity: isChecked ? 0.6 : 1
-                                                    }}>
-                                                        {item.description}
-                                                    </Text>
-                                                ) : null}
-                                            </View>
-
-                                            {/* Action buttons (Check and Delete) */}
-                                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                                                <TouchableOpacity
-                                                    onPress={() => toggleItemChecked(item.id)}
-                                                    activeOpacity={0.7}
-                                                    style={{
-                                                        width: 28,
-                                                        height: 28,
-                                                        borderRadius: 14,
-                                                        borderWidth: 2,
-                                                        borderColor: isChecked ? "#10b981" : GOLD,
-                                                        backgroundColor: isChecked ? "#10b981" : "transparent",
-                                                        alignItems: "center",
-                                                        justifyContent: "center",
-                                                    }}
-                                                >
-                                                    {isChecked ? <Check size={14} color="#fff" strokeWidth={3} /> : null}
-                                                </TouchableOpacity>
-
-                                                <TouchableOpacity
-                                                    onPress={() => deleteActivity(activeDay.id, item.id)}
-                                                    activeOpacity={0.7}
-                                                    style={{
-                                                        width: 28,
-                                                        height: 28,
-                                                        borderRadius: 14,
-                                                        borderWidth: 1,
-                                                        borderColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
-                                                        backgroundColor: isDark ? "#1c1f26" : "#f5f5f5",
-                                                        alignItems: "center",
-                                                        justifyContent: "center",
-                                                    }}
-                                                >
-                                                    <X size={12} color={muted} />
-                                                </TouchableOpacity>
-                                            </View>
-                                        </View>
-                                    </View>
+                                <View key={city} style={[s.cityChip, isActive && s.cityChipActive]}>
+                                    <Text style={[s.cityChipText, isActive && s.cityChipTextActive]}>{displayLabel}</Text>
                                 </View>
                             );
                         })}
+                    </View>
+                </ScrollView>
 
-                        {/* Add activity row */}
-                        <View style={{ marginLeft: 36, marginTop: 10 }}>
-                            <AddItemRow
-                                onAdd={(val) => addCustomActivity(activeDay.id, val)}
-                                isDark={isDark}
-                                muted={muted}
-                            />
+                {itinerary.days.map((day, dayIndex) => (
+                    <View key={day.id || dayIndex} style={{ marginBottom: 24 }}>
+                        {/* Day header */}
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                            <View style={s.dayBadge}><Text style={s.dayNum}>{dayIndex + 1}</Text></View>
+                            <Text style={s.dayTitle}>{day.date} -- {day.title}</Text>
                         </View>
-                    </ScrollView>
+
+                        {/* Day timeline items */}
+                        <View style={s.timeline}>
+                            {day.items.map((item, i) => {
+                                const isChecked = item.checked;
+                                const isVip = item.category === "nightlife" || !!item.badge?.toLowerCase().includes("priority") || !!item.badge?.toLowerCase().includes("vip");
+                                const itemColor = isChecked ? "#10b981" : (isVip ? GOLD : C.text);
+
+                                return (
+                                    <View key={item.id || i} style={[s.timelineItem, isVip && s.timelineItemVip, { marginBottom: i === day.items.length - 1 ? 0 : 16 }]}>
+                                        <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 8 }}>
+                                            <View style={{ width: 24, alignItems: "center" }}>
+                                                {getCategoryIcon(item.category, item.label, itemColor)}
+                                            </View>
+                                            <Text style={[s.itemTitle, isChecked && { textDecorationLine: "line-through", opacity: 0.6 }]}>{item.label}</Text>
+                                            
+                                            {/* Checked toggle button */}
+                                            <TouchableOpacity
+                                                onPress={() => toggleItemChecked(item.id)}
+                                                activeOpacity={0.7}
+                                                style={{
+                                                    width: 24,
+                                                    height: 24,
+                                                    borderRadius: 12,
+                                                    borderWidth: 2,
+                                                    borderColor: isChecked ? "#10b981" : GOLD,
+                                                    backgroundColor: isChecked ? "#10b981" : "transparent",
+                                                    alignItems: "center",
+                                                    justifyContent: "center",
+                                                    marginLeft: "auto"
+                                                }}
+                                            >
+                                                {isChecked ? <Check size={12} color="#fff" strokeWidth={3} /> : null}
+                                            </TouchableOpacity>
+                                        </View>
+                                        
+                                        <View style={{ flexDirection: "row", alignItems: "center", gap: 16, marginBottom: 10 }}>
+                                            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                                                <Clock size={14} color={C.muted} />
+                                                <Text style={s.itemMeta}>{item.time}</Text>
+                                            </View>
+                                            {item.rating && (
+                                                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                                                    <Star size={14} color={GOLD} fill={GOLD} />
+                                                    <Text style={s.itemMeta}>{item.rating}</Text>
+                                                </View>
+                                            )}
+                                            {isVip && item.badge && (
+                                                <Text style={s.priorityBadge}>{item.badge}</Text>
+                                            )}
+                                        </View>
+
+                                        {item.description ? (
+                                            <Text style={[s.itemDesc, isChecked && { textDecorationLine: "line-through", opacity: 0.5 }]}>{item.description}</Text>
+                                        ) : null}
+
+                                        {item.badge && !isVip && (
+                                            <View style={s.tagBadge}>
+                                                <Text style={s.tagBadgeText}>{item.badge}</Text>
+                                            </View>
+                                        )}
+                                    </View>
+                                );
+                            })}
+                        </View>
+                    </View>
+                ))}
+
+                {/* Concierge Note Card */}
+                <View style={s.conciergeNote}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 12 }}>
+                        <Crown size={20} color={GOLD} />
+                        <Text style={s.conciergeNoteTitle}>Everything Is Handled</Text>
+                    </View>
+                    <Text style={s.conciergeNoteBody}>
+                        All reservations, car hire, and arrangements have been coordinated by your dedicated concierge. Costs are managed through your membership - no surprises, no hassle.
+                    </Text>
                 </View>
-            ) : null}
+
+                {/* CTA Button */}
+                <TouchableOpacity 
+                    style={s.cta}
+                    onPress={() => {
+                        const requestId = notificationData?.requestId;
+                        if (requestId) {
+                            router.push({ pathname: "/chat", params: { mode: "concierge", packageId: requestId } });
+                        } else {
+                            router.push("/chat");
+                        }
+                    }}
+                >
+                    <Text style={s.ctaText}>Contact Concierge</Text>
+                </TouchableOpacity>
+                <Text style={s.ctaSub}>Available 24/7 for adjustments</Text>
+            </ScrollView>
         </SafeAreaView>
     );
 }
 
-// Separate Add Item helper
-function AddItemRow({ onAdd, isDark, muted }: { onAdd: (t: string) => void; isDark: boolean; muted: string }) {
-    const [text, setText] = useState("");
-    const border = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
-    const inputBg = isDark ? "#0d0f14" : "#f5f6f8";
-    const textColor = isDark ? "#e8eaf0" : "#111318";
-
-    const submit = () => {
-        if (!text.trim()) return;
-        onAdd(text.trim());
-        setText("");
-    };
-
-    return (
-        <View style={{ flexDirection: "row", gap: 6, alignItems: "center" }}>
-            <TextInput
-                style={{
-                    flex: 1,
-                    paddingHorizontal: 12,
-                    paddingVertical: 10,
-                    borderRadius: 10,
-                    borderWidth: 1,
-                    borderColor: border,
-                    backgroundColor: inputBg,
-                    color: textColor,
-                    fontSize: 13
-                }}
-                placeholder="Add custom activity..."
-                placeholderTextColor={muted}
-                value={text}
-                onChangeText={setText}
-                onSubmitEditing={submit}
-                returnKeyType="done"
-            />
-            <TouchableOpacity
-                onPress={submit}
-                activeOpacity={0.7}
-                style={{
-                    width: 38,
-                    height: 38,
-                    borderRadius: 10,
-                    backgroundColor: `${GOLD}20`,
-                    borderWidth: 1,
-                    borderColor: `${GOLD}50`,
-                    alignItems: "center",
-                    justifyContent: "center"
-                }}
-            >
-                <Plus size={16} color={GOLD} />
-            </TouchableOpacity>
-        </View>
-    );
-}
+const getStyles = (C: any) => StyleSheet.create({
+    root: { flex: 1, backgroundColor: C.background },
+    header: { flexDirection: "row", alignItems: "center", gap: 16, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16 },
+    backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" },
+    headerTitle: { fontSize: 24, fontWeight: "700", color: C.text },
+    cityChip: { paddingHorizontal: 20, paddingVertical: 12, borderRadius: 16, backgroundColor: C.surface },
+    cityChipActive: { backgroundColor: C.text },
+    cityChipText: { fontSize: 15, fontWeight: "600", color: C.text },
+    cityChipTextActive: { color: C.background },
+    dayBadge: { width: 32, height: 32, borderRadius: 16, backgroundColor: GOLD, alignItems: "center", justifyContent: "center" },
+    dayNum: { fontSize: 14, fontWeight: "700", color: "#000" },
+    dayTitle: { fontSize: 18, fontWeight: "700", color: C.text },
+    timeline: { marginLeft: 16, paddingLeft: 24, borderLeftWidth: 2, borderLeftColor: `${GOLD}33`, gap: 16, paddingBottom: 12 },
+    timelineItem: { borderRadius: 16, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface, padding: 16 },
+    timelineItemVip: { borderColor: `${GOLD}4d`, backgroundColor: `${GOLD}0d` },
+    itemTitle: { fontSize: 16, fontWeight: "600", color: C.text, flex: 1 },
+    itemMeta: { fontSize: 13, color: C.muted, fontWeight: "500" },
+    itemDesc: { fontSize: 13, color: C.muted, lineHeight: 20, marginTop: 4 },
+    priorityBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99, backgroundColor: `${GOLD}18`, fontSize: 11, fontWeight: "600", color: GOLD },
+    tagBadge: { marginTop: 12, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: `${GOLD}18`, alignSelf: "flex-start" },
+    tagBadgeText: { fontSize: 11, fontWeight: "600", color: GOLD },
+    conciergeNote: { borderRadius: 20, backgroundColor: C.surface, padding: 20, marginTop: 24, marginBottom: 24, borderLeftWidth: 3, borderLeftColor: GOLD, borderWidth: 1, borderColor: C.border },
+    conciergeNoteTitle: { fontSize: 16, fontWeight: "600", color: C.text },
+    conciergeNoteBody: { fontSize: 14, color: C.muted, lineHeight: 22 },
+    cta: { borderRadius: 20, paddingVertical: 18, backgroundColor: GOLD, alignItems: "center", marginBottom: 12 },
+    ctaText: { fontSize: 18, fontWeight: "600", color: "#000" },
+    ctaSub: { textAlign: "center", fontSize: 13, color: C.muted },
+});
