@@ -129,7 +129,7 @@ export default function PackageDetailScreen() {
             const [{ data: reqData }, { data: itineraryNotifs }] = await Promise.all([
                 supabase.from("requests").select("*").eq("id", id).single(),
                 supabase.from("notifications")
-                    .select("id")
+                    .select("id, data")
                     .eq("type", "itinerary")
                     .filter("data->>requestId", "eq", id)
                     .order("created_at", { ascending: false })
@@ -151,10 +151,37 @@ export default function PackageDetailScreen() {
                 });
             }
             if (itineraryNotifs && itineraryNotifs.length > 0) {
-                setItineraryNotifId(itineraryNotifs[0].id);
+                const notif = itineraryNotifs[0];
+                setItineraryNotifId(notif.id);
+                
+                // Map the itinerary days to package items so they render dynamically on the screen
+                const rawItin = notif.data?.itinerary;
+                if (rawItin && Array.isArray(rawItin.days)) {
+                    const mappedItems: PackageItem[] = [];
+                    rawItin.days.forEach((day: any, dayIdx: number) => {
+                        const dayItems = Array.isArray(day.items) ? day.items : [];
+                        dayItems.forEach((item: any, itemIdx: number) => {
+                            mappedItems.push({
+                                id: item.id || `item-${dayIdx}-${itemIdx}`,
+                                day_number: dayIdx + 1,
+                                day_label: day.title || `Day ${dayIdx + 1}`,
+                                time_slot: item.time || "Flexible",
+                                title: item.label,
+                                description: item.description || null,
+                                category: item.category || null,
+                                is_vip: item.category === "nightlife" || !!item.badge?.toLowerCase().includes("priority") || !!item.badge?.toLowerCase().includes("vip"),
+                                tag: item.badge || null,
+                                sort_order: itemIdx
+                            });
+                        });
+                    });
+                    setItems(mappedItems);
+                } else {
+                    setItems([]);
+                }
+            } else {
+                setItems([]);
             }
-            // No package_items yet — itinerary comes from admin notifications
-            setItems([]);
             setLoading(false);
         })();
     }, [id]);
