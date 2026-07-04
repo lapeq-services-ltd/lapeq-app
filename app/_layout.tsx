@@ -295,14 +295,27 @@ function RootContent() {
     usePushToken(session?.user?.id ?? null);
 
     useEffect(() => {
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setSession(session);
-            setLoading(false);
+        supabase.auth.getSession().then(({ data: { session }, error }) => {
+            if (error) {
+                // Refresh token invalid or expired — clear stored session so the user
+                // is sent back to the auth flow rather than seeing a crash loop.
+                supabase.auth.signOut().finally(() => {
+                    setSession(null);
+                    setLoading(false);
+                });
+            } else {
+                setSession(session);
+                setLoading(false);
+            }
         });
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
             if (event === "PASSWORD_RECOVERY") {
                 router.replace("/(auth)/reset-password" as any);
+                return;
+            }
+            if (event === "TOKEN_REFRESHED") {
+                setSession(session);
                 return;
             }
             setSession(session);

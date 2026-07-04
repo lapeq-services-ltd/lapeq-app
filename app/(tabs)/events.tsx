@@ -1222,8 +1222,13 @@ export default function EventsScreen() {
                         <SkeletonCard isDark={isDark} />
                     </View>
                 ) : filtered.length === 0 ? (
-                    <View style={{ paddingTop: 80, alignItems: "center" }}>
-                        <Text style={{ fontSize: 15, fontFamily: "Jost_400Regular", color: C.muted, textAlign: "center", lineHeight: 24 }}>
+                    <View style={{ paddingTop: 40, alignItems: "center" }}>
+                        <Image
+                            source={require("@/assets/emptystate/events.png")}
+                            style={{ width: "72%", aspectRatio: 1 }}
+                            resizeMode="contain"
+                        />
+                        <Text style={{ fontSize: 15, fontFamily: "Jost_400Regular", color: C.muted, textAlign: "center", lineHeight: 24, marginTop: 8 }}>
                             {hasActiveFilters || query ? `No events match your criteria.\nTry resetting your filters.` : "No events scheduled yet."}
                         </Text>
                     </View>

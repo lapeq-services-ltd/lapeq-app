@@ -437,12 +437,18 @@ function DateNightForm({ accent, muted, textColor, cardBg, border, onData }: any
                     <Text style={[fl.dateBtnText, { color: textColor }]}>{date.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</Text>
                 </TouchableOpacity>
                 {showDate && Platform.OS === "android" && <DateTimePicker value={date} mode="date" display="default" onChange={(_, d) => { setShowDate(false); if (d) update("date", d); }} />}
-                {showDate && Platform.OS === "ios" && (
-                    <Modal transparent animationType="slide" visible>
-                        <View style={fl.dateModal}><View style={fl.dateSheet}>
-                            <DateTimePicker value={date} mode="datetime" display="spinner" onChange={(_, d) => { if (d) update("date", d); }} />
-                            <TouchableOpacity style={[fl.dateDone, { backgroundColor: accent }]} onPress={() => setShowDate(false)}><Text style={fl.dateDoneText}>Done</Text></TouchableOpacity>
-                        </View></View>
+                {Platform.OS === "ios" && (
+                    <Modal transparent animationType="slide" visible={showDate} onRequestClose={() => setShowDate(false)}>
+                        <View style={fl.dateModal}>
+                            <TouchableOpacity style={fl.dateBackdrop} activeOpacity={1} onPress={() => setShowDate(false)} />
+                            <View style={fl.dateSheet}>
+                                <View style={fl.dateSheetHeader}>
+                                    <TouchableOpacity onPress={() => setShowDate(false)}><Text style={[fl.dateSheetBtn, { color: "#888" }]}>Cancel</Text></TouchableOpacity>
+                                    <TouchableOpacity onPress={() => setShowDate(false)}><Text style={[fl.dateSheetBtn, { color: accent }]}>Done</Text></TouchableOpacity>
+                                </View>
+                                <DateTimePicker value={date} mode="date" display="spinner" style={{ width: "100%" }} onChange={(_, d) => { if (d) update("date", d); }} />
+                            </View>
+                        </View>
                     </Modal>
                 )}
                 <SectionLabel text="ANYTHING ELSE TO KNOW?" muted={muted} />
@@ -580,12 +586,18 @@ function EventPrepForm({ accent, muted, textColor, cardBg, border, onData }: any
                     <Text style={[fl.dateBtnText, { color: textColor }]}>{eventDate.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</Text>
                 </TouchableOpacity>
                 {showDate && Platform.OS === "android" && <DateTimePicker value={eventDate} mode="date" display="default" onChange={(_, d) => { setShowDate(false); if (d) update("eventDate", d); }} />}
-                {showDate && Platform.OS === "ios" && (
-                    <Modal transparent animationType="slide" visible>
-                        <View style={fl.dateModal}><View style={fl.dateSheet}>
-                            <DateTimePicker value={eventDate} mode="date" display="spinner" onChange={(_, d) => { if (d) update("eventDate", d); }} />
-                            <TouchableOpacity style={[fl.dateDone, { backgroundColor: accent }]} onPress={() => setShowDate(false)}><Text style={fl.dateDoneText}>Done</Text></TouchableOpacity>
-                        </View></View>
+                {Platform.OS === "ios" && (
+                    <Modal transparent animationType="slide" visible={showDate} onRequestClose={() => setShowDate(false)}>
+                        <View style={fl.dateModal}>
+                            <TouchableOpacity style={fl.dateBackdrop} activeOpacity={1} onPress={() => setShowDate(false)} />
+                            <View style={fl.dateSheet}>
+                                <View style={fl.dateSheetHeader}>
+                                    <TouchableOpacity onPress={() => setShowDate(false)}><Text style={[fl.dateSheetBtn, { color: "#888" }]}>Cancel</Text></TouchableOpacity>
+                                    <TouchableOpacity onPress={() => setShowDate(false)}><Text style={[fl.dateSheetBtn, { color: accent }]}>Done</Text></TouchableOpacity>
+                                </View>
+                                <DateTimePicker value={eventDate} mode="date" display="spinner" style={{ width: "100%" }} onChange={(_, d) => { if (d) update("eventDate", d); }} />
+                            </View>
+                        </View>
                     </Modal>
                 )}
                 <SectionLabel text="WHAT DO YOU NEED?" muted={muted} />
@@ -715,12 +727,18 @@ function BusinessForm({ accent, muted, textColor, cardBg, border, onData }: any)
                     <Text style={[fl.dateBtnText, { color: textColor }]}>{date.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</Text>
                 </TouchableOpacity>
                 {showDate && Platform.OS === "android" && <DateTimePicker value={date} mode="date" display="default" onChange={(_, d) => { setShowDate(false); if (d) update("date", d); }} />}
-                {showDate && Platform.OS === "ios" && (
-                    <Modal transparent animationType="slide" visible>
-                        <View style={fl.dateModal}><View style={fl.dateSheet}>
-                            <DateTimePicker value={date} mode="date" display="spinner" onChange={(_, d) => { if (d) update("date", d); }} />
-                            <TouchableOpacity style={[fl.dateDone, { backgroundColor: accent }]} onPress={() => setShowDate(false)}><Text style={fl.dateDoneText}>Done</Text></TouchableOpacity>
-                        </View></View>
+                {Platform.OS === "ios" && (
+                    <Modal transparent animationType="slide" visible={showDate} onRequestClose={() => setShowDate(false)}>
+                        <View style={fl.dateModal}>
+                            <TouchableOpacity style={fl.dateBackdrop} activeOpacity={1} onPress={() => setShowDate(false)} />
+                            <View style={fl.dateSheet}>
+                                <View style={fl.dateSheetHeader}>
+                                    <TouchableOpacity onPress={() => setShowDate(false)}><Text style={[fl.dateSheetBtn, { color: "#888" }]}>Cancel</Text></TouchableOpacity>
+                                    <TouchableOpacity onPress={() => setShowDate(false)}><Text style={[fl.dateSheetBtn, { color: accent }]}>Done</Text></TouchableOpacity>
+                                </View>
+                                <DateTimePicker value={date} mode="date" display="spinner" style={{ width: "100%" }} onChange={(_, d) => { if (d) update("date", d); }} />
+                            </View>
+                        </View>
                     </Modal>
                 )}
                 <SectionLabel text="DETAILS" muted={muted} />
@@ -771,12 +789,18 @@ function EntertainmentForm({ accent, muted, textColor, cardBg, border, onData }:
                     <Text style={[fl.dateBtnText, { color: textColor }]}>{date.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</Text>
                 </TouchableOpacity>
                 {showDate && Platform.OS === "android" && <DateTimePicker value={date} mode="date" display="default" onChange={(_, d) => { setShowDate(false); if (d) update("date", d); }} />}
-                {showDate && Platform.OS === "ios" && (
-                    <Modal transparent animationType="slide" visible>
-                        <View style={fl.dateModal}><View style={fl.dateSheet}>
-                            <DateTimePicker value={date} mode="date" display="spinner" onChange={(_, d) => { if (d) update("date", d); }} />
-                            <TouchableOpacity style={[fl.dateDone, { backgroundColor: accent }]} onPress={() => setShowDate(false)}><Text style={fl.dateDoneText}>Done</Text></TouchableOpacity>
-                        </View></View>
+                {Platform.OS === "ios" && (
+                    <Modal transparent animationType="slide" visible={showDate} onRequestClose={() => setShowDate(false)}>
+                        <View style={fl.dateModal}>
+                            <TouchableOpacity style={fl.dateBackdrop} activeOpacity={1} onPress={() => setShowDate(false)} />
+                            <View style={fl.dateSheet}>
+                                <View style={fl.dateSheetHeader}>
+                                    <TouchableOpacity onPress={() => setShowDate(false)}><Text style={[fl.dateSheetBtn, { color: "#888" }]}>Cancel</Text></TouchableOpacity>
+                                    <TouchableOpacity onPress={() => setShowDate(false)}><Text style={[fl.dateSheetBtn, { color: accent }]}>Done</Text></TouchableOpacity>
+                                </View>
+                                <DateTimePicker value={date} mode="date" display="spinner" style={{ width: "100%" }} onChange={(_, d) => { if (d) update("date", d); }} />
+                            </View>
+                        </View>
                     </Modal>
                 )}
                 <SectionLabel text="ANYTHING ELSE?" muted={muted} />
@@ -1020,7 +1044,11 @@ export default function LadiesConciergeScreen() {
 
                 {!occasion && (
                     <View style={s.emptyState}>
-                        <Text style={s.emptyEmoji}>✦</Text>
+                        <Image
+                            source={require("@/assets/emptystate/ladies.png")}
+                            style={{ width: 170, height: 170 }}
+                            resizeMode="contain"
+                        />
                         <Text style={[s.emptyText, { color: muted }]}>Select an occasion above{"\n"}to get started</Text>
                     </View>
                 )}
@@ -1065,10 +1093,11 @@ const fl = StyleSheet.create({
     micBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 10, borderTopWidth: 1, gap: 6 },
     dateBtn: { borderWidth: 1, borderRadius: 14, padding: 14, marginBottom: 4 },
     dateBtnText: { fontSize: 15, fontWeight: "600" },
-    dateModal: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.4)" },
-    dateSheet: { backgroundColor: "#fff", borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 40 },
-    dateDone: { borderRadius: 14, paddingVertical: 14, alignItems: "center", marginTop: 12 },
-    dateDoneText: { fontSize: 16, fontWeight: "700", color: "#0a0a0a" },
+    dateModal: { flex: 1, justifyContent: "flex-end" },
+    dateBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.4)" },
+    dateSheet: { backgroundColor: "#fff", borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 40 },
+    dateSheetHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: "rgba(128,128,128,0.15)" },
+    dateSheetBtn: { fontSize: 15, fontWeight: "700" },
     toggleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 16, paddingTop: 16, borderTopWidth: 1 },
     toggleLabel: { fontSize: 14, fontWeight: "600", marginBottom: 2 },
     toggleSub: { fontSize: 12 },
@@ -1102,8 +1131,7 @@ const s = StyleSheet.create({
     submitBtn: { borderRadius: 16, paddingVertical: 18, alignItems: "center", marginBottom: 12 },
     submitText: { fontSize: 16, fontWeight: "700", color: "#0a0a0a" },
 
-    emptyState: { alignItems: "center", paddingTop: 48 },
-    emptyEmoji: { fontSize: 32, color: "#c9a84c", marginBottom: 12 },
+    emptyState: { alignItems: "center", paddingTop: 8 },
     emptyText: { fontSize: 15, textAlign: "center", lineHeight: 24, fontStyle: "italic" },
 
     successOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 24 },
