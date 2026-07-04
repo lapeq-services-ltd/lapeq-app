@@ -114,6 +114,8 @@ export default function RequestDetailsScreen() {
     const [userName, setUserName] = useState("Member");
     const [userEmail, setUserEmail] = useState("");
     const [payingOption, setPayingOption] = useState<{ title: string; price: number } | null>(null);
+    const [verifying, setVerifying] = useState(false);
+    const [itineraryNotifId, setItineraryNotifId] = useState<string | null>(null);
 
     useEffect(() => {
         const fetch = async () => {
@@ -123,12 +125,21 @@ export default function RequestDetailsScreen() {
                 const { data: prof } = await supabase.from("profiles").select("full_name, email").eq("id", user.id).single();
                 profileData = prof;
             }
-            const [{ data: reqData }, { data: recData }] = await Promise.all([
+            const [{ data: reqData }, { data: recData }, { data: itineraryNotifs }] = await Promise.all([
                 supabase.from("requests").select("*").eq("id", id).single(),
                 supabase.from("receipts").select("*").eq("request_id", id).order("created_at", { ascending: false }).limit(1).single(),
+                supabase.from("notifications")
+                    .select("id")
+                    .eq("type", "itinerary")
+                    .filter("data->>requestId", "eq", id)
+                    .order("created_at", { ascending: false })
+                    .limit(1)
             ]);
             if (reqData) setRequest(reqData as Request);
             if (recData) setReceipt(recData as ReceiptType);
+            if (itineraryNotifs && itineraryNotifs.length > 0) {
+                setItineraryNotifId(itineraryNotifs[0].id);
+            }
             if (profileData) {
                 setUserName(profileData.full_name ?? "Member");
                 setUserEmail(profileData.email ?? user?.email ?? "");
@@ -145,6 +156,47 @@ export default function RequestDetailsScreen() {
 
         return () => { supabase.removeChannel(channel); };
     }, [id]);
+
+    const verifyPayment = async (payload: {
+        tx_ref: string;
+        request_id: string;
+        expected_amount: number;
+        payment_type: "curation" | "option";
+        option_title?: string;
+    }) => {
+        setVerifying(true);
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const res = await fetch(
+                `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/verify-payment`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${session?.access_token}`,
+                    },
+                    body: JSON.stringify(payload),
+                }
+            );
+            const result = await res.json();
+            if (!res.ok || !result.success) {
+                Alert.alert(
+                    "Verification Failed",
+                    "Your payment was received but could not be verified automatically. Please contact support with your reference number and we will confirm it shortly."
+                );
+                return null;
+            }
+            return result;
+        } catch {
+            Alert.alert(
+                "Verification Error",
+                "Could not reach our server to verify your payment. Please contact support — your payment may still have gone through."
+            );
+            return null;
+        } finally {
+            setVerifying(false);
+        }
+    };
 
     const confirmCancel = async () => {
         setCancelling(true);
@@ -237,6 +289,57 @@ export default function RequestDetailsScreen() {
                         </View>
                     )}
 
+                    {/* Itinerary Ready Banner */}
+                    {itineraryNotifId && (
+                        <TouchableOpacity
+                            onPress={() => router.push(`/itinerary-view?notifId=${itineraryNotifId}`)}
+                            activeOpacity={0.85}
+                            style={{
+                                marginHorizontal: 20,
+                                marginBottom: 16,
+                                borderRadius: 16,
+                                borderWidth: 1,
+                                borderColor: GOLD,
+                                overflow: "hidden",
+                                backgroundColor: isDark ? "#1a1400" : "#fffbf0",
+                                shadowColor: GOLD,
+                                shadowOffset: { width: 0, height: 2 },
+                                shadowOpacity: 0.15,
+                                shadowRadius: 6,
+                                elevation: 3,
+                            }}
+                        >
+                            <LinearGradient
+                                colors={isDark ? [`${GOLD}25`, "transparent"] : [`${GOLD}10`, "transparent"]}
+                                style={{ padding: 18, flexDirection: "row", alignItems: "center", gap: 14 }}
+                            >
+                                <View style={{
+                                    width: 38,
+                                    height: 38,
+                                    borderRadius: 19,
+                                    backgroundColor: `${GOLD}20`,
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    borderWidth: 1,
+                                    borderColor: `${GOLD}40`,
+                                }}>
+                                    <Sparkles size={16} color={GOLD} />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={{ fontSize: 15, fontWeight: "700", color: C.text, marginBottom: 2 }}>
+                                        Itinerary Is Ready!
+                                    </Text>
+                                    <Text style={{ fontSize: 12, color: C.muted, lineHeight: 16 }}>
+                                        Your personalised schedule is prepared. Tap to view the timeline.
+                                    </Text>
+                                </View>
+                                <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: `${GOLD}15`, alignItems: "center", justifyContent: "center" }}>
+                                    <ChevronLeft size={16} color={GOLD} style={{ transform: [{ rotate: "180deg" }] }} />
+                                </View>
+                            </LinearGradient>
+                        </TouchableOpacity>
+                    )}
+
                     {/* Hero Card */}
                     <View style={{ marginHorizontal: 20, marginBottom: 20, borderRadius: 28, overflow: "hidden", borderWidth: 1, borderColor: isDark ? "rgba(201,168,76,0.15)" : "rgba(201,168,76,0.2)" }}>
                         <LinearGradient
@@ -298,15 +401,27 @@ export default function RequestDetailsScreen() {
                                     </Text>
                                 </View>
 
-                                {userEmail ? (
+                                {verifying ? (
+                                    <View style={{ paddingVertical: 16, alignItems: "center", gap: 8 }}>
+                                        <ActivityIndicator size="small" color={GOLD} />
+                                        <Text style={{ fontSize: 12, color: C.muted }}>Verifying payment with server...</Text>
+                                    </View>
+                                ) : userEmail ? (
                                     <PayWithFlutterwave
                                         options={{
-                                            tx_ref: `CUR-${request.id.slice(0, 8)}-${Date.now().toString(36).toUpperCase()}`,
+                                            // Deterministic tx_ref — derived from request.id, never changes.
+                                            // Flutterwave rejects duplicate tx_refs, preventing double-charges.
+                                            tx_ref: `CUR-${request.id.replace(/-/g, "").slice(0, 20)}`,
                                             authorization: FLW_PUBLIC_KEY,
                                             customer: { email: userEmail, name: userName },
                                             amount: 5000,
                                             currency: "NGN",
                                             payment_options: "card,banktransfer,ussd",
+                                            customization: {
+                                                title: "Lapeq Curation Fee",
+                                                description: "One-time concierge request curation",
+                                                logo: "https://iwedpnipbuurohaqibag.supabase.co/storage/v1/object/public/avatars/lapeq-logo.png",
+                                            },
                                         }}
                                         customButton={(props) => (
                                             <TouchableOpacity
@@ -333,13 +448,16 @@ export default function RequestDetailsScreen() {
                                         )}
                                         onRedirect={async (data) => {
                                             if (data.status === "successful" || data.status === "completed") {
-                                                await supabase
-                                                    .from("requests")
-                                                    .update({ payment_status: "paid" })
-                                                    .eq("id", request.id);
-
-                                                setRequest(prev => prev ? { ...prev, payment_status: "paid" } : prev);
-                                                Alert.alert("Payment Successful", "Your curation booking fee of ₦5,000 has been paid successfully! Your concierge is now finalizing your booking details.");
+                                                const result = await verifyPayment({
+                                                    tx_ref: `CUR-${request.id.replace(/-/g, "").slice(0, 20)}`,
+                                                    request_id: request.id,
+                                                    expected_amount: 5000,
+                                                    payment_type: "curation",
+                                                });
+                                                if (result?.success) {
+                                                    setRequest(prev => prev ? { ...prev, payment_status: "paid" } : prev);
+                                                    Alert.alert("Payment Verified", "Your curation booking fee of ₦5,000 has been confirmed. Your concierge is now finalizing your booking details.");
+                                                }
                                             } else {
                                                 Alert.alert("Payment Cancelled", "The payment process was not completed.");
                                             }
@@ -651,15 +769,27 @@ export default function RequestDetailsScreen() {
                             <Text style={{ fontSize: 22, fontWeight: "800", color: GOLD }}>₦{Number(payingOption?.price || 0).toLocaleString()}</Text>
                         </View>
 
-                        {userEmail && payingOption ? (
+                        {verifying ? (
+                            <View style={{ paddingVertical: 16, alignItems: "center", gap: 8 }}>
+                                <ActivityIndicator size="small" color={GOLD} />
+                                <Text style={{ fontSize: 12, color: C.muted }}>Verifying payment with server...</Text>
+                            </View>
+                        ) : userEmail && payingOption ? (
                             <PayWithFlutterwave
                                 options={{
-                                    tx_ref: `REC-${request.id.slice(0, 8)}-${Date.now().toString(36).toUpperCase()}`,
+                                    // Deterministic: same option on same request always produces the same tx_ref.
+                                    // Prevents duplicate charges if the user re-opens the modal after paying.
+                                    tx_ref: `REC-${request.id.replace(/-/g, "").slice(0, 12)}-${payingOption.title.replace(/[^a-z0-9]/gi, "").slice(0, 8).toUpperCase()}`,
                                     authorization: FLW_PUBLIC_KEY,
                                     customer: { email: userEmail, name: userName },
                                     amount: payingOption.price,
                                     currency: "NGN",
                                     payment_options: "card,banktransfer,ussd",
+                                    customization: {
+                                        title: `Lapeq · ${payingOption.title}`,
+                                        description: "Concierge-managed service · Secure checkout",
+                                        logo: "https://iwedpnipbuurohaqibag.supabase.co/storage/v1/object/public/avatars/lapeq-logo.png",
+                                    },
                                 }}
                                 customButton={(props) => (
                                     <TouchableOpacity
@@ -686,25 +816,26 @@ export default function RequestDetailsScreen() {
                                 )}
                                 onRedirect={async (data) => {
                                     if (data.status === "successful" || data.status === "completed") {
-                                        const updatedDetails = {
-                                            ...request.details,
-                                            curated_options: {
-                                                ...request.details.curated_options,
-                                                selection: payingOption
-                                            }
-                                        };
-                                        
-                                        await supabase
-                                            .from("requests")
-                                            .update({ 
-                                                payment_status: "paid",
-                                                details: updatedDetails
-                                            })
-                                            .eq("id", request.id);
-
-                                        setRequest(prev => prev ? { ...prev, payment_status: "paid", details: updatedDetails } : prev);
-                                        setPayingOption(null);
-                                        Alert.alert("Booking Confirmed", `Your payment of ₦${Number(payingOption.price).toLocaleString()} for ${payingOption.title} was successful! Your concierge is preparing confirmation passes.`);
+                                        const txRef = `REC-${request.id.replace(/-/g, "").slice(0, 12)}-${payingOption.title.replace(/[^a-z0-9]/gi, "").slice(0, 8).toUpperCase()}`;
+                                        const result = await verifyPayment({
+                                            tx_ref: txRef,
+                                            request_id: request.id,
+                                            expected_amount: payingOption.price,
+                                            payment_type: "option",
+                                            option_title: payingOption.title,
+                                        });
+                                        if (result?.success) {
+                                            const updatedDetails = {
+                                                ...request.details,
+                                                curated_options: {
+                                                    ...request.details?.curated_options,
+                                                    selection: result.selection ?? payingOption,
+                                                },
+                                            };
+                                            setRequest(prev => prev ? { ...prev, payment_status: "paid", details: updatedDetails } : prev);
+                                            setPayingOption(null);
+                                            Alert.alert("Booking Confirmed", `Your payment of ₦${Number(payingOption.price).toLocaleString()} for ${payingOption.title} has been verified. Your concierge is preparing confirmation passes.`);
+                                        }
                                     } else {
                                         Alert.alert("Payment Cancelled", "The payment process was not completed.");
                                     }
