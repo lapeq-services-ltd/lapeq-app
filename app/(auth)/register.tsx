@@ -9,6 +9,7 @@ import {
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Eye, EyeOff, ChevronLeft, ChevronDown } from "lucide-react-native";
+import EmailInput from "@/components/EmailInput";
 import { supabase } from "@/lib/supabase";
 import { COUNTRIES, STATES_BY_COUNTRY } from "@/constants/location";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -244,6 +245,9 @@ export default function RegisterScreen() {
                 body: "Your account is ready. Your concierge is standing by - explore the app and make your first request.",
                 read: false,
             });
+
+            // Flag so home screen shows the welcome overlay on first login
+            await AsyncStorage.setItem("lapeq_new_signup", firstName.trim());
         }
         setLoading(false);
         triggerModal(false);
@@ -346,22 +350,16 @@ export default function RegisterScreen() {
                                 {/* Email */}
                                 <View style={s.fieldWrap}>
                                     <Text style={s.inputLabel}>EMAIL</Text>
-                                    <View style={[s.inputBlock, emailFocused && s.inputBlockFocused]}>
-                                        <TextInput
-                                            ref={emailRef}
-                                            style={s.input}
-                                            placeholder="you@example.com"
-                                            placeholderTextColor="rgba(255,255,255,0.2)"
-                                            keyboardType="email-address"
-                                            autoCapitalize="none"
-                                            value={email}
-                                            onChangeText={setEmail}
-                                            onFocus={() => setEmailFocused(true)}
-                                            onBlur={() => setEmailFocused(false)}
-                                            returnKeyType="next"
-                                            onSubmitEditing={() => phoneRef.current?.focus()}
-                                        />
-                                    </View>
+                                    <EmailInput
+                                        ref={emailRef}
+                                        value={email}
+                                        onChangeText={setEmail}
+                                        focused={emailFocused}
+                                        onFocus={() => setEmailFocused(true)}
+                                        onBlur={() => setEmailFocused(false)}
+                                        returnKeyType="next"
+                                        onSubmitEditing={() => phoneRef.current?.focus()}
+                                    />
                                 </View>
 
                                 {/* Phone number */}

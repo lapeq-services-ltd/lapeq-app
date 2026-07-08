@@ -28,6 +28,7 @@ import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
 import { LinearGradient } from "expo-linear-gradient";
 
+const GOLD = "#c9a84c";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_WIDTH = SCREEN_WIDTH * 0.72;
 const CARD_GAP = 12;

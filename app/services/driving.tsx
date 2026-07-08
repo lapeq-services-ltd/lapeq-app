@@ -100,6 +100,7 @@ export default function DrivingServiceScreen() {
     // Shared UI states
     const [loading, setLoading] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
+    const [newRequestId, setNewRequestId] = useState<string | null>(null);
     const alertOpacity = useRef(new Animated.Value(0)).current;
     const alertScale = useRef(new Animated.Value(0.9)).current;
     const scrollRef = useRef<ScrollView>(null);

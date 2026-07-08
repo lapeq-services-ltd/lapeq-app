@@ -9,6 +9,7 @@ import {
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Eye, EyeOff } from "lucide-react-native";
+import EmailInput from "@/components/EmailInput";
 
 const isAndroid = Platform.OS === "android";
 import Svg, { Path } from "react-native-svg";
@@ -216,20 +217,14 @@ export default function LoginScreen() {
                             <View style={s.form}>
                                 <View style={s.fieldWrap}>
                                     <Text style={s.inputLabel}>EMAIL</Text>
-                                    <View style={[s.inputBox, emailFocused && s.inputBoxFocused]}>
-                                        <TextInput
-                                            style={s.input}
-                                            placeholder="you@example.com"
-                                            placeholderTextColor="rgba(255,255,255,0.2)"
-                                            keyboardType="email-address"
-                                            autoCapitalize="none"
-                                            value={email}
-                                            onChangeText={setEmail}
-                                            onFocus={() => setEmailFocused(true)}
-                                            onBlur={() => setEmailFocused(false)}
-                                            returnKeyType="next"
-                                        />
-                                    </View>
+                                    <EmailInput
+                                        value={email}
+                                        onChangeText={setEmail}
+                                        focused={emailFocused}
+                                        onFocus={() => setEmailFocused(true)}
+                                        onBlur={() => setEmailFocused(false)}
+                                        returnKeyType="next"
+                                    />
                                 </View>
 
                                 <View style={s.fieldWrap}>
