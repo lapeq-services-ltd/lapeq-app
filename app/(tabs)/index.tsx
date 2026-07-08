@@ -26,6 +26,7 @@ import { useRouter } from "expo-router";
 import { Bell, Crown, ChevronRight, Calendar, Plane, Car, HelpCircle, MessageCircle, LayoutGrid, Plus, Headphones, ClipboardList, Sparkles, Settings, FileText, X, Sun, Moon } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
+import { LinearGradient } from "expo-linear-gradient";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_WIDTH = SCREEN_WIDTH * 0.72;
@@ -92,6 +93,7 @@ export default function HomeScreen() {
     const [dbVenues, setDbVenues] = useState<{ id: string; name: string; city: string }[]>([]);
     const [picks, setPicks] = useState<any[]>([]);
     const [showTrialPopup, setShowTrialPopup] = useState(false);
+    const [hasActiveRide, setHasActiveRide] = useState(false);
     const [showTour, setShowTour] = useState(false);
     const [showWelcome, setShowWelcome] = useState(false);
     const [profileLoaded, setProfileLoaded] = useState(false);
@@ -183,6 +185,28 @@ export default function HomeScreen() {
             }
         });
     }, []);
+
+    useFocusEffect(
+        useCallback(() => {
+            supabase.auth.getUser().then(async ({ data: { user } }) => {
+                if (!user) return;
+                const { data } = await supabase
+                    .from("requests")
+                    .select("id, driver_status")
+                    .eq("user_id", user.id)
+                    .in("service_type", ["driving", "driving-service"])
+                    .not("status", "in", '("completed","cancelled")')
+                    .order("created_at", { ascending: false })
+                    .limit(1);
+
+                if (data && data.length > 0 && data[0].driver_status) {
+                    setHasActiveRide(true);
+                } else {
+                    setHasActiveRide(false);
+                }
+            });
+        }, [])
+    );
 
     useEffect(() => {
         supabase.auth.getUser().then(async ({ data: { user } }) => {
@@ -490,6 +514,33 @@ export default function HomeScreen() {
             </View>
 
             <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 80 }}>
+                {hasActiveRide && (
+                    <TouchableOpacity
+                        onPress={() => router.push("/(main)/coordination")}
+                        activeOpacity={0.8}
+                        style={{
+                            marginBottom: 16,
+                            borderRadius: 16,
+                            overflow: "hidden",
+                            borderWidth: 1,
+                            borderColor: `${GOLD}40`,
+                        }}
+                    >
+                        <LinearGradient
+                            colors={[`${GOLD}33`, `${GOLD}10`]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={{ padding: 14, flexDirection: "row", alignItems: "center", gap: 12 }}
+                        >
+                            <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: GOLD }} />
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ fontSize: 13, fontWeight: "700", color: GOLD }}>Chauffeur Ride Active</Text>
+                                <Text style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>Tap to track driver location and details</Text>
+                            </View>
+                            <ChevronRight size={16} color={GOLD} />
+                        </LinearGradient>
+                    </TouchableOpacity>
+                )}
                 <View style={{ marginBottom: 20 }}>
                     <Text style={s.greetSub}>{(() => { const h = new Date().getHours(); return h < 12 ? "Good morning" + (userName ? "," : ".") : h < 17 ? "Good afternoon" + (userName ? "," : ".") : "Good evening" + (userName ? "," : "."); })()}</Text>
                     {userName ? <Text style={s.greetName}>{userName}</Text> : null}

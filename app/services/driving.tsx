@@ -732,10 +732,11 @@ export default function DrivingServiceScreen() {
                                             <View style={{ flex: 1, height: 1, backgroundColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)" }} />
                                             <TouchableOpacity
                                                 onPress={() => { const t = comFrom; setComFrom(comTo); setComTo(t); }}
-                                                style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: C.background, borderWidth: 1.5, borderColor: GOLD, alignItems: "center", justifyContent: "center", marginHorizontal: 12 }}
-                                                activeOpacity={0.75}
+                                                style={{ paddingHorizontal: 12, alignItems: "center", justifyContent: "center" }}
+                                                activeOpacity={0.6}
+                                                hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
                                             >
-                                                <Plane size={15} color={GOLD} style={{ transform: [{ rotate: "90deg" }] }} />
+                                                <Plane size={18} color={GOLD} style={{ transform: [{ rotate: "-45deg" }] }} />
                                             </TouchableOpacity>
                                             <View style={{ flex: 1, height: 1, backgroundColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)" }} />
                                         </View>

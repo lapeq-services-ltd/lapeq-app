@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image, Modal, Dimensions, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronLeft, Car, Briefcase, Plane, HeartHandshake, FileText, Package, MapPin, Clock, Calendar, Users, AlertTriangle, Wallet, Building2, UtensilsCrossed, Ticket, Sparkles, Anchor, Receipt, Check, MessageCircle } from "lucide-react-native";
+import { ChevronLeft, ChevronRight, Car, Briefcase, Plane, HeartHandshake, FileText, Package, MapPin, Clock, Calendar, Users, AlertTriangle, Wallet, Building2, UtensilsCrossed, Ticket, Sparkles, Anchor, Receipt, Check, MessageCircle } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
 import { LinearGradient } from "expo-linear-gradient";
@@ -275,18 +275,22 @@ export default function RequestDetailsScreen() {
 
                     {/* Driver Live Banner */}
                     {request.service_type === "driving-service" && request.driver_status && (
-                        <View style={{ marginHorizontal: 20, marginBottom: 16, borderRadius: 14, overflow: "hidden" }}>
+                        <TouchableOpacity
+                            onPress={() => router.push("/(main)/coordination")}
+                            style={{ marginHorizontal: 20, marginBottom: 16, borderRadius: 14, overflow: "hidden" }}
+                        >
                             <LinearGradient colors={[`${GOLD}30`, `${GOLD}10`]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ padding: 14, flexDirection: "row", alignItems: "center", gap: 10 }}>
                                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: GOLD }} />
-                                <Text style={{ fontSize: 14, fontWeight: "600", color: GOLD }}>
+                                <Text style={{ fontSize: 14, fontWeight: "600", color: GOLD, flex: 1 }}>
                                     {request.driver_status === "assigned" && "Your driver has been assigned"}
                                     {request.driver_status === "en_route" && "Your driver is on the way"}
                                     {request.driver_status === "arrived" && "Your driver has arrived"}
                                     {request.driver_status === "in_progress" && "Trip in progress"}
                                     {request.driver_status === "completed" && "Trip completed"}
                                 </Text>
+                                <ChevronRight size={16} color={GOLD} />
                             </LinearGradient>
-                        </View>
+                        </TouchableOpacity>
                     )}
 
                     {/* Hero Card */}
