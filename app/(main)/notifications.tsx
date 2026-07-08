@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, FlatList, TouchableOpacity } from "react-native";
+import Skeleton from "@/components/Skeleton";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@/context/ThemeContext";
 import { useMemo, useEffect, useState, useCallback } from "react";
@@ -105,8 +106,25 @@ export default function NotificationsScreen() {
             </View>
 
             {loading ? (
-                <View style={s.center}>
-                    <ActivityIndicator color={C.primary} />
+                <View style={{ paddingHorizontal: 20, paddingTop: 10 }}>
+                    {[0, 1, 2, 3, 4, 5].map((i) => (
+                        <View key={i}>
+                            <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 14, paddingVertical: 16 }}>
+                                {/* Icon box */}
+                                <Skeleton width={40} height={40} borderRadius={12} />
+                                {/* Content */}
+                                <View style={{ flex: 1, gap: 8 }}>
+                                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                                        <Skeleton width="55%" height={13} borderRadius={6} />
+                                        <Skeleton width={36} height={10} borderRadius={4} />
+                                    </View>
+                                    <Skeleton width="90%" height={11} borderRadius={5} />
+                                    <Skeleton width="70%" height={11} borderRadius={5} />
+                                </View>
+                            </View>
+                            {i < 5 && <View style={s.separator} />}
+                        </View>
+                    ))}
                 </View>
             ) : notifications.length === 0 ? (
                 <View style={s.center}>

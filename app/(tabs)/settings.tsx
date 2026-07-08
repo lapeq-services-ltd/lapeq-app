@@ -75,7 +75,7 @@ export default function SettingsScreen() {
                                     <View style={s.iconBox}>
                                         {themeMode === "light" ? <Sun size={22} color={C.primary} /> : themeMode === "auto" ? <SunMoon size={22} color={C.primary} /> : <Moon size={22} color={C.primary} />}
                                     </View>
-                                    <Text style={s.rowLabel}>Appearance</Text>
+                                    <Text style={s.rowLabel}>Theme</Text>
                                     <View style={[s.themePill, { backgroundColor: theme === "dark" ? "#1a1a1a" : "#e8e4dc" }]}>
                                         {(["light", "auto", "dark"] as const).map(mode => (
                                             <TouchableOpacity

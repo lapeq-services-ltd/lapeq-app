@@ -11,6 +11,7 @@ import {
     Animated,
     Modal,
     Pressable,
+    Switch,
 } from "react-native";
 import WelcomeModal from "@/components/WelcomeModal";
 import AppTour from "@/components/AppTour";
@@ -22,7 +23,7 @@ import * as Haptics from "expo-haptics";
 let trialPopupShown = false;
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Bell, Crown, ChevronRight, Calendar, Plane, Car, HelpCircle, MessageCircle, LayoutGrid, Plus, Headphones, ClipboardList, Sparkles, Settings, FileText, X } from "lucide-react-native";
+import { Bell, Crown, ChevronRight, Calendar, Plane, Car, HelpCircle, MessageCircle, LayoutGrid, Plus, Headphones, ClipboardList, Sparkles, Settings, FileText, X, Sun, Moon } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
 
@@ -80,7 +81,7 @@ let promoShownSession = false;
 
 export default function HomeScreen() {
     const router = useRouter();
-    const { C, theme } = useTheme();
+    const { C, theme, toggleTheme } = useTheme();
     const s = useMemo(() => getStyles(C, theme), [C, theme]);
     const [userName, setUserName] = useState("");
     const [unreadCount, setUnreadCount] = useState(0);
@@ -934,6 +935,27 @@ export default function HomeScreen() {
                                 <ChevronRight size={12} color={C.muted} />
                             </TouchableOpacity>
                         ))}
+                        <View style={[s.quickDropdownDivider, { backgroundColor: theme === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)" }]} />
+                        <View style={s.quickDropdownItem}>
+                            <View style={[s.quickDropdownIcon, { backgroundColor: `${C.primary}15` }]}>
+                                {theme === "dark" ? <Moon size={16} color={C.primary} /> : <Sun size={16} color={C.primary} />}
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[s.quickDropdownLabel, { color: C.text }]}>Dark Mode</Text>
+                                <Text style={[s.quickDropdownSub, { color: C.muted }]}>Switch appearance</Text>
+                            </View>
+                            <Switch
+                                value={theme === "dark"}
+                                onValueChange={() => {
+                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                    toggleTheme();
+                                }}
+                                trackColor={{ false: "#d1d5db", true: `${C.primary}55` }}
+                                thumbColor={theme === "dark" ? C.primary : "#f3f4f6"}
+                                ios_backgroundColor="#d1d5db"
+                                style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
+                            />
+                        </View>
                     </Animated.View>
                 </>
             )}
@@ -1047,7 +1069,7 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
         bottom: 176,
         right: 16,
         zIndex: 30,
-        backgroundColor: theme === "dark" ? "rgba(18, 18, 18, 0.76)" : "rgba(255, 255, 255, 0.8)",
+        backgroundColor: theme === "dark" ? "#1a1a1a" : "#ffffff",
         borderRadius: 20,
         padding: 6,
         width: 210,
@@ -1089,6 +1111,11 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     quickDropdownSub: {
         fontSize: 10.5,
         marginTop: 1,
+    },
+    quickDropdownDivider: {
+        height: 1,
+        marginHorizontal: 10,
+        marginVertical: 4,
     },
     emptyEvents: { padding: 24, borderRadius: 16, backgroundColor: C.surface, alignItems: "center" },
     emptyEventsText: { fontSize: 14, color: C.muted, textAlign: "center", lineHeight: 22 },

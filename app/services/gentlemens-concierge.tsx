@@ -1,4 +1,6 @@
-import { useState, useMemo } from "react";
+import { showToast } from "@/lib/toast";
+import { cleanErr } from "@/lib/cleanErr";
+import { useState, useMemo, useEffect } from "react";
 import {
     View, Text, ScrollView, TouchableOpacity, StyleSheet,
     TextInput, Modal, Alert, Image,
@@ -290,6 +292,31 @@ export default function GentlemensConciergeScreen() {
     const [loading, setLoading]     = useState(false);
     const [success, setSuccess]     = useState(false);
 
+    const [userTier, setUserTier] = useState<string | null>(null);
+    const [monthlyRequestsCount, setMonthlyRequestsCount] = useState(0);
+
+    useEffect(() => {
+        const loadUserTier = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const now = new Date();
+                const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+                const [{ data: profile }, { count }] = await Promise.all([
+                    supabase.from("profiles").select("tier").eq("id", user.id).single(),
+                    supabase.from("requests").select("id", { count: "exact", head: true }).eq("user_id", user.id).gte("created_at", startOfMonth),
+                ]);
+
+                if (profile) setUserTier(profile.tier);
+                setMonthlyRequestsCount(count ?? 0);
+            }
+        };
+        loadUserTier();
+    }, []);
+
+    const isFreeUser = !userTier || !["silver", "gold", "black"].includes(userTier.toLowerCase());
+    const limitReached = isFreeUser && monthlyRequestsCount >= 5;
+
     const tabServices = SERVICES.filter(sv => sv.tab === activeTab);
 
     const openService = (svc: Service) => {
@@ -319,6 +346,10 @@ export default function GentlemensConciergeScreen() {
     };
 
     const handleSubmit = async () => {
+        if (limitReached) {
+            Alert.alert("Limit Reached", "You've used all 5 of your monthly requests. Upgrade to Premium to continue.");
+            return;
+        }
         if (!selected) return;
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
@@ -345,7 +376,7 @@ export default function GentlemensConciergeScreen() {
             notes: `[${selected.title}] ${summary}${notes ? ` | Notes: ${notes}` : ""}`,
         });
         setLoading(false);
-        if (error) { Alert.alert("Error", error.message); return; }
+        if (error) { showToast(cleanErr(error), "error"); return; }
         setSelected(null);
         setSuccess(true);
     };
@@ -498,13 +529,36 @@ export default function GentlemensConciergeScreen() {
 
                             {selected.fields.map(renderField)}
 
-                            <TouchableOpacity
-                                style={[s.submitBtn, loading && { opacity: 0.6 }]}
-                                onPress={handleSubmit}
-                                disabled={loading}
-                            >
-                                <Text style={s.submitText}>{loading ? "Submitting..." : "Request This Service"}</Text>
-                            </TouchableOpacity>
+                            {isFreeUser && (
+                                <View style={{ marginVertical: 12 }}>
+                                    <Text style={{ fontSize: 12, color: C.muted, textAlign: "center" }}>
+                                        Community Plan · {monthlyRequestsCount}/5 monthly requests used
+                                    </Text>
+                                </View>
+                            )}
+                            {limitReached ? (
+                                <View style={{ borderRadius: 18, padding: 24, alignItems: "center", gap: 10, borderWidth: 1, borderColor: `${BLUE}40`, backgroundColor: `${BLUE}08`, marginTop: 12 }}>
+                                    <Text style={{ fontSize: 15, fontWeight: "800", color: BLUE, letterSpacing: -0.2 }}>Monthly Limit Reached</Text>
+                                    <Text style={{ fontSize: 13, color: C.muted, textAlign: "center", lineHeight: 20 }}>
+                                        You've used all 5 of your monthly concierge requests. Upgrade to Lapeq Premium for unlimited access.
+                                    </Text>
+                                    <TouchableOpacity
+                                        style={{ marginTop: 6, backgroundColor: BLUE, paddingHorizontal: 32, paddingVertical: 14, borderRadius: 12 }}
+                                        onPress={() => { setSelected(null); router.push("/(main)/membership" as any); }}
+                                        activeOpacity={0.85}
+                                    >
+                                        <Text style={{ color: "#ffffff", fontSize: 14, fontWeight: "800" }}>Upgrade to Premium</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            ) : (
+                                <TouchableOpacity
+                                    style={[s.submitBtn, loading && { opacity: 0.6 }]}
+                                    onPress={handleSubmit}
+                                    disabled={loading}
+                                >
+                                    <Text style={s.submitText}>{loading ? "Submitting..." : "Request This Service"}</Text>
+                                </TouchableOpacity>
+                            )}
                         </ScrollView>
                     </View>
                 )}

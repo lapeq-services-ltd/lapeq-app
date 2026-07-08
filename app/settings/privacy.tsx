@@ -1,3 +1,5 @@
+import { showToast } from "@/lib/toast";
+import { cleanErr } from "@/lib/cleanErr";
 import { useMemo, useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, Modal, TextInput, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -63,21 +65,14 @@ export default function PrivacyScreen() {
             setShowDeleteModal(false);
             router.replace("/(auth)/sign-in" as any);
         } catch (err: any) {
-            Alert.alert("Error", err.message || "Something went wrong. Please contact support.");
+            showToast(cleanErr(err), "error");
         } finally {
             setDeleting(false);
         }
     };
 
-    const handleChangePassword = async () => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user?.email) return;
-        const { error } = await supabase.auth.resetPasswordForEmail(user.email);
-        if (error) {
-            Alert.alert("Error", error.message);
-        } else {
-            Alert.alert("Password Reset Sent", "Check your email for a link to reset your password.");
-        }
+    const handleChangePassword = () => {
+        router.push("/settings/change-password" as any);
     };
 
     const sections = [
@@ -87,7 +82,7 @@ export default function PrivacyScreen() {
                 {
                     icon: Lock,
                     label: "Change Password",
-                    desc: "Send a password reset link to your email.",
+                    desc: "Update your password directly from here.",
                     action: handleChangePassword,
                     danger: false,
                 },

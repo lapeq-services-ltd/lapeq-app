@@ -1,3 +1,4 @@
+import { cleanErr } from "@/lib/cleanErr";
 import { useEffect, useMemo, useState, useRef } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, Image, Alert, KeyboardAvoidingView, Platform, Keyboard, Modal, FlatList, Animated, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -145,7 +146,7 @@ export default function PersonalInfoScreen() {
         }, { onConflict: "id" });
 
         setSaving(false);
-        if (error) { Alert.alert("Error", error.message); return; }
+        if (error) { showToast(cleanErr(error), "error"); return; }
         showToast();
         setTimeout(() => router.back(), 2400);
     };

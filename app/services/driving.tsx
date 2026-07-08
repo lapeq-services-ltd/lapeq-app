@@ -1,3 +1,5 @@
+import { showToast } from "@/lib/toast";
+import { cleanErr } from "@/lib/cleanErr";
 import { useState, useMemo, useRef, useEffect } from "react";
 import {
     View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
@@ -103,6 +105,31 @@ export default function DrivingServiceScreen() {
     const scrollRef = useRef<ScrollView>(null);
     const dropoffY = useRef(0);
 
+    const [userTier, setUserTier] = useState<string | null>(null);
+    const [monthlyRequestsCount, setMonthlyRequestsCount] = useState(0);
+
+    useEffect(() => {
+        const loadUserTier = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const now = new Date();
+                const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+                const [{ data: profile }, { count }] = await Promise.all([
+                    supabase.from("profiles").select("tier").eq("id", user.id).single(),
+                    supabase.from("requests").select("id", { count: "exact", head: true }).eq("user_id", user.id).gte("created_at", startOfMonth),
+                ]);
+
+                if (profile) setUserTier(profile.tier);
+                setMonthlyRequestsCount(count ?? 0);
+            }
+        };
+        loadUserTier();
+    }, []);
+
+    const isFreeUser = !userTier || !["silver", "gold", "black"].includes(userTier.toLowerCase());
+    const limitReached = isFreeUser && monthlyRequestsCount >= 5;
+
     // Formatted Strings
     const formattedDate = dateObj.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
     const formattedTime = timeObj.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
@@ -182,6 +209,10 @@ export default function DrivingServiceScreen() {
     };
 
     const handleSubmit = async () => {
+        if (limitReached) {
+            Alert.alert("Limit Reached", "You've used all 5 of your monthly requests. Upgrade to Premium to continue.");
+            return;
+        }
         if (activeTab === "car") {
             if (!pickup || !dropoff) return Alert.alert("Missing Fields", "Please enter both pickup and drop-off locations.");
             setLoading(true);
@@ -211,7 +242,7 @@ export default function DrivingServiceScreen() {
 
                 setLoading(false);
                 if (error) {
-                    Alert.alert("Submission Failed", error.message);
+                    Alert.alert("Submission Failed", cleanErr(error));
                     console.error("[Request insert error]", JSON.stringify(error));
                 } else {
                     setShowSuccess(true);
@@ -222,7 +253,7 @@ export default function DrivingServiceScreen() {
                 }
             } catch (e: any) {
                 setLoading(false);
-                Alert.alert("Error", e?.message || "Something went wrong. Please try again.");
+                showToast(cleanErr(e), "error");
             }
         } else {
             // Jet Submission
@@ -268,7 +299,7 @@ export default function DrivingServiceScreen() {
 
                 setLoading(false);
                 if (error) {
-                    Alert.alert("Submission Failed", error.message);
+                    Alert.alert("Submission Failed", cleanErr(error));
                     console.error("[Request insert error]", JSON.stringify(error));
                 } else {
                     setShowSuccess(true);
@@ -279,7 +310,7 @@ export default function DrivingServiceScreen() {
                 }
             } catch (e: any) {
                 setLoading(false);
-                Alert.alert("Error", e?.message || "Something went wrong. Please try again.");
+                showToast(cleanErr(e), "error");
             }
         }
     };
@@ -845,18 +876,42 @@ export default function DrivingServiceScreen() {
                         </View>
                     )}
 
+                    {isFreeUser && (
+                        <View style={{ paddingHorizontal: 20, marginTop: 16 }}>
+                            <Text style={{ fontSize: 12, color: C.muted, textAlign: "center" }}>
+                                Community Plan · {monthlyRequestsCount}/5 monthly requests used
+                            </Text>
+                        </View>
+                    )}
+
                     {/* Submit Button */}
                     <View style={{ paddingHorizontal: 20, marginTop: 12 }}>
-                        <TouchableOpacity
-                            style={[s.btn, { backgroundColor: C.primary }, loading && s.btnDisabled]}
-                            onPress={handleSubmit}
-                            disabled={loading}
-                        >
-                            <Text style={[s.btnText, { color: C.black }]}>
-                                {loading ? "Submitting..." : activeTab === "car" ? "Submit Request" : flightMode === "commercial" ? "Search & Request Flights" : "Submit Enquiry"}
-                            </Text>
-                        </TouchableOpacity>
-                        {activeTab === "plane" && (
+                        {limitReached ? (
+                            <View style={{ borderRadius: 18, padding: 24, alignItems: "center", gap: 10, borderWidth: 1, borderColor: `${GOLD}40`, backgroundColor: `${GOLD}08` }}>
+                                <Text style={{ fontSize: 15, fontWeight: "800", color: GOLD, letterSpacing: -0.2 }}>Monthly Limit Reached</Text>
+                                <Text style={{ fontSize: 13, color: C.muted, textAlign: "center", lineHeight: 20 }}>
+                                    You've used all 5 of your monthly concierge requests. Upgrade to Lapeq Premium for unlimited access.
+                                </Text>
+                                <TouchableOpacity
+                                    style={{ marginTop: 6, backgroundColor: GOLD, paddingHorizontal: 32, paddingVertical: 14, borderRadius: 12 }}
+                                    onPress={() => router.push("/(main)/membership" as any)}
+                                    activeOpacity={0.85}
+                                >
+                                    <Text style={{ color: "#0a0a0a", fontSize: 14, fontWeight: "800" }}>Upgrade to Premium</Text>
+                                </TouchableOpacity>
+                            </View>
+                        ) : (
+                            <TouchableOpacity
+                                style={[s.btn, { backgroundColor: C.primary }, loading && s.btnDisabled]}
+                                onPress={handleSubmit}
+                                disabled={loading}
+                            >
+                                <Text style={[s.btnText, { color: C.black }]}>
+                                    {loading ? "Submitting..." : activeTab === "car" ? "Submit Request" : flightMode === "commercial" ? "Search & Request Flights" : "Submit Enquiry"}
+                                </Text>
+                            </TouchableOpacity>
+                        )}
+                        {activeTab === "plane" && !limitReached && (
                             <Text style={{ fontSize: 12, color: C.muted, textAlign: "center", marginTop: 10 }}>
                                 {flightMode === "commercial"
                                     ? "A Lapeq travel advisor will source the best fares and confirm within 4 hours."

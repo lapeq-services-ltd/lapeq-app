@@ -1,3 +1,5 @@
+import { showToast } from "@/lib/toast";
+import { cleanErr } from "@/lib/cleanErr";
 import { useState } from "react";
 import { Text, TextInput, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, Platform, View, Image } from "react-native";
 import { useRouter } from "expo-router";
@@ -19,7 +21,7 @@ export default function ForgotPasswordScreen() {
         });
         setLoading(false);
         if (error) {
-            Alert.alert("Error", error.message);
+            showToast(cleanErr(error), "error");
         } else {
             setSent(true);
         }

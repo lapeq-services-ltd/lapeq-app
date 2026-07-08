@@ -489,7 +489,7 @@ export default function ConciergeChatScreen() {
                             activeOpacity={0.7}
                         >
                             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                                <HelpCircle size={14} color={C.primary} />
+                                <MessageCircle size={14} color={C.primary} />
                                 <Text style={{ fontSize: 11, color: C.muted, fontWeight: "700", letterSpacing: 1.2, textTransform: "uppercase" }}>
                                     Select a question
                                 </Text>

@@ -16,6 +16,7 @@ import { Session } from "@supabase/supabase-js";
 import { usePushToken } from "@/lib/usePushToken";
 import ShakeReport from "@/components/ShakeReport"
 import TermsSheet from "@/components/TermsSheet";
+import LapeqToast from "@/components/LapeqToast";
 import { View, ActivityIndicator } from "react-native";
 import { useFonts } from "expo-font";
 import {
@@ -347,6 +348,31 @@ function RootContent() {
 
     useProtectedRoute(session, loading);
 
+    // Cold-start: if the app was killed and launched via a notification tap,
+    // addNotificationResponseReceivedListener misses it — useLastNotificationResponse catches it.
+    const lastNotifResponse = Notifications.useLastNotificationResponse();
+    const coldStartHandled = useReactRef(false);
+    useEffect(() => {
+        if (loading || showSplash || coldStartHandled.current || !lastNotifResponse) return;
+        coldStartHandled.current = true;
+        const data = lastNotifResponse.notification.request.content.data as Record<string, any> | undefined;
+        const reqId = data?.target_id || data?.targetId || data?.request_id || data?.requestId;
+        const notifType = data?.type || data?.notification_type;
+        const notifId = data?.notif_id || data?.notifId;
+
+        if (notifType === "itinerary") {
+            if (notifId) router.push({ pathname: "/itinerary-view", params: { notifId } } as any);
+            else router.push("/(main)/notifications");
+        } else if (notifType === "request" || notifType === "receipt") {
+            if (reqId) router.push(`/requests/${reqId}`);
+            else router.push("/requests");
+        } else if (notifType === "chat") {
+            router.push({ pathname: "/(main)/chat", params: { mode: "concierge" } } as any);
+        } else if (data?.url) {
+            router.push(data.url);
+        }
+    }, [loading, showSplash, lastNotifResponse]);
+
     if (showSplash) {
         return <AppSplash onDone={() => setShowSplash(false)} />;
     }
@@ -365,6 +391,7 @@ function RootContent() {
             <NotificationBanner />
             <ShakeReport />
             <TermsSheet />
+            <LapeqToast />
             <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.background }, animation: "slide_from_right" }}>
                 <Stack.Screen name="(auth)" />
                 <Stack.Screen name="(tabs)" />
@@ -386,6 +413,7 @@ function RootContent() {
                 <Stack.Screen name="settings/payment-methods" options={{ gestureEnabled: true, animation: "slide_from_right" }} />
                 <Stack.Screen name="settings/app-guide" options={{ gestureEnabled: true, animation: "slide_from_right" }} />
                 <Stack.Screen name="settings/report" options={{ gestureEnabled: true, animation: "slide_from_right" }} />
+                <Stack.Screen name="settings/change-password" options={{ gestureEnabled: true, animation: "slide_from_right" }} />
             </Stack>
         </>
     );

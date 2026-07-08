@@ -1,3 +1,5 @@
+import { showToast } from "@/lib/toast";
+import { cleanErr } from "@/lib/cleanErr";
 import { useState, useRef, useEffect } from "react";
 import {
     View, Text, ScrollView, TouchableOpacity, StyleSheet,
@@ -782,6 +784,31 @@ export default function LadiesConciergeScreen() {
     const formAnim = useRef(new Animated.Value(0)).current;
     const heroOpacity = useRef(new Animated.Value(1)).current;
 
+    const [userTier, setUserTier] = useState<string | null>(null);
+    const [monthlyRequestsCount, setMonthlyRequestsCount] = useState(0);
+
+    useEffect(() => {
+        const loadUserTier = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const now = new Date();
+                const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+                const [{ data: profile }, { count }] = await Promise.all([
+                    supabase.from("profiles").select("tier").eq("id", user.id).single(),
+                    supabase.from("requests").select("id", { count: "exact", head: true }).eq("user_id", user.id).gte("created_at", startOfMonth),
+                ]);
+
+                if (profile) setUserTier(profile.tier);
+                setMonthlyRequestsCount(count ?? 0);
+            }
+        };
+        loadUserTier();
+    }, []);
+
+    const isFreeUser = !userTier || !["silver", "gold", "black"].includes(userTier.toLowerCase());
+    const limitReached = isFreeUser && monthlyRequestsCount >= 5;
+
     // Screen-level date picker (lifted out of form components to avoid nesting/overflow issues)
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [pickerDate, setPickerDate] = useState(new Date());
@@ -809,6 +836,10 @@ export default function LadiesConciergeScreen() {
     };
 
     const handleSubmit = async () => {
+        if (limitReached) {
+            Alert.alert("Limit Reached", "You've used all 5 of your monthly requests. Upgrade to Premium to continue.");
+            return;
+        }
         if (!occasion) { Alert.alert("Please select an occasion first."); return; }
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
@@ -848,7 +879,7 @@ export default function LadiesConciergeScreen() {
             details: { occasion, ...uploadedDetails, ...(eventTag ? { eventTag, eventDate: eventDateParam } : {}) },
         });
         setLoading(false);
-        if (error) { Alert.alert("Error", error.message); return; }
+        if (error) { showToast(cleanErr(error), "error"); return; }
         setSuccess(true);
     };
 
@@ -861,7 +892,7 @@ export default function LadiesConciergeScreen() {
                 {/* ── Hero ── */}
                 <View style={s.heroWrap}>
                     <Animated.Image
-                        source={currentOccasion?.img ?? require("@/assets/images/queens.jpg")}
+                        source={(currentOccasion as any)?.img ?? require("@/assets/images/queens.jpg")}
                         style={[s.heroImg, { opacity: heroOpacity }]}
                         resizeMode="cover"
                     />
@@ -979,14 +1010,37 @@ export default function LadiesConciergeScreen() {
                                 onDatePick={handleDatePick}
                             />
                         </View>
-                        <TouchableOpacity
-                            style={[s.submitBtn, { backgroundColor: C.primary, opacity: loading ? 0.6 : 1 }]}
-                            onPress={handleSubmit}
-                            disabled={loading}
-                            activeOpacity={0.85}
-                        >
-                            <Text style={s.submitText}>{loading ? "Submitting..." : `Request ${currentOccasion?.label}`}</Text>
-                        </TouchableOpacity>
+                        {isFreeUser && (
+                            <View style={{ marginVertical: 12 }}>
+                                <Text style={{ fontSize: 12, color: muted, textAlign: "center" }}>
+                                    Community Plan · {monthlyRequestsCount}/5 monthly requests used
+                                </Text>
+                            </View>
+                        )}
+                        {limitReached ? (
+                            <View style={{ borderRadius: 18, padding: 24, alignItems: "center", gap: 10, borderWidth: 1, borderColor: `${C.primary}40`, backgroundColor: `${C.primary}08`, marginTop: 12 }}>
+                                <Text style={{ fontSize: 15, fontWeight: "800", color: C.primary, letterSpacing: -0.2 }}>Monthly Limit Reached</Text>
+                                <Text style={{ fontSize: 13, color: muted, textAlign: "center", lineHeight: 20 }}>
+                                    You've used all 5 of your monthly concierge requests. Upgrade to Lapeq Premium for unlimited access.
+                                </Text>
+                                <TouchableOpacity
+                                    style={{ marginTop: 6, backgroundColor: C.primary, paddingHorizontal: 32, paddingVertical: 14, borderRadius: 12 }}
+                                    onPress={() => router.push("/(main)/membership" as any)}
+                                    activeOpacity={0.85}
+                                >
+                                    <Text style={{ color: "#000", fontSize: 14, fontWeight: "800" }}>Upgrade to Premium</Text>
+                                </TouchableOpacity>
+                            </View>
+                        ) : (
+                            <TouchableOpacity
+                                style={[s.submitBtn, { backgroundColor: C.primary, opacity: loading ? 0.6 : 1 }]}
+                                onPress={handleSubmit}
+                                disabled={loading}
+                                activeOpacity={0.85}
+                            >
+                                <Text style={s.submitText}>{loading ? "Submitting..." : `Request ${currentOccasion?.label}`}</Text>
+                            </TouchableOpacity>
+                        )}
                     </Animated.View>
                 )}
 

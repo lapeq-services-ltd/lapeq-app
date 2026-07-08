@@ -1,3 +1,5 @@
+import { showToast } from "@/lib/toast";
+import { cleanErr } from "@/lib/cleanErr";
 ﻿import { useState, useEffect, useRef, useCallback } from "react";
 import {
     View, Text, FlatList, TouchableOpacity, Dimensions,
@@ -633,7 +635,7 @@ export default function MembershipScreen() {
             notes: `Physical LAPEQ card delivery for ${userName} - ${currentTier.name} tier.`,
         });
         setCardLoading(false);
-        if (error) { Alert.alert("Error", error.message); return; }
+        if (error) { showToast(cleanErr(error), "error"); return; }
         setCardRequested(true);
         Alert.alert("Request Sent", "Your physical card request has been received.");
     };

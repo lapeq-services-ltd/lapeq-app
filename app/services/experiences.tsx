@@ -1,3 +1,5 @@
+import { showToast } from "@/lib/toast";
+import { cleanErr } from "@/lib/cleanErr";
 import { useMemo, useState, useRef } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, TextInput, Modal, Animated, Platform, KeyboardAvoidingView, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -92,7 +94,7 @@ export default function ExperiencesScreen() {
         });
 
         setLoading(false);
-        if (error) { Alert.alert("Error", error.message); return; }
+        if (error) { showToast(cleanErr(error), "error"); return; }
 
         setShowForm(false);
         setShowSuccess(true);

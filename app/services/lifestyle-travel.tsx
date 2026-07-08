@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import {
     Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
-    View, Platform, Image, Modal, Animated, Alert, Dimensions, Switch,
+    View, Platform, Image, Modal, Animated, Alert, Dimensions, Switch, ActivityIndicator
 } from "react-native";
 import LocationSearch from "@/components/LocationSearch";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
@@ -14,6 +14,9 @@ import { ChevronLeft, ChevronRight, Calendar, Check, Plane, Plus, Minus, Lock } 
 import VoiceInput from "@/components/VoiceInput";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
+import { PayWithFlutterwave } from "flutterwave-react-native";
+
+const FLW_PUBLIC_KEY = process.env.EXPO_PUBLIC_FLUTTERWAVE_PUBLIC_KEY ?? "";
 
 
 const { width: W } = Dimensions.get("window");
@@ -165,11 +168,15 @@ export default function LifestyleTravelScreen() {
                 const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
                 const [{ data: profile }, { count }] = await Promise.all([
-                    supabase.from("profiles").select("tier").eq("id", user.id).single(),
+                    supabase.from("profiles").select("tier, email, full_name").eq("id", user.id).single(),
                     supabase.from("requests").select("id", { count: "exact", head: true }).eq("user_id", user.id).gte("created_at", startOfMonth),
                 ]);
 
-                if (profile) setUserTier(profile.tier);
+                if (profile) {
+                    setUserTier(profile.tier);
+                    setUserEmail(profile.email ?? "");
+                    setUserName(profile.full_name ?? "Member");
+                }
                 setMonthlyRequestsCount(count ?? 0);
             }
         };
@@ -232,9 +239,12 @@ export default function LifestyleTravelScreen() {
     const [showRetDate, setShowRetDate] = useState(false);
 
     const [loading, setLoading]       = useState(false);
+    const [verifying, setVerifying]   = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
     const [userTier, setUserTier] = useState<string | null>(null);
     const [monthlyRequestsCount, setMonthlyRequestsCount] = useState(0);
+    const [userEmail, setUserEmail] = useState("");
+    const [userName, setUserName] = useState("");
     const alertOpacity = useRef(new Animated.Value(0)).current;
     const alertScale   = useRef(new Animated.Value(0.9)).current;
     const scrollRef    = useRef<ScrollView>(null);
@@ -268,7 +278,7 @@ export default function LifestyleTravelScreen() {
     const toggle = (list: string[], setList: (v: string[]) => void, val: string) =>
         setList(list.includes(val) ? list.filter(x => x !== val) : [...list, val]);
 
-    const handleSubmit = async () => {
+    const handleSubmit = async (overridePaymentStatus?: string) => {
         if (limitReached) { Alert.alert("Limit Reached", "You've used all 5 of your monthly requests. Upgrade to Premium to continue."); return; }
         if (isJets) {
             if (!jetDeparture || !jetDestination) { Alert.alert("Add Route", "Please enter departure and destination."); return; }
@@ -324,7 +334,7 @@ export default function LifestyleTravelScreen() {
             status: "pending",
             reference: ref,
             title: isLifestyleService ? `${serviceType} Request` : isJets ? `${selectedAircraft.name} · ${jetDeparture} → ${jetDestination}` : serviceType,
-            payment_status: hasPremiumMembership ? "paid" : null,
+            payment_status: overridePaymentStatus || (hasPremiumMembership ? "paid" : null),
             details,
         });
         setLoading(false);
@@ -1249,8 +1259,54 @@ export default function LifestyleTravelScreen() {
                                 <Text style={{ color: "#0a0a0a", fontSize: 14, fontWeight: "800" }}>Upgrade to Premium</Text>
                             </TouchableOpacity>
                         </View>
+                    ) : (isFreeUser && serviceType === "Curated Itinerary") ? (
+                        verifying ? (
+                            <ActivityIndicator color={GOLD} size="small" style={{ marginVertical: 12 }} />
+                        ) : userEmail ? (
+                            <PayWithFlutterwave
+                                options={{
+                                    tx_ref: `CUR-SUB-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 1000)}`,
+                                    authorization: FLW_PUBLIC_KEY,
+                                    customer: { email: userEmail, name: userName },
+                                    amount: 5000,
+                                    currency: "NGN",
+                                    payment_options: "card,banktransfer,ussd",
+                                    customizations: {
+                                        title: "Lapeq Itinerary Curation Fee",
+                                        description: "₦5,000 curation fee to submit itinerary request",
+                                        logo: "https://iwedpnipbuurohaqibag.supabase.co/storage/v1/object/public/avatars/lapeq-logo.png",
+                                    },
+                                }}
+                                customButton={(props) => (
+                                    <TouchableOpacity
+                                        onPress={() => {
+                                            // Validate fields first
+                                            if (!destination.trim() || !dateFromObj || !dateToObj) {
+                                                Alert.alert("Required Fields", "Please enter destination and trip dates first.");
+                                                return;
+                                            }
+                                            props.onPress();
+                                        }}
+                                        disabled={props.disabled || loading}
+                                        style={s.submitBtn}
+                                    >
+                                        <Text style={s.submitText}>{loading ? "Submitting..." : "Pay & Submit Itinerary (₦5,000)"}</Text>
+                                    </TouchableOpacity>
+                                )}
+                                onRedirect={async (data) => {
+                                    if (data.status === "successful" || data.status === "completed") {
+                                        // Once payment is successful, we complete the submission of the request with payment_status: 'paid'
+                                        await handleSubmit("paid");
+                                    } else {
+                                        Alert.alert("Payment Cancelled", "Curation fee payment is required to submit your itinerary request.");
+                                    }
+                                }}
+                            />
+                        ) : (
+                            <ActivityIndicator color={GOLD} size="small" style={{ marginVertical: 12 }} />
+                        )
                     ) : (
-                        <TouchableOpacity style={[s.submitBtn, loading && { opacity: 0.7 }]} onPress={handleSubmit} disabled={loading} activeOpacity={0.85}>
+                        <TouchableOpacity style={[s.submitBtn, loading && { opacity: 0.7 }]} onPress={() => handleSubmit()} disabled={loading} activeOpacity={0.85}>
                             <Text style={s.submitText}>{loading ? "Orchestrating..." : "Submit Inquiry"}</Text>
                         </TouchableOpacity>
                     )}
@@ -1423,9 +1479,9 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
 
     wrapRow: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
     chip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, borderWidth: 1, borderColor: theme === "dark" ? "#2a2a2a" : "#e0dbd2", backgroundColor: C.surface },
-    chipActive: { backgroundColor: GOLD, borderColor: GOLD },
+    chipActive: { backgroundColor: "transparent", borderColor: GOLD },
     chipText: { fontSize: 13, fontWeight: "600", color: C.muted },
-    chipTextActive: { color: "#0a0a0a", fontWeight: "700" },
+    chipTextActive: { color: GOLD, fontWeight: "700" },
 
     dateRow: { flexDirection: "row", gap: 12 },
     dateCard: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10, padding: 14, borderRadius: 14, borderWidth: 1, borderColor: theme === "dark" ? "#2a2a2a" : "#e0dbd2", backgroundColor: C.surface },

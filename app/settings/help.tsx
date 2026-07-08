@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Linking } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ChevronLeft, MessageCircle, Mail, HelpCircle, Phone, BookOpen } from "lucide-react-native";
+import { ChevronLeft, MessageCircle, Mail, HelpCircle, BookOpen } from "lucide-react-native";
 import { useTheme } from "@/context/ThemeContext";
 
 export default function HelpScreen() {
@@ -31,13 +31,6 @@ export default function HelpScreen() {
             desc: "Reach our support team at lapeqconceirge@gmail.com for account or billing queries.",
             action: () => Linking.openURL("mailto:lapeqconceirge@gmail.com"),
             cta: "Send Email",
-        },
-        {
-            icon: Phone,
-            title: "WhatsApp",
-            desc: "Prefer WhatsApp? Message us directly for fast support.",
-            action: () => Linking.openURL("https://wa.me/2349000000000"),
-            cta: "Open WhatsApp",
         },
         {
             icon: HelpCircle,

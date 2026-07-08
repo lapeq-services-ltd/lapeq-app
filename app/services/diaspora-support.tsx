@@ -1,4 +1,6 @@
-import { useState, useMemo, useRef } from "react";
+import { showToast } from "@/lib/toast";
+import { cleanErr } from "@/lib/cleanErr";
+import { useState, useMemo, useRef, useEffect } from "react";
 import {
     Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
     View, Platform, KeyboardAvoidingView, Modal, Animated, Alert, Keyboard, Dimensions, Switch, Image
@@ -191,6 +193,31 @@ export default function DiasporaScreen() {
     const [showError, setShowError] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
 
+    const [userTier, setUserTier] = useState<string | null>(null);
+    const [monthlyRequestsCount, setMonthlyRequestsCount] = useState(0);
+
+    useEffect(() => {
+        const loadUserTier = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const now = new Date();
+                const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+                const [{ data: profile }, { count }] = await Promise.all([
+                    supabase.from("profiles").select("tier").eq("id", user.id).single(),
+                    supabase.from("requests").select("id", { count: "exact", head: true }).eq("user_id", user.id).gte("created_at", startOfMonth),
+                ]);
+
+                if (profile) setUserTier(profile.tier);
+                setMonthlyRequestsCount(count ?? 0);
+            }
+        };
+        loadUserTier();
+    }, []);
+
+    const isFreeUser = !userTier || !["silver", "gold", "black"].includes(userTier.toLowerCase());
+    const limitReached = isFreeUser && monthlyRequestsCount >= 5;
+
     // Homecoming Sub-options
     const [hcClearance, setHcClearance] = useState(true);
     const [hcSecurity, setHcSecurity] = useState(false);
@@ -278,6 +305,10 @@ export default function DiasporaScreen() {
     };
 
     const handleSubmit = async () => {
+        if (limitReached) {
+            Alert.alert("Limit Reached", "You've used all 5 of your monthly requests. Upgrade to Premium to continue.");
+            return;
+        }
         if (!country || !serviceType || (isOtherSelected && !otherCountry.trim()) || !details) {
             setShowError(true);
             return;
@@ -387,7 +418,7 @@ export default function DiasporaScreen() {
                 Animated.spring(alertScale, { toValue: 1, friction: 8, tension: 40, useNativeDriver: true }),
             ]).start();
         } else {
-            Alert.alert("Submission Failed", error.message);
+            Alert.alert("Submission Failed", cleanErr(error));
         }
     };
 
@@ -994,16 +1025,39 @@ export default function DiasporaScreen() {
                             <Text style={s.errorText}>Please fill in all required fields.</Text>
                         )}
 
-                        <TouchableOpacity
-                            style={[s.btn, { backgroundColor: C.primary }, loading && s.btnDisabled]}
-                            onPress={handleSubmit}
-                            disabled={loading}
-                            activeOpacity={0.85}
-                        >
-                            <Text style={[s.btnText, { color: C.black }]}>
-                                {loading ? "Submitting..." : "Submit Request"}
-                            </Text>
-                        </TouchableOpacity>
+                        {isFreeUser && (
+                            <View style={{ marginVertical: 12 }}>
+                                <Text style={{ fontSize: 12, color: C.muted, textAlign: "center" }}>
+                                    Community Plan · {monthlyRequestsCount}/5 monthly requests used
+                                </Text>
+                            </View>
+                        )}
+                        {limitReached ? (
+                            <View style={{ borderRadius: 18, padding: 24, alignItems: "center", gap: 10, borderWidth: 1, borderColor: `${GOLD}40`, backgroundColor: `${GOLD}08`, marginTop: 12 }}>
+                                <Text style={{ fontSize: 15, fontWeight: "800", color: GOLD, letterSpacing: -0.2 }}>Monthly Limit Reached</Text>
+                                <Text style={{ fontSize: 13, color: C.muted, textAlign: "center", lineHeight: 20 }}>
+                                    You've used all 5 of your monthly concierge requests. Upgrade to Lapeq Premium for unlimited access.
+                                </Text>
+                                <TouchableOpacity
+                                    style={{ marginTop: 6, backgroundColor: GOLD, paddingHorizontal: 32, paddingVertical: 14, borderRadius: 12 }}
+                                    onPress={() => router.push("/(main)/membership" as any)}
+                                    activeOpacity={0.85}
+                                >
+                                    <Text style={{ color: "#000", fontSize: 14, fontWeight: "800" }}>Upgrade to Premium</Text>
+                                </TouchableOpacity>
+                            </View>
+                        ) : (
+                            <TouchableOpacity
+                                style={[s.btn, { backgroundColor: C.primary }, loading && s.btnDisabled]}
+                                onPress={handleSubmit}
+                                disabled={loading}
+                                activeOpacity={0.85}
+                            >
+                                <Text style={[s.btnText, { color: C.black }]}>
+                                    {loading ? "Submitting..." : "Submit Request"}
+                                </Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
                 </ScrollView>
             </KeyboardAvoidingView>

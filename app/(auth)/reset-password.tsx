@@ -1,3 +1,5 @@
+import { showToast } from "@/lib/toast";
+import { cleanErr } from "@/lib/cleanErr";
 import { useState, useEffect } from "react";
 import { Text, TextInput, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, Platform, View, Image, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
@@ -41,7 +43,7 @@ export default function ResetPasswordScreen() {
         const { error } = await supabase.auth.updateUser({ password });
         setLoading(false);
         if (error) {
-            Alert.alert("Error", error.message);
+            showToast(cleanErr(error), "error");
         } else {
             Alert.alert("Password updated", "You can now sign in with your new password.", [
                 { text: "Sign In", onPress: () => router.replace("/(auth)/login") }

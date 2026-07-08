@@ -1,3 +1,5 @@
+import { showToast } from "@/lib/toast";
+import { cleanErr } from "@/lib/cleanErr";
 import { useState, useMemo, useEffect } from "react";
 import {
     View, Text, ScrollView, TouchableOpacity, StyleSheet,
@@ -169,7 +171,7 @@ export default function RequestPackageScreen() {
         }).select("id").single();
         setLoading(false);
 
-        if (error) { Alert.alert("Error", error.message); return; }
+        if (error) { showToast(cleanErr(error), "error"); return; }
         setNewId(data?.id ?? null);
         setSuccess(true);
     };
@@ -498,9 +500,9 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
     },
-    chipActive: { backgroundColor: C.primary, borderColor: C.primary },
+    chipActive: { backgroundColor: "transparent", borderColor: C.primary },
     chipText: { fontSize: 13, fontWeight: "600", color: C.muted },
-    chipTextActive: { color: "#0a0a0a" },
+    chipTextActive: { color: C.primary, fontWeight: "700" },
 
     textarea: {
         backgroundColor: C.surface,

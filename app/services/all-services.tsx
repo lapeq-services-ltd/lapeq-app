@@ -1,36 +1,42 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
     View, Text, TextInput, TouchableOpacity, StyleSheet,
-    ScrollView, Dimensions, Image,
+    ScrollView, Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { ChevronLeft, Search, X } from "lucide-react-native";
+import {
+    ChevronLeft, Search, X,
+    MapPin, BedDouble, Utensils, Star, Plane,
+    Scale, Gift, Dumbbell, Heart, Home,
+    TrendingUp, Camera, Users, ShieldCheck,
+    Sparkles, CreditCard, Landmark, Check,
+} from "lucide-react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { setPendingService } from "@/lib/serviceStore";
 
 const { width: W } = Dimensions.get("window");
 const GOLD = "#c9a84c";
-const CARD_W = (W - 40 - 24) / 3;
+const CARD_W = (W - 48 - 12) / 2;
 
-const SERVICE_TYPES = [
-    { id: "Curated Itinerary",       label: "Curated Itinerary",     emoji: "✦", desc: "A full trip planned end-to-end",            img: require("@/assets/images/lagos-hotel.jpg") },
-    { id: "Stays & Accommodations",  label: "Stays",                  emoji: "⌂", desc: "Hotels, villas & private residences",       img: require("@/assets/images/lagos-rooftop.jpg") },
-    { id: "Private Dining",          label: "Private Dining",         emoji: "◈", desc: "Exclusive tables & fine dining",            img: require("@/assets/images/lagos-restaurant.jpg") },
-    { id: "VIP Protocol",            label: "VIP Protocol",           emoji: "◆", desc: "Airport arrivals & event access",           img: require("@/assets/images/lagos-beach.jpg") },
-    { id: "Flights & Jets",          label: "Private Jets",           emoji: "✈", desc: "Charter jets & helicopters",                img: require("@/assets/images/exterior-luxury.jpg") },
-    { id: "Legal Advisory",          label: "Legal Advisory",         emoji: "⚖", desc: "Consultations & document support",          img: require("@/assets/images/onboarding-trust.png") },
-    { id: "Gift & Florals",          label: "Gift & Florals",         emoji: "◈", desc: "Bouquets, luxury gifts & curation",         img: require("@/assets/images/lagos-restaurant.jpg") },
-    { id: "Recreational Activities", label: "Recreation",             emoji: "◎", desc: "Golf, tennis & water sports",              img: require("@/assets/images/lagos-beach.jpg") },
-    { id: "Medical Concierge",       label: "Medical Concierge",      emoji: "✦", desc: "Doctor appointments & referrals",           img: require("@/assets/images/onboarding-lifestyle.png") },
-    { id: "Home & Property",         label: "Home & Property",        emoji: "⌂", desc: "Interior design & management",             img: require("@/assets/images/lagos-hotel.jpg") },
-    { id: "Financial Advisory",      label: "Financial Advisory",     emoji: "◆", desc: "Wealth, tax & investment planning",         img: require("@/assets/images/lagos-rooftop.jpg") },
-    { id: "Photography & Content",   label: "Photography",            emoji: "□", desc: "Photographers & content creators",          img: require("@/assets/images/onboarding-driving.png") },
-    { id: "Childcare & Family",      label: "Childcare & Family",     emoji: "△", desc: "Nanny sourcing & school admissions",        img: require("@/assets/images/onboarding-lifestyle.png") },
-    { id: "Security & Protocol",     label: "Security",               emoji: "◉", desc: "Personal protection & VIP security",        img: require("@/assets/images/ikoyi-bridge.jpg") },
-    { id: "Bespoke Request",         label: "Bespoke Request",        emoji: "✦", desc: "Any custom premium service",                img: require("@/assets/images/onboarding-lifestyle.png") },
-    { id: "Passport Renewal",        label: "Passport Renewal",       emoji: "◈", desc: "End-to-end passport renewal & docs",          img: require("@/assets/images/onboarding-trust.png") },
-    { id: "Bank Account Opening",    label: "Bank Account",           emoji: "◆", desc: "Open a Nigerian bank account remotely",       img: require("@/assets/images/lagos-rooftop.jpg") },
+const SERVICES = [
+    { id: "Curated Itinerary",       label: "Curated Itinerary",    desc: "Full trip planned end-to-end",           icon: MapPin },
+    { id: "Stays & Accommodations",  label: "Stays",                desc: "Hotels, villas & residences",            icon: BedDouble },
+    { id: "Private Dining",          label: "Private Dining",       desc: "Exclusive tables & fine dining",          icon: Utensils },
+    { id: "VIP Protocol",            label: "VIP Protocol",         desc: "Airport arrivals & event access",         icon: Star },
+    { id: "Flights & Jets",          label: "Private Jets",         desc: "Charter jets & helicopters",              icon: Plane },
+    { id: "Legal Advisory",          label: "Legal Advisory",       desc: "Consultations & document support",        icon: Scale },
+    { id: "Gift & Florals",          label: "Gift & Florals",       desc: "Bouquets, luxury gifts & curation",       icon: Gift },
+    { id: "Recreational Activities", label: "Recreation",           desc: "Golf, tennis & water sports",             icon: Dumbbell },
+    { id: "Medical Concierge",       label: "Medical Concierge",    desc: "Doctor appointments & referrals",         icon: Heart },
+    { id: "Home & Property",         label: "Home & Property",      desc: "Interior design & management",            icon: Home },
+    { id: "Financial Advisory",      label: "Financial Advisory",   desc: "Wealth, tax & investment planning",       icon: TrendingUp },
+    { id: "Photography & Content",   label: "Photography",          desc: "Photographers & content creators",        icon: Camera },
+    { id: "Childcare & Family",      label: "Childcare & Family",   desc: "Nanny sourcing & school admissions",      icon: Users },
+    { id: "Security & Protocol",     label: "Security",             desc: "Personal protection & VIP security",      icon: ShieldCheck },
+    { id: "Bespoke Request",         label: "Bespoke Request",      desc: "Any custom premium service",              icon: Sparkles },
+    { id: "Passport Renewal",        label: "Passport Renewal",     desc: "End-to-end passport & docs",              icon: CreditCard },
+    { id: "Bank Account Opening",    label: "Bank Account",         desc: "Open a Nigerian account remotely",        icon: Landmark },
 ];
 
 export default function AllServicesScreen() {
@@ -38,117 +44,85 @@ export default function AllServicesScreen() {
     const { currentType } = useLocalSearchParams<{ currentType?: string }>();
     const { C, theme } = useTheme();
     const isDark = theme === "dark";
+    const s = useMemo(() => getStyles(C, theme), [C, theme]);
 
     const [query, setQuery] = useState("");
 
     const filtered = query.trim()
-        ? SERVICE_TYPES.filter(s =>
+        ? SERVICES.filter(s =>
             s.label.toLowerCase().includes(query.toLowerCase()) ||
             s.desc.toLowerCase().includes(query.toLowerCase())
           )
-        : SERVICE_TYPES;
+        : SERVICES;
 
-    const handleSelect = (svc: typeof SERVICE_TYPES[0]) => {
+    const handleSelect = (svc: typeof SERVICES[0]) => {
         setPendingService(svc.id);
         router.back();
     };
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: C.background }} edges={["top"]}>
+        <SafeAreaView style={s.root} edges={["top"]}>
             {/* Header */}
-            <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16, gap: 12 }}>
-                <TouchableOpacity
-                    style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)", alignItems: "center", justifyContent: "center" }}
-                    onPress={() => router.back()}
-                    activeOpacity={0.75}
-                >
+            <View style={s.header}>
+                <TouchableOpacity style={s.backBtn} onPress={() => router.back()} activeOpacity={0.75}>
                     <ChevronLeft size={22} color={C.text} />
                 </TouchableOpacity>
                 <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 18, fontWeight: "800", color: C.text, letterSpacing: -0.3 }}>All Services</Text>
-                    <Text style={{ fontSize: 12, color: C.muted, marginTop: 1 }}>Select the type of request</Text>
+                    <Text style={s.headerTitle}>All Services</Text>
+                    <Text style={s.headerSub}>Select the type of request</Text>
                 </View>
             </View>
 
             {/* Search */}
-            <View style={{ paddingHorizontal: 20, marginBottom: 20 }}>
-                <View style={{
-                    flexDirection: "row", alignItems: "center", gap: 10,
-                    backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
-                    borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12,
-                    borderWidth: 1, borderColor: isDark ? "#2a2a2a" : "#e8e3da",
-                }}>
-                    <Search size={16} color={C.muted} />
-                    <TextInput
-                        style={{ flex: 1, fontSize: 14, color: C.text }}
-                        placeholder="Search services..."
-                        placeholderTextColor={C.muted}
-                        value={query}
-                        onChangeText={setQuery}
-                        autoCorrect={false}
-                        returnKeyType="search"
-                    />
-                    {query.length > 0 && (
-                        <TouchableOpacity onPress={() => setQuery("")} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                            <X size={15} color={C.muted} />
-                        </TouchableOpacity>
-                    )}
-                </View>
+            <View style={s.searchWrap}>
+                <Search size={15} color={C.muted} />
+                <TextInput
+                    style={s.searchInput}
+                    placeholder="Search services..."
+                    placeholderTextColor={C.muted}
+                    value={query}
+                    onChangeText={setQuery}
+                    autoCorrect={false}
+                    returnKeyType="search"
+                />
+                {query.length > 0 && (
+                    <TouchableOpacity onPress={() => setQuery("")} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                        <X size={14} color={C.muted} />
+                    </TouchableOpacity>
+                )}
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.grid}>
                 {filtered.length === 0 ? (
-                    <View style={{ alignItems: "center", paddingTop: 60, gap: 8 }}>
-                        <Text style={{ fontSize: 15, fontWeight: "700", color: C.text }}>No services found</Text>
-                        <Text style={{ fontSize: 13, color: C.muted }}>Try a different search term</Text>
+                    <View style={s.empty}>
+                        <Text style={s.emptyTitle}>No services found</Text>
+                        <Text style={s.emptySub}>Try a different search term</Text>
                     </View>
                 ) : (
-                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
+                    <View style={s.row}>
                         {filtered.map(svc => {
                             const active = svc.id === currentType;
+                            const Icon = svc.icon;
                             return (
                                 <TouchableOpacity
                                     key={svc.id}
-                                    style={{
-                                        width: CARD_W,
-                                        aspectRatio: 0.9,
-                                        borderRadius: 16,
-                                        backgroundColor: active
-                                            ? "#000000"
-                                            : GOLD,
-                                        borderWidth: 1,
-                                        borderColor: active ? "#000000" : GOLD,
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                        padding: 12,
-                                        gap: 8,
-                                    }}
+                                    style={[s.card, active && s.cardActive]}
                                     onPress={() => handleSelect(svc)}
-                                    activeOpacity={0.75}
+                                    activeOpacity={0.72}
                                 >
-                                    <Image
-                                        source={svc.img}
-                                        style={{ width: 44, height: 44, borderRadius: 12, opacity: active ? 1 : 0.85 }}
-                                        resizeMode="cover"
-                                    />
-                                    <Text
-                                        style={{
-                                            fontSize: 11, fontWeight: "700",
-                                            color: active ? GOLD : "#000000",
-                                            textAlign: "center", lineHeight: 15,
-                                        }}
-                                        numberOfLines={2}
-                                    >
+                                    <View style={[s.iconWrap, active && s.iconWrapActive]}>
+                                        <Icon size={22} color={active ? GOLD : C.text} strokeWidth={1.6} />
+                                    </View>
+                                    <Text style={[s.cardLabel, active && { color: C.text }]} numberOfLines={2}>
                                         {svc.label}
                                     </Text>
-                                    <Text
-                                        style={{ fontSize: 9, color: active ? "rgba(201, 168, 76, 0.7)" : "rgba(0,0,0,0.5)", textAlign: "center", lineHeight: 13 }}
-                                        numberOfLines={2}
-                                    >
+                                    <Text style={s.cardDesc} numberOfLines={2}>
                                         {svc.desc}
                                     </Text>
                                     {active && (
-                                        <View style={{ position: "absolute", top: 8, right: 8, width: 8, height: 8, borderRadius: 4, backgroundColor: GOLD }} />
+                                        <View style={s.checkBadge}>
+                                            <Check size={10} color="#000" strokeWidth={3} />
+                                        </View>
                                     )}
                                 </TouchableOpacity>
                             );
@@ -159,3 +133,75 @@ export default function AllServicesScreen() {
         </SafeAreaView>
     );
 }
+
+const getStyles = (C: any, theme: string) => {
+    const isDark = theme === "dark";
+    return StyleSheet.create({
+        root: { flex: 1, backgroundColor: isDark ? C.background : "#f2ede5" },
+        header: {
+            flexDirection: "row", alignItems: "center",
+            paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16, gap: 12,
+        },
+        backBtn: {
+            width: 38, height: 38, borderRadius: 19,
+            backgroundColor: C.surface,
+            alignItems: "center", justifyContent: "center",
+        },
+        headerTitle: { fontSize: 20, fontWeight: "700", color: C.text, letterSpacing: -0.3 },
+        headerSub: { fontSize: 12, color: C.muted, marginTop: 1 },
+
+        searchWrap: {
+            flexDirection: "row", alignItems: "center", gap: 10,
+            marginHorizontal: 20, marginBottom: 16,
+            backgroundColor: C.surface,
+            borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
+            borderWidth: 1, borderColor: isDark ? "#2a2a2a" : "#e0dbd2",
+        },
+        searchInput: { flex: 1, fontSize: 14, color: C.text },
+
+        grid: { paddingHorizontal: 20, paddingBottom: 48 },
+        row: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+
+        card: {
+            width: CARD_W,
+            backgroundColor: C.surface,
+            borderRadius: 18,
+            padding: 16,
+            borderWidth: 1,
+            borderColor: isDark ? "#222" : "#e0dbd2",
+            gap: 10,
+            position: "relative",
+        },
+        cardActive: {
+            borderColor: GOLD,
+            backgroundColor: isDark ? "rgba(201,168,76,0.06)" : "rgba(201,168,76,0.05)",
+        },
+
+        iconWrap: {
+            width: 44, height: 44, borderRadius: 12,
+            backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)",
+            alignItems: "center", justifyContent: "center",
+        },
+        iconWrapActive: {
+            backgroundColor: `${GOLD}18`,
+        },
+
+        cardLabel: {
+            fontSize: 13, fontWeight: "700", color: C.text, lineHeight: 18,
+        },
+        cardDesc: {
+            fontSize: 11, color: C.muted, lineHeight: 16,
+        },
+
+        checkBadge: {
+            position: "absolute", top: 10, right: 10,
+            width: 18, height: 18, borderRadius: 9,
+            backgroundColor: GOLD,
+            alignItems: "center", justifyContent: "center",
+        },
+
+        empty: { alignItems: "center", paddingTop: 80, gap: 8 },
+        emptyTitle: { fontSize: 15, fontWeight: "700", color: C.text },
+        emptySub: { fontSize: 13, color: C.muted },
+    });
+};

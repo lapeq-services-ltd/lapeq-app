@@ -64,10 +64,10 @@ const QUESTIONS: Question[] = [
         title: "What matters\nmost to you?",
         multi: false,
         options: [
-            { id: "a", label: "Time saving" },
+            { id: "a", label: "Saving time" },
             { id: "b", label: "Privacy & exclusivity" },
             { id: "c", label: "Premium experiences" },
-            { id: "d", label: "Getting things done" },
+            { id: "d", label: "Getting things done right" },
         ],
     },
     {
@@ -77,26 +77,14 @@ const QUESTIONS: Question[] = [
         options: [
             { id: "a", label: "Driving & Transport" },
             { id: "b", label: "Lifestyle & Travel" },
-            { id: "c", label: "Event Planning" },
-            { id: "d", label: "Logistics" },
-            { id: "e", label: "Concierge Services" },
-            { id: "f", label: "Diaspora Support" },
-            { id: "g", label: "Car Hire" },
+            { id: "c", label: "Events & Occasions" },
+            { id: "d", label: "Diaspora Support" },
+            { id: "e", label: "Ladies Concierge" },
+            { id: "f", label: "Dining & Experiences" },
         ],
     },
     {
         id: "q3",
-        title: "How do you like\nto be served?",
-        multi: false,
-        options: [
-            { id: "a", label: "Fully hands-off, you handle everything" },
-            { id: "b", label: "Keep me updated as you go" },
-            { id: "c", label: "I like to stay involved" },
-            { id: "d", label: "Surprise me" },
-        ],
-    },
-    {
-        id: "q4",
         title: "What best\ndescribes you?",
         multi: false,
         options: [
@@ -104,6 +92,17 @@ const QUESTIONS: Question[] = [
             { id: "b", label: "Entrepreneur" },
             { id: "c", label: "In the Diaspora" },
             { id: "d", label: "Lifestyle Seeker" },
+        ],
+    },
+    {
+        id: "q4",
+        title: "How do you like\nto be served?",
+        multi: false,
+        options: [
+            { id: "a", label: "Fully hands-off, handle everything" },
+            { id: "b", label: "Keep me updated as you go" },
+            { id: "c", label: "I like to stay involved" },
+            { id: "d", label: "Just surprise me" },
         ],
     },
 ];

@@ -1,3 +1,5 @@
+import { showToast } from "@/lib/toast";
+import { cleanErr } from "@/lib/cleanErr";
 import { useState, useRef, useEffect } from "react";
 import {
     View, Text, TextInput, TouchableOpacity, StyleSheet,
@@ -130,7 +132,7 @@ export default function LoginScreen() {
                     token: credential.identityToken,
                 });
                 if (error) {
-                    Alert.alert("Apple Sign-In", error.message);
+                    Alert.alert("Apple Sign-In", cleanErr(error));
                 }
             } else {
                 throw new Error("No identity token received from Apple.");

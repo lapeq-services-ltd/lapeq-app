@@ -1,4 +1,6 @@
-import { useState, useMemo, useRef } from "react";
+import { showToast } from "@/lib/toast";
+import { cleanErr } from "@/lib/cleanErr";
+import { useState, useMemo, useRef, useEffect } from "react";
 import {
     View,
     Text,
@@ -106,6 +108,31 @@ export default function LapeqCoBrandScreen() {
     const [loading, setLoading] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
 
+    const [userTier, setUserTier] = useState<string | null>(null);
+    const [monthlyRequestsCount, setMonthlyRequestsCount] = useState(0);
+
+    useEffect(() => {
+        const loadUserTier = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const now = new Date();
+                const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+                const [{ data: profile }, { count }] = await Promise.all([
+                    supabase.from("profiles").select("tier").eq("id", user.id).single(),
+                    supabase.from("requests").select("id", { count: "exact", head: true }).eq("user_id", user.id).gte("created_at", startOfMonth),
+                ]);
+
+                if (profile) setUserTier(profile.tier);
+                setMonthlyRequestsCount(count ?? 0);
+            }
+        };
+        loadUserTier();
+    }, []);
+
+    const isFreeUser = !userTier || !["silver", "gold", "black"].includes(userTier.toLowerCase());
+    const limitReached = isFreeUser && monthlyRequestsCount >= 5;
+
     // Animated values for transition steps
     const stepAnim = useRef(new Animated.Value(1)).current;
     const alertOpacity = useRef(new Animated.Value(0)).current;
@@ -150,6 +177,10 @@ export default function LapeqCoBrandScreen() {
     };
 
     const handleSubmit = async () => {
+        if (limitReached) {
+            Alert.alert("Limit Reached", "You've used all 5 of your monthly requests. Upgrade to Premium to continue.");
+            return;
+        }
         if (!eventName.trim() || !eventType || !eventLocation.trim() || !eventDate) {
             Alert.alert("Required Fields", "Please provide the Event Name, Type, Date, and Location.");
             return;
@@ -596,14 +627,30 @@ export default function LapeqCoBrandScreen() {
                                     <ArrowLeft size={16} color={C.text} />
                                     <Text style={[s.secondaryBtnText, { color: C.text }]}>BACK</Text>
                                 </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[s.submitBtn, loading && { opacity: 0.7 }]}
-                                    onPress={handleSubmit}
-                                    activeOpacity={0.8}
-                                    disabled={loading}
-                                >
-                                    <Text style={s.submitText}>{loading ? "COMPILING..." : "SUBMIT APP REQUEST"}</Text>
-                                </TouchableOpacity>
+                                {limitReached ? (
+                                    <View style={{ flex: 1, borderRadius: 18, padding: 16, alignItems: "center", gap: 6, borderWidth: 1, borderColor: `${GOLD}40`, backgroundColor: `${GOLD}08` }}>
+                                        <Text style={{ fontSize: 13, fontWeight: "800", color: GOLD, letterSpacing: -0.2 }}>Limit Reached</Text>
+                                        <Text style={{ fontSize: 11, color: C.muted, textAlign: "center", lineHeight: 16 }}>
+                                            5 requests limit reached.
+                                        </Text>
+                                        <TouchableOpacity
+                                            style={{ marginTop: 4, backgroundColor: GOLD, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 }}
+                                            onPress={() => router.push("/(main)/membership" as any)}
+                                            activeOpacity={0.85}
+                                        >
+                                            <Text style={{ color: "#000", fontSize: 12, fontWeight: "800" }}>Upgrade</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                ) : (
+                                    <TouchableOpacity
+                                        style={[s.submitBtn, loading && { opacity: 0.7 }]}
+                                        onPress={handleSubmit}
+                                        activeOpacity={0.8}
+                                        disabled={loading}
+                                    >
+                                        <Text style={s.submitText}>{loading ? "COMPILING..." : "SUBMIT APP REQUEST"}</Text>
+                                    </TouchableOpacity>
+                                )}
                             </View>
                         </View>
                     )}

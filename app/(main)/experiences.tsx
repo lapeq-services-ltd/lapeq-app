@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import * as Notifications from "expo-notifications";
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Image, Modal, ImageBackground } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, Modal, ImageBackground } from "react-native";
+import Skeleton from "@/components/Skeleton";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useFocusEffect } from "expo-router";
 import { ChevronLeft, Plus, Calendar, ChevronRight, X } from "lucide-react-native";
@@ -243,7 +244,40 @@ export default function ExperiencesScreen() {
             </View>
 
             {loading ? (
-                <View style={s.center}><ActivityIndicator color={C.primary} /></View>
+                <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40, paddingTop: 4 }} scrollEnabled={false}>
+                    {/* Summary card skeleton */}
+                    <View style={[s.summaryCard, { marginBottom: 16 }]}>
+                        {[0, 1, 2].map((i) => (
+                            <View key={i} style={{ flex: 1, alignItems: "center", gap: 8 }}>
+                                <Skeleton width={40} height={24} borderRadius={6} />
+                                <Skeleton width={64} height={10} borderRadius={4} />
+                                {i < 2 && <View style={[s.summaryDivider, { position: "absolute", right: 0 }]} />}
+                            </View>
+                        ))}
+                    </View>
+
+                    {/* "Request another" button skeleton */}
+                    <Skeleton width="100%" height={56} borderRadius={16} style={{ marginBottom: 16 }} />
+
+                    {/* Package card skeletons */}
+                    {[0, 1, 2].map((i) => (
+                        <View key={i} style={[s.premiumPkgCard, { borderLeftColor: "transparent", marginBottom: 12, backgroundColor: "transparent" }]}>
+                            <Skeleton width="100%" height={170} borderRadius={20} />
+                            <View style={{ position: "absolute", top: 14, left: 16, right: 16, gap: 10 }}>
+                                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                                    <Skeleton width={60} height={10} borderRadius={4} />
+                                    <Skeleton width={70} height={22} borderRadius={8} />
+                                </View>
+                                <Skeleton width="70%" height={18} borderRadius={6} style={{ marginTop: 12 }} />
+                                <Skeleton width={90} height={12} borderRadius={4} />
+                                <View style={{ position: "absolute", top: 100, left: 0, right: 0, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                                    <Skeleton width={120} height={12} borderRadius={4} />
+                                    <Skeleton width={28} height={28} borderRadius={14} />
+                                </View>
+                            </View>
+                        </View>
+                    ))}
+                </ScrollView>
             ) : (
                 <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}>
 
