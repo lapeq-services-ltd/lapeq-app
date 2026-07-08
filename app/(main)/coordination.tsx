@@ -182,14 +182,18 @@ export default function CoordinationScreen() {
                                 <Text style={s.etaTime}>
                                     {activeTrip.driver_status === 'arrived' ? 'Arrived' : 
                                      activeTrip.driver_status === 'in_progress' ? 'On Trip' : 
-                                     activeTrip.driver_status === 'assigned' ? 'Assigned' : '8 min'}
+                                     activeTrip.driver_status === 'assigned' ? 'Assigned' : 
+                                     activeTrip.details?.pickupTime || '8 min'}
                                 </Text>
                                 <Text style={s.etaCar}>
-                                    {[
+                                    {activeTrip.details?.carDetails || 
+                                     activeTrip.details?.car_details ||
+                                     activeTrip.details?.vehicle_info ||
+                                     [
                                         activeTrip.details?.car_model || activeTrip.details?.car_info || activeTrip.details?.vehicle,
                                         activeTrip.details?.car_color,
                                         activeTrip.details?.car_plate
-                                    ].filter(Boolean).join(" - ") || "Toyota Camry - Silver - LND 234 GH"}
+                                     ].filter(Boolean).join(" - ") || "Toyota Camry - Silver - LND 234 GH"}
                                 </Text>
                                 <View style={s.membershipTag}>
                                     <Crown size={16} color={theme === 'dark' ? C.black : C.primary} />
