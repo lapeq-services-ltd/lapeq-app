@@ -60,12 +60,10 @@ export default function CoordinationScreen() {
         async function loadData() {
             try {
                 const { data: { user } } = await supabase.auth.getUser();
-                if (!user) return;
-
-                // 1. Fetch active trip (transport types: driving-service, logistics, driving)
+                if (!user) return;                // 1. Fetch active trip (transport types: driving-service, logistics, driving)
                 const { data: activeTrips } = await supabase
                     .from("requests")
-                    .select("*")
+                    .select("*, driver:profiles!requests_driver_id_fkey(id, full_name, preferred_name, phone, avatar_url, vehicle_details)")
                     .eq("user_id", user.id)
                     .in("service_type", ["driving", "driving-service", "logistics"])
                     .not("status", "in", '("completed","cancelled")')
@@ -76,20 +74,7 @@ export default function CoordinationScreen() {
                     const trip = activeTrips[0];
                     setActiveTrip(trip);
                     setHasActiveRide(true);
-
-                    // Fetch driver details if assigned
-                    if (trip.driver_id) {
-                        const { data: driverProfile } = await supabase
-                            .from("profiles")
-                            .select("*")
-                            .eq("id", trip.driver_id)
-                            .single();
-                        if (driverProfile && isMounted) {
-                            setDriver(driverProfile);
-                        }
-                    } else if (isMounted) {
-                        setDriver(null);
-                    }
+                    setDriver(trip.driver);
                 } else if (isMounted) {
                     setHasActiveRide(false);
                     setActiveTrip(null);
