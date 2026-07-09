@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabase";
 import { useRouter, useSegments } from "expo-router";
 import { useState, useRef as useReactRef } from "react";
 import * as Linking from "expo-linking";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
 import { Animated, TouchableOpacity, Text } from "react-native";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
@@ -45,7 +46,14 @@ function useProtectedRoute(session: Session | null, loading: boolean) {
         if (!session && !inAuthGroup) {
             router.replace("/(auth)/onboarding");
         } else if (session && inAuthGroup) {
-            router.replace("/(tabs)");
+            // Check if this user has seen the welcome screen yet
+            AsyncStorage.getItem("lapeq_welcome_seen").then(seen => {
+                if (!seen) {
+                    router.replace("/welcome" as any);
+                } else {
+                    router.replace("/(tabs)");
+                }
+            });
         }
     }, [session, loading, segments]);
 }
@@ -394,6 +402,7 @@ function RootContent() {
             <LapeqToast />
             <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.background }, animation: "slide_from_right" }}>
                 <Stack.Screen name="(auth)" />
+                <Stack.Screen name="welcome" options={{ headerShown: false, animation: "none", gestureEnabled: false }} />
                 <Stack.Screen name="(tabs)" />
                 <Stack.Screen name="(main)" />
                 <Stack.Screen name="services" />

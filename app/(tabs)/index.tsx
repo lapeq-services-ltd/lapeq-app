@@ -13,7 +13,6 @@ import {
     Pressable,
     Switch,
 } from "react-native";
-import WelcomeModal from "@/components/WelcomeModal";
 import AppTour from "@/components/AppTour";
 import PromoPopup from "@/components/PromoPopup";
 import Skeleton from "@/components/Skeleton";
@@ -96,7 +95,6 @@ export default function HomeScreen() {
     const [showTrialPopup, setShowTrialPopup] = useState(false);
     const [hasActiveRide, setHasActiveRide] = useState(false);
     const [showTour, setShowTour] = useState(false);
-    const [showWelcome, setShowWelcome] = useState(false);
     const [profileLoaded, setProfileLoaded] = useState(false);
     const [showPromo, setShowPromo] = useState(false);
     const [monthlyRequestsCount, setMonthlyRequestsCount] = useState(0);
@@ -229,20 +227,14 @@ export default function HomeScreen() {
             await AsyncStorage.setItem("lapeq_last_user", user.id);
 
             // Run profile, notifications, and AsyncStorage reads all in parallel
-            const [welcomeSeen, tourSeen, profileResult, notifResult, lastChatOpen] = await Promise.all([
-                AsyncStorage.getItem("lapeq_welcome_seen"),
+            const [tourSeen, profileResult, notifResult, lastChatOpen] = await Promise.all([
                 AsyncStorage.getItem("lapeq_tour_seen"),
                 supabase.from("profiles").select("full_name, tier").eq("id", user.id).single(),
                 supabase.from("notifications").select("*", { count: "exact", head: true }).eq("user_id", user.id).eq("read", false),
                 AsyncStorage.getItem(`lapeq_chat_last_open_${user.id}`),
             ]);
 
-            if (!welcomeSeen && !welcomeShownSession) {
-                welcomeShownSession = true;
-                setShowWelcome(true);
-            } else {
-                triggerTrialAfterDelay(user);
-            }
+            triggerTrialAfterDelay(user);
 
             if (!profileResult.data) {
                 const meta2 = user.user_metadata ?? {};
@@ -835,22 +827,6 @@ export default function HomeScreen() {
                 </View>
             </Modal>
 
-            {profileLoaded && (
-                <WelcomeModal
-                    name={userName}
-                    visible={showWelcome}
-                    onClose={() => {
-                        setShowWelcome(false);
-                        supabase.auth.getUser().then(({ data: { user } }) => {
-                            if (user) triggerTrialAfterDelay(user);
-                        });
-                    }}
-                    onStartTour={() => {
-                        setShowWelcome(false);
-                        setShowTour(true);
-                    }}
-                />
-            )}
             <AppTour
                 visible={showTour}
                 onFinish={() => {

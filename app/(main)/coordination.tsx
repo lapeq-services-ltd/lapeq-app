@@ -43,16 +43,39 @@ export default function CoordinationScreen() {
         let isMounted = true;
         async function geocode() {
             try {
-                const query = encodeURIComponent(activeTrip.pickup_location);
+                let addressQuery = activeTrip.pickup_location;
+                // Clean up duplicate country strings
+                addressQuery = addressQuery.replace(/,?\s*Nigeria,\s*Nigeria/i, ', Nigeria');
+                
+                const query = encodeURIComponent(addressQuery);
                 const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`, {
                     headers: { 'User-Agent': 'LapeqMobile/1.0' }
                 });
                 const data = await res.json();
+                
                 if (data && data.length > 0 && isMounted) {
                     setPickupCoords({
                         lat: parseFloat(data[0].lat),
                         lng: parseFloat(data[0].lon)
                     });
+                } else if (isMounted) {
+                    // Try fallback search with just the first two segments (e.g. "16 Karaye Street, Abuja")
+                    const parts = addressQuery.split(',').map((p: string) => p.trim()).filter(Boolean);
+                    if (parts.length > 1) {
+                        const fallbackQuery = encodeURIComponent(parts.slice(0, 2).join(', '));
+                        const fbRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${fallbackQuery}&format=json&limit=1`, {
+                            headers: { 'User-Agent': 'LapeqMobile/1.0' }
+                        });
+                        const fbData = await fbRes.json();
+                        if (fbData && fbData.length > 0 && isMounted) {
+                            setPickupCoords({
+                                lat: parseFloat(fbData[0].lat),
+                                lng: parseFloat(fbData[0].lon)
+                            });
+                            return;
+                        }
+                    }
+                    setPickupCoords(null);
                 }
             } catch (err) {
                 console.warn("Mobile geocoding failed:", err);
