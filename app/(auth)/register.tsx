@@ -225,6 +225,7 @@ export default function RegisterScreen() {
                 id: data.user.id,
                 full_name: fullName,
                 preferred_name: firstName.trim(),
+                email: email.trim().toLowerCase(),
                 country,
                 region,
                 gender,

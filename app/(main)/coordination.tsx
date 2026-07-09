@@ -32,14 +32,78 @@ export default function CoordinationScreen() {
     const [activeTab, setActiveTab] = useState<"current" | "upcoming">("current");
     const [hasActiveRide, setHasActiveRide] = useState(false);
     const progressAnim = useRef(new Animated.Value(35)).current;
+    const [pickupCoords, setPickupCoords] = useState<{ lat: number; lng: number } | null>(null);
 
-    // Trigger spring animation when the driver status changes
+    useEffect(() => {
+        if (!activeTrip?.pickup_location) {
+            setPickupCoords(null);
+            return;
+        }
+
+        let isMounted = true;
+        async function geocode() {
+            try {
+                const query = encodeURIComponent(activeTrip.pickup_location);
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`, {
+                    headers: { 'User-Agent': 'LapeqMobile/1.0' }
+                });
+                const data = await res.json();
+                if (data && data.length > 0 && isMounted) {
+                    setPickupCoords({
+                        lat: parseFloat(data[0].lat),
+                        lng: parseFloat(data[0].lon)
+                    });
+                }
+            } catch (err) {
+                console.warn("Mobile geocoding failed:", err);
+            }
+        }
+
+        geocode();
+        return () => { isMounted = false; };
+    }, [activeTrip?.pickup_location]);
+
+    function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
+        const R = 6371; // km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c; // km
+    }
+
+    const currentDistance = useMemo(() => {
+        if (!pickupCoords || !driver?.latitude || !driver?.longitude) return null;
+        return getDistance(pickupCoords.lat, pickupCoords.lng, driver.latitude, driver.longitude);
+    }, [pickupCoords, driver?.latitude, driver?.longitude]);
+
+    const dynamicETA = useMemo(() => {
+        if (activeTrip?.driver_status === 'arrived') return 'Arrived';
+        if (activeTrip?.driver_status === 'in_progress') return 'On Trip';
+        if (activeTrip?.driver_status === 'assigned') return 'Assigned';
+        if (currentDistance === null) {
+            return activeTrip?.details?.pickupTime || '8 min';
+        }
+        const mins = Math.max(Math.round(currentDistance * 3.5), 2); // 3.5 mins per km in traffic, minimum 2 mins
+        return `${mins} min`;
+    }, [currentDistance, activeTrip?.driver_status, activeTrip?.details?.pickupTime]);
+
+    // Trigger spring animation when the driver status/proximity changes
     useEffect(() => {
         let targetValue = 35;
         if (activeTrip) {
             const status = activeTrip.driver_status;
             if (status === "assigned") targetValue = 20;
-            else if (status === "en_route") targetValue = 50;
+            else if (status === "en_route") {
+                if (currentDistance !== null) {
+                    const pct = Math.max(0, Math.min(1, 1 - (currentDistance / 10)));
+                    targetValue = 20 + Math.round(55 * pct);
+                } else {
+                    targetValue = 50;
+                }
+            }
             else if (status === "arrived") targetValue = 75;
             else if (status === "in_progress") targetValue = 90;
         } else {
@@ -52,7 +116,7 @@ export default function CoordinationScreen() {
             friction: 5,
             useNativeDriver: false
         }).start();
-    }, [activeTrip?.driver_status]);
+    }, [activeTrip?.driver_status, currentDistance]);
 
     useEffect(() => {
         let isMounted = true;
@@ -165,20 +229,16 @@ export default function CoordinationScreen() {
                                     </View>
                                 </View>
                                 <Text style={s.etaTime}>
-                                    {activeTrip.driver_status === 'arrived' ? 'Arrived' : 
-                                     activeTrip.driver_status === 'in_progress' ? 'On Trip' : 
-                                     activeTrip.driver_status === 'assigned' ? 'Assigned' : 
-                                     activeTrip.details?.pickupTime || '8 min'}
+                                    {dynamicETA}
                                 </Text>
                                 <Text style={s.etaCar}>
-                                    {activeTrip.details?.carDetails || 
-                                     activeTrip.details?.car_details ||
-                                     activeTrip.details?.vehicle_info ||
-                                     [
-                                        activeTrip.details?.car_model || activeTrip.details?.car_info || activeTrip.details?.vehicle,
-                                        activeTrip.details?.car_color,
-                                        activeTrip.details?.car_plate
-                                     ].filter(Boolean).join(" - ") || "Toyota Camry - Silver - LND 234 GH"}
+                                    {currentDistance !== null ? `Chauffeur is ${currentDistance.toFixed(1)} km away` : 'Driver has been assigned'}
+                                </Text>
+                                <Text style={{ fontSize: 12, color: '#6b6b6b', marginTop: 4, fontFamily: 'Jost_400Regular' }}>
+                                    Vehicle: {activeTrip.details?.carDetails || 
+                                             activeTrip.details?.car_details ||
+                                             driver?.vehicle_details || 
+                                             "Toyota Camry - Silver - LND 234 GH"}
                                 </Text>
                                 <View style={s.membershipTag}>
                                     <Crown size={16} color={theme === 'dark' ? C.black : C.primary} />
