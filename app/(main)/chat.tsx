@@ -13,12 +13,12 @@ import * as Haptics from "expo-haptics";
 type Message = {
     id: string;
     content: string;
-    sender_type: "client" | "admin";
+    sender_type: "client" | "admin" | "driver";
     created_at: string;
     type?: string;
 };
 
-type ChatMode = null | "question" | "concierge" | "request";
+type ChatMode = null | "question" | "concierge" | "request" | "driver_chat";
 
 const QUICK_QUESTIONS = [
     "What's included in Gold membership?",
@@ -38,7 +38,7 @@ const FAQ_ANSWERS: Record<string, string> = {
     "What cities do you cover?":
         "We currently operate in Abuja and Lagos, with services in Port Harcourt, Akwa Ibom, and Kano coming soon. Our on-the-ground concierge teams ensure real-time service delivery.",
     "How do I upgrade my tier?":
-        "You can upgrade your membership directly in the app. Go to Profile → Upgrade Membership, select your desired tier, and submit a request. Our team will process it and reach out to confirm.",
+        "You can upgrade your membership directly in the app. Go to Profile â†’ Upgrade Membership, select your desired tier, and submit a request. Our team will process it and reach out to confirm.",
 };
 
 const FAQ_KEYWORDS: { keywords: string[]; answer: string }[] = [
@@ -174,6 +174,13 @@ export default function ConciergeChatScreen() {
         }
     }, [mode, userId]);
 
+    const messageType = useMemo(() => {
+        if (mode === "driver_chat") {
+            return `driver_chat:${packageId}`;
+        }
+        return mode;
+    }, [mode, packageId]);
+
     // Load messages + Realtime when mode is selected
     useEffect(() => {
         if (!mode || !userId) return;
@@ -184,7 +191,7 @@ export default function ConciergeChatScreen() {
                 .from("messages")
                 .select("*")
                 .eq("user_id", userId)
-                .in("type", [mode, "system"])   // include system messages (e.g. request reference links)
+                .in("type", [messageType ?? "", "system"])   // include system messages (e.g. request reference links)
                 .order("created_at", { ascending: true })
                 .limit(100);
             if (data) setMessages(data as Message[]);
@@ -202,8 +209,9 @@ export default function ConciergeChatScreen() {
                 filter: `user_id=eq.${userId}`,
             }, (payload) => {
                 const newMsg = payload.new as Message;
-                // Show admin messages that match current mode OR system messages
-                if (newMsg.sender_type === "admin" && (newMsg.type === mode || newMsg.type === "system")) {
+                // Show admin/driver messages that match current mode OR system messages
+                if ((newMsg.sender_type === "admin" || newMsg.sender_type === "driver") && 
+                    (newMsg.type === messageType || newMsg.type === "system")) {
                     setMessages(prev => [...prev, newMsg]);
                     setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
                 }
@@ -214,7 +222,7 @@ export default function ConciergeChatScreen() {
             supabase.removeChannel(channel);
             setMessages([]);  // clear when switching modes
         };
-    }, [mode, userId]);
+    }, [mode, userId, messageType]);
 
     const loadMessages = async () => {
         if (!userId || !mode) return;
@@ -222,7 +230,7 @@ export default function ConciergeChatScreen() {
             .from("messages")
             .select("*")
             .eq("user_id", userId)
-            .in("type", [mode, "system"])
+            .in("type", [messageType ?? "", "system"])
             .order("created_at", { ascending: true })
             .limit(100);
         if (data) setMessages(data as Message[]);
@@ -243,7 +251,7 @@ export default function ConciergeChatScreen() {
             content: finalContent,
             sender_type: "client",
             created_at: new Date().toISOString(),
-            type: mode ?? undefined,
+            type: messageType ?? undefined,
         };
         setMessages(prev => [...prev, userMsg]);
 
@@ -253,7 +261,7 @@ export default function ConciergeChatScreen() {
                 user_id: userId,
                 sender_type: "client",
                 content: finalContent,
-                type: mode,
+                type: messageType,
             });
 
             // Check for FAQ answer from database/state
@@ -271,16 +279,16 @@ export default function ConciergeChatScreen() {
                     user_id: userId,
                     sender_type: "admin",
                     content: replyText,
-                    type: mode,
+                    type: messageType,
                 });
             }, 800);
         } else {
-            // request / concierge - save to DB, no auto-reply
+            // request / concierge / driver_chat - save to DB, no auto-reply
             await supabase.from("messages").insert({
                 user_id: userId,
                 sender_type: "client",
                 content: finalContent,
-                type: mode,
+                type: messageType,
             });
         }
 
@@ -291,17 +299,19 @@ export default function ConciergeChatScreen() {
     const getPlaceholder = () => {
         if (mode === "request") return "Describe what you need arranged...";
         if (mode === "question") return "Ask us anything...";
+        if (mode === "driver_chat") return "Message your chauffeur...";
         return "Message your concierge...";
     };
 
     const getModeLabel = () => {
         if (mode === "request") return "New Request";
         if (mode === "question") return "Ask a Question";
+        if (mode === "driver_chat") return "Chat with Chauffeur";
         return "Concierge Chat";
     };
 
 
-    const renderMessageContent = (content: string, senderType: "client" | "admin") => {
+    const renderMessageContent = (content: string, senderType: "client" | "admin" | "driver") => {
         if (!content) return null;
 
         const regex = /(LPQ-[A-Z0-9]{5,8})/gi;
@@ -449,17 +459,25 @@ export default function ConciergeChatScreen() {
                         contentContainerStyle={s.messageList}
                         ListHeaderComponent={
                             messages.length === 0 ? (
-                                <View style={s.emptyChat}>
+                                <>
                                     {mode === "request" && (
-                                        <Text style={s.emptyChatText}>Describe what you need - a reservation, transport, event access, anything. We'll take it from here.</Text>
+                                        <View style={s.emptyChat}>
+                                            <Text style={s.emptyChatText}>Describe what you need - a reservation, transport, event access, anything. We'll take it from here.</Text>
+                                        </View>
                                     )}
                                     {mode === "question" && (
-                                        <Text style={s.emptyChatText}>Ask us anything or pick a common question below.</Text>
+                                        <View style={s.emptyChatImgWrap}>
+                                            <Image source={require("@/assets/emptystate/ask-question.png")} style={s.emptyChatImg} resizeMode="contain" />
+                                            <Text style={s.emptyChatText}>Ask us anything or pick a common question below.</Text>
+                                        </View>
                                     )}
                                     {mode === "concierge" && (
-                                        <Text style={s.emptyChatText}>Your dedicated concierge is ready. Send a message to get started.</Text>
+                                        <View style={s.emptyChatImgWrap}>
+                                            <Image source={require("@/assets/emptystate/my-conc.png")} style={s.emptyChatImg} resizeMode="contain" />
+                                            <Text style={s.emptyChatText}>Your dedicated concierge is ready. Send a message to get started.</Text>
+                                        </View>
                                     )}
-                                </View>
+                                </>
                             ) : null
                         }
                         onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
@@ -467,6 +485,9 @@ export default function ConciergeChatScreen() {
                             <View style={[s.messageWrapper, item.sender_type === "client" ? s.wrapperUser : s.wrapperConcierge]}>
                                 {item.sender_type === "admin" && (
                                     <Text style={s.senderLabel}>LAPEQ Concierge</Text>
+                                )}
+                                {item.sender_type === "driver" && (
+                                    <Text style={s.senderLabel}>Chauffeur</Text>
                                 )}
                                 <View style={[s.bubble, item.sender_type === "client" ? s.bubbleUser : s.bubbleConcierge]}>
                                     {renderMessageContent(item.content, item.sender_type)}
@@ -477,7 +498,7 @@ export default function ConciergeChatScreen() {
                     />
                 )}
 
-                {/* Quick Questions — shown in question mode and is collapsible */}
+                {/* Quick Questions â€” shown in question mode and is collapsible */}
                 {mode === "question" && (
                     <View style={{ paddingHorizontal: 16, paddingBottom: showQuickQuestions ? 20 : 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: C.border }}>
                         <TouchableOpacity
@@ -520,7 +541,7 @@ export default function ConciergeChatScreen() {
                     </View>
                 )}
 
-                {/* Text input — only for concierge and request modes */}
+                {/* Text input â€” only for concierge and request modes */}
                 {mode !== "question" && (
                     <View style={s.inputContainer}>
                         <TextInput
@@ -562,7 +583,9 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
 
     messageList: { padding: 20, paddingBottom: 10 },
     emptyChat: { backgroundColor: C.surface, borderRadius: 16, padding: 20, marginBottom: 20, borderWidth: 1, borderColor: C.border },
-    emptyChatText: { fontSize: 14, color: C.muted, lineHeight: 22 },
+    emptyChatImgWrap: { alignItems: "center", gap: 12, marginTop: 80 },
+    emptyChatImg: { width: 300, height: 300 },
+    emptyChatText: { fontSize: 14, color: C.muted, lineHeight: 22, textAlign: "center" },
     quickQ: { backgroundColor: C.surface, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: C.border },
     quickQText: { fontSize: 13, color: C.text, fontWeight: "500" },
 

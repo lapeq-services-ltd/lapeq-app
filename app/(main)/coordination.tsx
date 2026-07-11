@@ -4,8 +4,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ChevronLeft, ShieldCheck, Crown, Star, MessageCircle, Phone, CalendarDays, Clock, Bell } from "lucide-react-native";
+import { ChevronLeft, ShieldCheck, Crown, Star, MessageCircle, Phone, CalendarDays, Clock, Bell, MapPin } from "lucide-react-native";
 import Svg, { Path, Circle } from "react-native-svg";
+import * as Notifications from "expo-notifications";
 
 import { useTheme } from "@/context/ThemeContext";
 import { useMemo } from "react";
@@ -33,6 +34,7 @@ export default function CoordinationScreen() {
     const [hasActiveRide, setHasActiveRide] = useState(false);
     const progressAnim = useRef(new Animated.Value(35)).current;
     const [pickupCoords, setPickupCoords] = useState<{ lat: number; lng: number } | null>(null);
+    const [waitingSeconds, setWaitingSeconds] = useState(0);
 
     useEffect(() => {
         if (!activeTrip?.pickup_location) {
@@ -122,13 +124,13 @@ export default function CoordinationScreen() {
             else if (status === "en_route") {
                 if (currentDistance !== null) {
                     const pct = Math.max(0, Math.min(1, 1 - (currentDistance / 10)));
-                    targetValue = 20 + Math.round(55 * pct);
+                    targetValue = 20 + Math.round(60 * pct); // Scale from 20% to 80%
                 } else {
                     targetValue = 50;
                 }
             }
-            else if (status === "arrived") targetValue = 75;
-            else if (status === "in_progress") targetValue = 90;
+            else if (status === "arrived") targetValue = 100;
+            else if (status === "in_progress") targetValue = 100;
         } else {
             targetValue = 35;
         }
@@ -141,13 +143,33 @@ export default function CoordinationScreen() {
         }).start();
     }, [activeTrip?.driver_status, currentDistance]);
 
+    // Active waiting timer effect for arrived chauffeur
+    useEffect(() => {
+        if (activeTrip?.driver_status !== 'arrived') {
+            setWaitingSeconds(0);
+            return;
+        }
+        const arrivalTime = new Date(activeTrip.updated_at || new Date()).getTime();
+        
+        const updateTimer = () => {
+            const elapsed = Math.max(0, Math.floor((Date.now() - arrivalTime) / 1000));
+            setWaitingSeconds(elapsed);
+        };
+        
+        updateTimer();
+        const interval = setInterval(updateTimer, 1000);
+        return () => clearInterval(interval);
+    }, [activeTrip?.driver_status, activeTrip?.updated_at]);
+
     useEffect(() => {
         let isMounted = true;
+        let lastStatus: string | null = null;
 
         async function loadData() {
             try {
                 const { data: { user } } = await supabase.auth.getUser();
-                if (!user) return;                // 1. Fetch active trip (transport types: driving-service, logistics, driving)
+                if (!user) return;
+                // 1. Fetch active trip (transport types: driving-service, logistics, driving)
                 const { data: activeTrips } = await supabase
                     .from("requests")
                     .select("*, driver:profiles!requests_driver_id_fkey(id, full_name, preferred_name, phone, avatar_url, vehicle_details)")
@@ -162,6 +184,9 @@ export default function CoordinationScreen() {
                     setActiveTrip(trip);
                     setHasActiveRide(true);
                     setDriver(trip.driver);
+                    if (trip.driver_status) {
+                        lastStatus = trip.driver_status;
+                    }
                 } else if (isMounted) {
                     setHasActiveRide(false);
                     setActiveTrip(null);
@@ -194,8 +219,45 @@ export default function CoordinationScreen() {
 
         // Subscribe to real-time updates for requests and profile changes
         const requestsSubscription = supabase.channel('coordination-channel')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, () => {
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, (payload) => {
                 loadData();
+
+                // Intercept driver status updates for local notifications/alerts
+                if (payload.eventType === 'UPDATE' && payload.new) {
+                    const newStatus = payload.new.driver_status;
+                    if (newStatus && newStatus !== lastStatus) {
+                        lastStatus = newStatus;
+                        
+                        let title = '';
+                        let body = '';
+                        if (newStatus === 'en_route') {
+                            title = 'Chauffeur En Route 🚙';
+                            body = 'Your driver is on the way to your pickup location.';
+                        } else if (newStatus === 'arrived') {
+                            title = 'Chauffeur Arrived 📍';
+                            body = 'Your driver has arrived outside your pickup location.';
+                        } else if (newStatus === 'in_progress') {
+                            title = 'Trip Started 🛫';
+                            body = 'Your trip is now underway.';
+                        } else if (newStatus === 'completed') {
+                            title = 'Trip Completed ✅';
+                            body = 'Thank you for riding with Lapeq. Your trip has been completed.';
+                        }
+
+                        if (title && body) {
+                            Alert.alert(title, body);
+                            Notifications.scheduleNotificationAsync({
+                                content: {
+                                    title,
+                                    body,
+                                    sound: true,
+                                    priority: Notifications.AndroidNotificationPriority.HIGH,
+                                },
+                                trigger: null,
+                            }).catch(e => console.warn("Local push notification failed:", e));
+                        }
+                    }
+                }
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
                 loadData();
@@ -242,8 +304,8 @@ export default function CoordinationScreen() {
             <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}>
                 {activeTab === "current" ? (
                     hasActiveRide && activeTrip ? (
-                        <>
-                            <View style={s.etaCard}>
+                                            <>
+                                            <View style={s.etaCard}>
                                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                                     <Text style={s.etaLabel}>
                                         {activeTrip.driver_status === 'arrived' ? 'Status' : 
@@ -260,16 +322,61 @@ export default function CoordinationScreen() {
                                 <Text style={s.etaCar}>
                                     {currentDistance !== null ? `Chauffeur is ${currentDistance.toFixed(1)} km away` : 'Driver has been assigned'}
                                 </Text>
-                                <Text style={{ fontSize: 12, color: '#6b6b6b', marginTop: 4, fontFamily: 'Jost_400Regular' }}>
+                                <Text style={{ fontSize: 12, color: theme === 'dark' ? 'rgba(0,0,0,0.6)' : '#888', marginTop: 4, fontFamily: 'Jost_400Regular' }}>
                                     Vehicle: {activeTrip.details?.carDetails || 
                                              activeTrip.details?.car_details ||
                                              driver?.vehicle_details || 
                                              "Toyota Camry - Silver - LND 234 GH"}
                                 </Text>
-                                <View style={s.membershipTag}>
-                                    <Crown size={16} color={theme === 'dark' ? C.black : C.primary} />
-                                    <Text style={s.membershipTagText}>Included in your membership</Text>
+
+                                {/* Active Waiting Timer and Fee Surcharges */}
+                                {activeTrip.driver_status === 'arrived' && (
+                                    <View style={{ marginTop: 12, padding: 12, backgroundColor: theme === 'dark' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.06)', borderRadius: 12, borderWidth: 0.5, borderColor: theme === 'dark' ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.1)' }}>
+                                        <Text style={{ fontSize: 13, color: theme === 'dark' ? '#065f46' : '#34d399', fontWeight: "700", fontFamily: 'Jost_600SemiBold' }}>
+                                            Chauffeur is waiting outside
+                                        </Text>
+                                        <Text style={{ fontSize: 12, color: theme === 'dark' ? '#000000' : '#f0f0f0', marginTop: 4, fontFamily: 'Jost_400Regular' }}>
+                                            Waiting Timer: {Math.floor(waitingSeconds / 60)}m {waitingSeconds % 60}s
+                                        </Text>
+                                        <Text style={{ fontSize: 12, color: theme === 'dark' ? '#b45309' : C.primary, fontWeight: "600", marginTop: 2, fontFamily: 'Jost_600SemiBold' }}>
+                                            Waiting Surcharge: +₦{Number(Math.floor(waitingSeconds / 600) * 3000).toLocaleString()} (₦3,000 / 10m)
+                                        </Text>
+                                    </View>
+                                )}
+
+                                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginTop: 12 }}>
+                                    <View style={s.membershipTag}>
+                                        <Crown size={16} color={theme === 'dark' ? C.black : C.primary} />
+                                        <Text style={s.membershipTagText}>Included in membership</Text>
+                                    </View>
                                 </View>
+
+                                {/* Track Driver Route Google Maps External Routing */}
+                                {driver?.latitude && driver?.longitude && pickupCoords && (
+                                    <TouchableOpacity
+                                        style={{
+                                            marginTop: 16,
+                                            backgroundColor: theme === 'dark' ? C.black : C.primary,
+                                            borderRadius: 12,
+                                            paddingVertical: 12,
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            flexDirection: "row",
+                                            gap: 8,
+                                        }}
+                                        onPress={() => {
+                                            const url = `https://www.google.com/maps/dir/?api=1&origin=${driver.latitude},${driver.longitude}&destination=${pickupCoords.lat},${pickupCoords.lng}&travelmode=driving`;
+                                            Linking.openURL(url).catch(() => {
+                                                Alert.alert("Map Error", "Could not open Google Maps.");
+                                            });
+                                        }}
+                                    >
+                                        <MapPin size={16} color={theme === 'dark' ? C.primary : C.black} />
+                                        <Text style={{ color: theme === 'dark' ? C.primary : C.black, fontSize: 13, fontWeight: "700", fontFamily: 'Jost_700Bold' }}>
+                                            Track Route in Google Maps
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
                             </View>
 
                             <View style={{ marginBottom: 28, backgroundColor: C.surface, borderRadius: 20, padding: 18, borderWidth: 1, borderColor: C.border }}>
@@ -345,16 +452,16 @@ export default function CoordinationScreen() {
                                         <TouchableOpacity 
                                             style={s.driverActionSecondary}
                                             onPress={() => {
-                                                const rawPhone = driver?.phone || activeTrip?.details?.driverPhone || activeTrip?.details?.driver_phone;
-                                                if (rawPhone) {
-                                                    const cleanPhone = rawPhone.replace(/[^0-9+]/g, '');
-                                                    Linking.openURL('sms:' + cleanPhone);
-                                                } else {
-                                                    Alert.alert("Contact Chauffeur", "Driver phone number is not available.");
-                                                }
+                                                router.push({
+                                                    pathname: "/chat",
+                                                    params: {
+                                                        mode: "driver_chat",
+                                                        packageId: activeTrip.id
+                                                    }
+                                                });
                                             }}
                                         >
-                                            <MessageCircle size={24} color={C.cardFg} />
+                                            <MessageCircle size={20} color={C.cardFg} />
                                         </TouchableOpacity>
                                         <TouchableOpacity 
                                             style={s.driverActionPrimary}
@@ -368,7 +475,7 @@ export default function CoordinationScreen() {
                                                 }
                                             }}
                                         >
-                                            <Phone size={24} color={C.black} />
+                                            <Phone size={20} color={C.black} />
                                         </TouchableOpacity>
                                     </View>
                                 </View>
@@ -549,13 +656,13 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     trackDotFilled: { width: 14, height: 14, borderRadius: 7, backgroundColor: C.primary },
     trackLine: { flex: 1, height: 1.5, borderStyle: "dashed", borderWidth: 1.5, borderColor: theme === 'dark' ? C.primary : C.border, marginHorizontal: 10 },
     trackDotEmpty: { width: 14, height: 14, borderRadius: 7, borderWidth: 3, borderColor: C.primary, backgroundColor: C.background },
-    driverCard: { borderRadius: 20, borderWidth: 1, borderColor: theme === 'dark' ? C.primary : C.border, backgroundColor: C.background, padding: 20, marginBottom: 28 },
-    driverAvatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" },
-    driverInitials: { fontSize: 18, fontWeight: "700", color: C.muted },
-    driverName: { fontSize: 18, fontWeight: "600", color: C.text },
-    driverRating: { fontSize: 14, fontWeight: "600", color: C.text },
-    driverActionSecondary: { width: 52, height: 52, borderRadius: 26, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" },
-    driverActionPrimary: { width: 52, height: 52, borderRadius: 26, backgroundColor: C.primary, alignItems: "center", justifyContent: "center" },
+    driverCard: { borderRadius: 16, borderWidth: 0.5, borderColor: theme === 'dark' ? C.primary : C.border, backgroundColor: C.surface, padding: 14, marginBottom: 20 },
+    driverAvatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: C.background, alignItems: "center", justifyContent: "center" },
+    driverInitials: { fontSize: 16, fontWeight: "700", color: C.muted },
+    driverName: { fontSize: 15, fontWeight: "600", color: C.text },
+    driverRating: { fontSize: 12, fontWeight: "600", color: C.text },
+    driverActionSecondary: { width: 42, height: 42, borderRadius: 21, backgroundColor: C.background, alignItems: "center", justifyContent: "center" },
+    driverActionPrimary: { width: 42, height: 42, borderRadius: 21, backgroundColor: C.primary, alignItems: "center", justifyContent: "center" },
     sectionTitle: { fontSize: 18, fontWeight: "600", color: C.text, marginBottom: 16 },
     updateDot: { width: 10, height: 10, borderRadius: 5, marginTop: 6 },
     updateTitle: { fontSize: 14, fontWeight: "600", color: C.text, marginBottom: 2 },
