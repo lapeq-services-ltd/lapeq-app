@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import {
-    View, Text, ScrollView, TouchableOpacity, StyleSheet, Animated, Image, ActivityIndicator, Linking
+    View, Text, ScrollView, TouchableOpacity, StyleSheet, Animated, Image, ActivityIndicator, Linking, Alert
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -118,7 +118,7 @@ export default function CoordinationScreen() {
         let targetValue = 35;
         if (activeTrip) {
             const status = activeTrip.driver_status;
-            if (status === "assigned") targetValue = 20;
+            if (status === "assigned" || status === "accepted") targetValue = 20;
             else if (status === "en_route") {
                 if (currentDistance !== null) {
                     const pct = Math.max(0, Math.min(1, 1 - (currentDistance / 10)));
@@ -197,6 +197,9 @@ export default function CoordinationScreen() {
             .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, () => {
                 loadData();
             })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+                loadData();
+            })
             .subscribe();
 
         return () => {
@@ -269,17 +272,35 @@ export default function CoordinationScreen() {
                                 </View>
                             </View>
 
-                            <View style={{ marginBottom: 32 }}>
-                                <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 16 }}>
-                                    <View style={{ flex: 1, marginRight: 8 }}>
-                                        <Text style={s.stopLabel}>Pickup</Text>
-                                        <Text style={s.stopName} numberOfLines={2}>{activeTrip.pickup_location || 'Lekki Phase 1'}</Text>
+                            <View style={{ marginBottom: 28, backgroundColor: C.surface, borderRadius: 20, padding: 18, borderWidth: 1, borderColor: C.border }}>
+                                <View style={{ position: "relative" }}>
+                                    {/* Vertical connecting line */}
+                                    <View style={{ position: "absolute", left: 6, top: 18, bottom: 18, width: 1, backgroundColor: C.border, borderStyle: "dashed", borderWidth: 1, borderRadius: 1 }} />
+
+                                    {/* Pickup Stop */}
+                                    <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 16 }}>
+                                        <View style={{ width: 13, height: 13, borderRadius: 6.5, backgroundColor: C.green, borderSize: 2.5, borderWidth: 2.5, borderColor: C.surface, zIndex: 2 }} />
+                                        <View style={{ flex: 1, marginLeft: 14 }}>
+                                            <Text style={s.stopLabel}>Pickup</Text>
+                                            <Text style={[s.stopName, { textAlign: "left", fontSize: 13, marginTop: 2 }]} numberOfLines={2}>
+                                                {activeTrip.pickup_location || 'Lekki Phase 1'}
+                                            </Text>
+                                        </View>
                                     </View>
-                                    <View style={{ flex: 1, alignItems: "flex-end", marginLeft: 8 }}>
-                                        <Text style={s.stopLabel}>Destination</Text>
-                                        <Text style={s.stopName} numberOfLines={2}>{activeTrip.dropoff_location || 'Destination'}</Text>
+
+                                    {/* Destination Stop */}
+                                    <View style={{ flexDirection: "row", alignItems: "center" }}>
+                                        <View style={{ width: 13, height: 13, borderRadius: 6.5, backgroundColor: C.primary, borderSize: 2.5, borderWidth: 2.5, borderColor: C.surface, zIndex: 2 }} />
+                                        <View style={{ flex: 1, marginLeft: 14 }}>
+                                            <Text style={s.stopLabel}>Destination</Text>
+                                            <Text style={[s.stopName, { textAlign: "left", fontSize: 13, marginTop: 2 }]} numberOfLines={2}>
+                                                {activeTrip.dropoff_location || 'Destination'}
+                                            </Text>
+                                        </View>
                                     </View>
                                 </View>
+                            </View>
+                            <View style={{ marginBottom: 32 }}>
                                 <View style={{ position: "relative", marginBottom: 12 }}>
                                     <View style={s.trackBar}>
                                         <Animated.View style={[s.trackFill, { width: progressAnim.interpolate({ inputRange: [0, 100], outputRange: ["0%", "100%"] }) }]} />
@@ -323,13 +344,29 @@ export default function CoordinationScreen() {
                                     <View style={{ flexDirection: "row", gap: 12 }}>
                                         <TouchableOpacity 
                                             style={s.driverActionSecondary}
-                                            onPress={() => driver?.phone && Linking.openURL('sms:' + driver.phone)}
+                                            onPress={() => {
+                                                const rawPhone = driver?.phone || activeTrip?.details?.driverPhone || activeTrip?.details?.driver_phone;
+                                                if (rawPhone) {
+                                                    const cleanPhone = rawPhone.replace(/[^0-9+]/g, '');
+                                                    Linking.openURL('sms:' + cleanPhone);
+                                                } else {
+                                                    Alert.alert("Contact Chauffeur", "Driver phone number is not available.");
+                                                }
+                                            }}
                                         >
                                             <MessageCircle size={24} color={C.cardFg} />
                                         </TouchableOpacity>
                                         <TouchableOpacity 
                                             style={s.driverActionPrimary}
-                                            onPress={() => driver?.phone && Linking.openURL('tel:' + driver.phone)}
+                                            onPress={() => {
+                                                const rawPhone = driver?.phone || activeTrip?.details?.driverPhone || activeTrip?.details?.driver_phone;
+                                                if (rawPhone) {
+                                                    const cleanPhone = rawPhone.replace(/[^0-9+]/g, '');
+                                                    Linking.openURL('tel:' + cleanPhone);
+                                                } else {
+                                                    Alert.alert("Contact Chauffeur", "Driver phone number is not available.");
+                                                }
+                                            }}
                                         >
                                             <Phone size={24} color={C.black} />
                                         </TouchableOpacity>
