@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import {
     Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
-    View, Platform, Image, Modal, Animated, Alert, Dimensions, Switch, ActivityIndicator
+    View, Platform, Image, Modal, Animated, Alert, Dimensions, Switch, ActivityIndicator, PanResponder
 } from "react-native";
 import LocationSearch from "@/components/LocationSearch";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
@@ -15,12 +15,14 @@ import VoiceInput from "@/components/VoiceInput";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { PayWithFlutterwave } from "flutterwave-react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 
 const FLW_PUBLIC_KEY = process.env.EXPO_PUBLIC_FLUTTERWAVE_PUBLIC_KEY ?? "";
 
 
 const { width: W } = Dimensions.get("window");
 const GOLD = "#c9a84c";
+const archWidth = (W - 48 - 24) / 3; // 24px side padding, 12px gaps, ~3 visible per screen
 
 const AIRCRAFT = [
     { id: "light",   name: "Light Jet",       capacity: 6,  range: "Up to 3,000 km", note: "Short domestic routes" },
@@ -49,6 +51,10 @@ const SERVICE_TYPES = [
     { id: "Bank Account Opening",   label: "Bank Account",      emoji: "◆", desc: "Open a Nigerian bank account remotely",              img: require("@/assets/images/lagos-rooftop.jpg") },
 ];
 
+// Cycled across the service arches so neighbours read as visually distinct,
+// rather than one flat gold row for all 17 service types.
+const ARCH_COLORS = ["#c9a84c", "#34d399", "#f472b6", "#38bdf8", "#f59e0b", "#a78bfa", "#2dd4bf", "#fb7185"];
+
 const MOODS           = ["Romantic", "Adventure", "Business", "Wellness", "Celebration", "Family"];
 const CITIES          = ["Lagos", "Abuja", "Port Harcourt", "Akwa Ibom", "Kano", "Other"];
 const STAY_TYPES      = ["Hotel", "Villa", "Private Residence", "Serviced Apartment"];
@@ -60,13 +66,28 @@ const CUISINES        = ["Nigerian", "Continental", "Asian", "Mediterranean", "C
 const DINING_SETUP    = ["Floral Decor", "Candlelight", "Live Music", "Photography", "Surprise Element", "Custom Menu"];
 const PROTOCOL_TYPES  = ["Airport Reception", "Event Access", "Security Detail", "Port Protocol", "Diplomatic Escort"];
 
-function BudgetStepper({ value, onChange, min, step, label, C, theme }: {
-    value: number; onChange: (v: number) => void; min: number; step: number; label?: string; C: any; theme: string;
+function BudgetStepper({ value, onChange, min, step, label, C, theme, accentColor }: {
+    value: number; onChange: (v: number) => void; min: number; step: number; label?: string; C: any; theme: string; accentColor?: string;
 }) {
     const isDark = theme === "dark";
+    const accent = accentColor ?? GOLD;
+    const [editing, setEditing] = useState(false);
+    const [draft, setDraft] = useState("");
     const fmt = (v: number) => v >= 1_000_000
         ? `₦${(v / 1_000_000 % 1 === 0 ? v / 1_000_000 : (v / 1_000_000).toFixed(1))}M`
         : `₦${(v / 1000).toFixed(0)}k`;
+
+    const startEditing = () => {
+        setDraft(String(value));
+        setEditing(true);
+    };
+
+    const commitEditing = () => {
+        const parsed = parseInt(draft.replace(/[^0-9]/g, ""), 10);
+        onChange(Number.isFinite(parsed) ? Math.max(min, parsed) : value);
+        setEditing(false);
+    };
+
     return (
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: isDark ? "#111" : "#f7f3eb", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: isDark ? "#2a2a2a" : "#e0dbd2" }}>
             <TouchableOpacity
@@ -78,8 +99,23 @@ function BudgetStepper({ value, onChange, min, step, label, C, theme }: {
             </TouchableOpacity>
             <View style={{ alignItems: "center" }}>
                 {label && <Text style={{ fontSize: 9, fontWeight: "800", color: C.muted, letterSpacing: 2, marginBottom: 6 }}>{label}</Text>}
-                <Text style={{ fontSize: 28, fontWeight: "800", color: GOLD }}>{fmt(value)}</Text>
-                <Text style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>tap +/− to adjust</Text>
+                {editing ? (
+                    <TextInput
+                        style={{ fontSize: 28, fontWeight: "800", color: accent, textAlign: "center", minWidth: 100, padding: 0 }}
+                        value={draft}
+                        onChangeText={(t) => setDraft(t.replace(/[^0-9]/g, ""))}
+                        keyboardType="number-pad"
+                        autoFocus
+                        selectTextOnFocus
+                        onBlur={commitEditing}
+                        onSubmitEditing={commitEditing}
+                    />
+                ) : (
+                    <TouchableOpacity onPress={startEditing} activeOpacity={0.7}>
+                        <Text style={{ fontSize: 28, fontWeight: "800", color: accent }}>{fmt(value)}</Text>
+                    </TouchableOpacity>
+                )}
+                <Text style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>{editing ? "enter amount" : "tap amount or +/− to adjust"}</Text>
             </View>
             <TouchableOpacity
                 style={{ width: 48, height: 48, borderRadius: 12, borderWidth: 1, borderColor: isDark ? "#2a2a2a" : "#e0dbd2", backgroundColor: isDark ? "#1a1a1a" : "#fff", alignItems: "center", justifyContent: "center" }}
@@ -96,10 +132,12 @@ export default function LifestyleTravelScreen() {
     const router = useRouter();
     const params = useLocalSearchParams<{ prefillType?: string; prefillVenue?: string; prefillCity?: string }>();
     const { C, theme } = useTheme();
-    const s = useMemo(() => getStyles(C, theme), [C, theme]);
     const isDark = theme === "dark";
 
     const [serviceType, setServiceType] = useState(SERVICE_TYPES[0].id);
+    const activeServiceIdx0 = Math.max(0, SERVICE_TYPES.findIndex(sv => sv.id === serviceType));
+    const activeColor = ARCH_COLORS[activeServiceIdx0 % ARCH_COLORS.length];
+    const s = useMemo(() => getStyles(C, theme, activeColor), [C, theme, activeColor]);
 
     // Sub-form state variables
     const [giftOccasion, setGiftOccasion] = useState("");
@@ -247,7 +285,35 @@ export default function LifestyleTravelScreen() {
     const [userName, setUserName] = useState("");
     const alertOpacity = useRef(new Animated.Value(0)).current;
     const alertScale   = useRef(new Animated.Value(0.9)).current;
-    const scrollRef    = useRef<ScrollView>(null);
+    const scrollRef    = useRef<any>(null);
+    const archScrollRef = useRef<ScrollView>(null);
+    const itineraryTxRef = useRef(`CUR-SUB-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 1000)}`).current;
+
+    const goToService = useCallback((direction: 1 | -1) => {
+        const idx = SERVICE_TYPES.findIndex(sv => sv.id === serviceType);
+        const nextIdx = idx + direction;
+        if (nextIdx < 0 || nextIdx >= SERVICE_TYPES.length) return;
+        setServiceType(SERVICE_TYPES[nextIdx].id);
+    }, [serviceType]);
+
+    const swipePanResponder = useRef(
+        PanResponder.create({
+            onMoveShouldSetPanResponderCapture: (_evt, gestureState) =>
+                Math.abs(gestureState.dx) > 20 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 2,
+            onPanResponderRelease: (_evt, gestureState) => {
+                if (gestureState.dx <= -50) goToService(1);
+                else if (gestureState.dx >= 50) goToService(-1);
+            },
+        })
+    ).current;
+
+    useEffect(() => {
+        const idx = SERVICE_TYPES.findIndex(sv => sv.id === serviceType);
+        if (idx < 0 || !archScrollRef.current) return;
+        const itemLeft = 24 + idx * (archWidth + 12);
+        const targetX = Math.max(0, itemLeft - (W - archWidth) / 2);
+        archScrollRef.current.scrollTo({ x: targetX, animated: true });
+    }, [serviceType]);
 
     const activeService   = SERVICE_TYPES.find(sv => sv.id === serviceType) ?? SERVICE_TYPES[0];
     const isJets          = serviceType === "Flights & Jets";
@@ -278,25 +344,62 @@ export default function LifestyleTravelScreen() {
     const toggle = (list: string[], setList: (v: string[]) => void, val: string) =>
         setList(list.includes(val) ? list.filter(x => x !== val) : [...list, val]);
 
-    const handleSubmit = async (overridePaymentStatus?: string) => {
-        if (limitReached) { Alert.alert("Limit Reached", "You've used all 5 of your monthly requests. Upgrade to Premium to continue."); return; }
+    const verifyPayment = async (payload: {
+        tx_ref: string;
+        request_id: string;
+        expected_amount: number;
+        payment_type: "curation";
+    }) => {
+        setVerifying(true);
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const res = await fetch(
+                `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/verify-payment`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${session?.access_token}`,
+                    },
+                    body: JSON.stringify(payload),
+                }
+            );
+            const result = await res.json();
+            if (!res.ok || !result.success) {
+                Alert.alert(
+                    "Verification Failed",
+                    "Your payment was received but could not be verified automatically. Please contact support with your reference number and we will confirm it shortly."
+                );
+                return null;
+            }
+            return result;
+        } catch {
+            Alert.alert("Verification Failed", "Could not reach the server to verify your payment. Please contact support.");
+            return null;
+        } finally {
+            setVerifying(false);
+        }
+    };
+
+    const handleSubmit = async (overridePaymentStatus?: string | null, silent = false): Promise<string | null> => {
+        if (limitReached) { Alert.alert("Limit Reached", "You've used all 5 of your monthly requests. Upgrade to Premium to continue."); return null; }
         if (isJets) {
-            if (!jetDeparture || !jetDestination) { Alert.alert("Add Route", "Please enter departure and destination."); return; }
+            if (!jetDeparture || !jetDestination) { Alert.alert("Add Route", "Please enter departure and destination."); return null; }
         } else if (isStays) {
-            if (!stayDest) { Alert.alert("Add Destination", "Please enter a destination."); return; }
+            if (!stayDest) { Alert.alert("Add Destination", "Please enter a destination."); return null; }
         } else if (isPrivateDining) {
-            if (!diningCity) { Alert.alert("Select City", "Please choose your city."); return; }
+            if (!diningCity) { Alert.alert("Select City", "Please choose your city."); return null; }
         } else if (isVIPProtocol) {
-            if (!protocolType || !protocolCity) { Alert.alert("Add Details", "Please select a service type and city."); return; }
+            if (!protocolType || !protocolCity) { Alert.alert("Add Details", "Please select a service type and city."); return null; }
         } else if (isLifestyleService) {
-            if (serviceType === "Gift & Florals" && !giftOccasion) { Alert.alert("Select Occasion", "Please choose an occasion."); return; }
-            if (serviceType === "Recreational Activities" && !recreationActivity) { Alert.alert("Select Activity", "Please choose an activity."); return; }
-            if (serviceType === "Medical Concierge" && !medicalCareType) { Alert.alert("Select Care Type", "Please choose a care type."); return; }
-            if (serviceType === "Financial Advisory" && !financeGoal) { Alert.alert("Select Goal", "Please choose a goal."); return; }
-            if (serviceType === "Legal Advisory" && !legalMatterType) { Alert.alert("Select Matter Type", "Please choose a matter type."); return; }
-            if (preferences.trim().length === 0) { Alert.alert("Add Details", "Please describe what you need."); return; }
+            if (serviceType === "Gift & Florals" && !giftOccasion) { Alert.alert("Select Occasion", "Please choose an occasion."); return null; }
+            if (serviceType === "Recreational Activities" && !recreationActivity) { Alert.alert("Select Activity", "Please choose an activity."); return null; }
+            if (serviceType === "Medical Concierge" && !medicalCareType) { Alert.alert("Select Care Type", "Please choose a care type."); return null; }
+            if (serviceType === "Financial Advisory" && !financeGoal) { Alert.alert("Select Goal", "Please choose a goal."); return null; }
+            if (serviceType === "Legal Advisory" && !legalMatterType) { Alert.alert("Select Matter Type", "Please choose a matter type."); return null; }
+            if (preferences.trim().length === 0) { Alert.alert("Add Details", "Please describe what you need."); return null; }
         } else {
-            if (!destination && preferences.trim().length === 0) { Alert.alert("Add Details", "Please enter a destination or describe your experience."); return; }
+            if (!destination && preferences.trim().length === 0) { Alert.alert("Add Details", "Please enter a destination or describe your experience."); return null; }
         }
         setLoading(true);
         const { data: { user } } = await supabase.auth.getUser();
@@ -328,78 +431,95 @@ export default function LifestyleTravelScreen() {
                     : { serviceType, mood, destination, dateFrom: fmtDate(dateFromObj), dateTo: fmtDate(dateToObj), budget: curatedBudget, preferences }),
                 targetVenue: params.prefillVenue || null
               };
-        const { error } = await supabase.from("requests").insert({
+        const { data: inserted, error } = await supabase.from("requests").insert({
             user_id: user?.id,
             service_type: isJets ? "private-jet" : "lifestyle-travel",
             status: "pending",
             reference: ref,
             title: isLifestyleService ? `${serviceType} Request` : isJets ? `${selectedAircraft.name} · ${jetDeparture} → ${jetDestination}` : serviceType,
-            payment_status: overridePaymentStatus || (hasPremiumMembership ? "paid" : null),
+            payment_status: overridePaymentStatus !== undefined ? overridePaymentStatus : (hasPremiumMembership ? "paid" : null),
             details,
-        });
+        }).select("id").single();
         setLoading(false);
-        if (!error) {
+        if (error || !inserted) return null;
+        if (!silent) {
             setShowSuccess(true);
             Animated.parallel([
                 Animated.timing(alertOpacity, { toValue: 1, duration: 250, useNativeDriver: true }),
                 Animated.spring(alertScale, { toValue: 1, friction: 8, tension: 40, useNativeDriver: true }),
             ]).start();
         }
+        return inserted.id;
     };
 
     return (
-        <SafeAreaView style={s.root} edges={["top"]}>
-            <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 60 }}>
+        <SafeAreaView style={s.root} edges={["top"]} {...swipePanResponder.panHandlers}>
+            {/* Faint wash of the active service's own color instead of one flat black/gold everywhere */}
+            <View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { backgroundColor: `${activeColor}0F` }]} />
 
-                {/* Hero */}
-                <View style={s.hero}>
-                    <Image source={activeService.img} style={s.heroImg} resizeMode="cover" />
-                    <View style={s.heroScrim} />
-                    <View style={s.heroTopRow}>
-                        <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
-                            <ChevronLeft size={22} color="#fff" />
-                        </TouchableOpacity>
-                    </View>
-                    <View style={s.heroContent}>
-                        <Text style={s.heroTitle}>{activeService.label}</Text>
-                        <Text style={s.heroDesc}>{activeService.desc}</Text>
-                    </View>
-                </View>
+            <View style={s.slimHeader}>
+                <TouchableOpacity style={s.backBtnSlim} onPress={() => router.back()}>
+                    <ChevronLeft size={20} color={C.text} />
+                </TouchableOpacity>
+                <Text style={[s.heroTitle, { fontSize: 20, color: C.text }]} numberOfLines={1}>{activeService.label}</Text>
+                <TouchableOpacity
+                    onPress={() => router.push({ pathname: "/services/all-services" as any, params: { currentType: serviceType } })}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                    <Text style={{ fontSize: 12, color: activeColor, fontWeight: "700" }}>View all</Text>
+                </TouchableOpacity>
+            </View>
 
-                {/* Service type chips */}
-                <View style={s.section}>
-                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                        <Text style={[s.sectionLabel, { marginBottom: 0 }]}>Select a Service</Text>
-                        <TouchableOpacity
-                            onPress={() => router.push({ pathname: "/services/all-services" as any, params: { currentType: serviceType } })}
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        >
-                            <Text style={{ fontSize: 12, color: GOLD, fontWeight: "700" }}>View all</Text>
-                        </TouchableOpacity>
-                    </View>
+            <KeyboardAwareScrollView ref={scrollRef} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 60 }} enableOnAndroid extraScrollHeight={20} keyboardOpeningTime={0}>
 
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingRight: 4 }}>
-                        {SERVICE_TYPES.map(svc => {
-                            const active = serviceType === svc.id;
-                            return (
-                                <TouchableOpacity
-                                    key={svc.id}
-                                    style={[
-                                        s.svcChip,
-                                        active 
-                                            ? { backgroundColor: "#000", borderColor: "#000" } 
-                                            : { backgroundColor: GOLD, borderColor: GOLD }
-                                    ]}
-                                    onPress={() => setServiceType(svc.id)}
-                                    activeOpacity={0.8}
+                {/* Service arches — each service is its own colored arch, swipe to see the rest */}
+                <ScrollView
+                    ref={archScrollRef}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ gap: 12, paddingHorizontal: 24, paddingTop: 20, paddingBottom: 6 }}
+                >
+                    {SERVICE_TYPES.map((svc, i) => {
+                        const active = serviceType === svc.id;
+                        const color = ARCH_COLORS[i % ARCH_COLORS.length];
+                        return (
+                            <TouchableOpacity
+                                key={svc.id}
+                                style={{ width: archWidth, opacity: active ? 1 : 0.65 }}
+                                onPress={() => setServiceType(svc.id)}
+                                activeOpacity={0.85}
+                            >
+                                <View
+                                    style={{
+                                        width: archWidth,
+                                        height: archWidth * 1.55,
+                                        borderRadius: 16,
+                                        overflow: "hidden",
+                                        backgroundColor: C.surface,
+                                    }}
                                 >
-                                    <Image source={svc.img} style={{ width: 20, height: 20, borderRadius: 10, opacity: active ? 1 : 0.8 }} />
-                                    <Text style={[s.svcChipText, active ? { color: GOLD } : { color: "#000" }]}>{svc.label}</Text>
-                                </TouchableOpacity>
-                            );
-                        })}
-                    </ScrollView>
-                </View>
+                                    <Image source={svc.img} style={{ width: "100%", height: "100%", position: "absolute" }} resizeMode="cover" />
+                                    <View
+                                        pointerEvents="none"
+                                        style={{
+                                            position: "absolute",
+                                            top: 0, left: 0, right: 0, bottom: 0,
+                                            borderRadius: 16,
+                                            borderWidth: active ? 2.5 : 1.5,
+                                            borderColor: color,
+                                        }}
+                                    />
+                                </View>
+                                <Text
+                                    style={{ fontSize: 11, fontWeight: "800", color: C.text, textAlign: "center", marginTop: 8, letterSpacing: 0.4, textTransform: "uppercase" }}
+                                    numberOfLines={2}
+                                >
+                                    {svc.label}
+                                </Text>
+                            </TouchableOpacity>
+                        );
+                    })}
+                </ScrollView>
 
                 {/* ── FLIGHTS & JETS ── */}
                 {isJets ? (
@@ -412,12 +532,12 @@ export default function LifestyleTravelScreen() {
                                     return (
                                         <TouchableOpacity
                                             key={ac.id}
-                                            style={[s.acCard, active && { borderColor: GOLD, backgroundColor: `${GOLD}10` }]}
+                                            style={[s.acCard, active && { borderColor: activeColor, backgroundColor: `${activeColor}10` }]}
                                             onPress={() => { setSelectedAircraft(ac); if (passengers > ac.capacity) setPassengers(ac.capacity); }}
                                             activeOpacity={0.8}
                                         >
-                                            <Plane size={20} color={active ? GOLD : C.muted} style={{ transform: [{ rotate: "45deg" }] }} />
-                                            <Text style={[s.acName, active && { color: GOLD }]}>{ac.name}</Text>
+                                            <Plane size={20} color={active ? activeColor : C.muted} style={{ transform: [{ rotate: "45deg" }] }} />
+                                            <Text style={[s.acName, active && { color: activeColor }]}>{ac.name}</Text>
                                             <Text style={s.acDetail}>Up to {ac.capacity} pax</Text>
                                             <Text style={s.acDetail}>{ac.range}</Text>
                                         </TouchableOpacity>
@@ -430,7 +550,7 @@ export default function LifestyleTravelScreen() {
                             <Text style={s.sectionLabel}>Trip Type</Text>
                             <View style={{ flexDirection: "row", gap: 12 }}>
                                 {(["oneway", "return"] as const).map(t => (
-                                    <TouchableOpacity key={t} style={[s.pill, tripType === t && { backgroundColor: GOLD, borderColor: GOLD }]} onPress={() => setTripType(t)} activeOpacity={0.8}>
+                                    <TouchableOpacity key={t} style={[s.pill, tripType === t && { backgroundColor: activeColor, borderColor: activeColor }]} onPress={() => setTripType(t)} activeOpacity={0.8}>
                                         <Text style={[s.pillText, tripType === t && { color: "#0a0a0a", fontWeight: "700" }]}>
                                             {t === "oneway" ? "One Way" : "Return Flight"}
                                         </Text>
@@ -449,18 +569,18 @@ export default function LifestyleTravelScreen() {
                         <View style={s.section}>
                             <Text style={s.sectionLabel}>Schedule</Text>
                             <View style={s.dateRow}>
-                                <TouchableOpacity style={[s.dateCard, depDate && { borderColor: GOLD }]} onPress={() => setShowDepDate(true)}>
-                                    <Calendar size={16} color={depDate ? GOLD : C.muted} />
+                                <TouchableOpacity style={[s.dateCard, depDate && { borderColor: activeColor }]} onPress={() => setShowDepDate(true)}>
+                                    <Calendar size={16} color={depDate ? activeColor : C.muted} />
                                     <View><Text style={s.dateCardLabel}>Date</Text><Text style={[s.dateCardValue, { color: depDate ? C.text : C.muted }]}>{fmtDate(depDate) ?? "Select date"}</Text></View>
                                 </TouchableOpacity>
-                                <TouchableOpacity style={[s.dateCard, depTime && { borderColor: GOLD }]} onPress={() => setShowDepTime(true)}>
-                                    <Calendar size={16} color={depTime ? GOLD : C.muted} />
+                                <TouchableOpacity style={[s.dateCard, depTime && { borderColor: activeColor }]} onPress={() => setShowDepTime(true)}>
+                                    <Calendar size={16} color={depTime ? activeColor : C.muted} />
                                     <View><Text style={s.dateCardLabel}>Time</Text><Text style={[s.dateCardValue, { color: depTime ? C.text : C.muted }]}>{fmtTime(depTime) ?? "Select time"}</Text></View>
                                 </TouchableOpacity>
                             </View>
                             {tripType === "return" && (
-                                <TouchableOpacity style={[s.dateCard, { marginTop: 12, flex: undefined }, retDate && { borderColor: GOLD }]} onPress={() => setShowRetDate(true)}>
-                                    <Calendar size={16} color={retDate ? GOLD : C.muted} />
+                                <TouchableOpacity style={[s.dateCard, { marginTop: 12, flex: undefined }, retDate && { borderColor: activeColor }]} onPress={() => setShowRetDate(true)}>
+                                    <Calendar size={16} color={retDate ? activeColor : C.muted} />
                                     <View><Text style={s.dateCardLabel}>Return Date</Text><Text style={[s.dateCardValue, { color: retDate ? C.text : C.muted }]}>{fmtDate(retDate) ?? "Select date"}</Text></View>
                                 </TouchableOpacity>
                             )}
@@ -480,7 +600,7 @@ export default function LifestyleTravelScreen() {
                             <Text style={s.sectionLabel}>In-Flight Catering</Text>
                             <View style={{ flexDirection: "row", gap: 10 }}>
                                 {[{ id: "standard", label: "Standard" }, { id: "premium", label: "Premium" }, { id: "custom", label: "Custom Menu" }].map(opt => (
-                                    <TouchableOpacity key={opt.id} style={[s.pill, catering === opt.id && { backgroundColor: GOLD, borderColor: GOLD }]} onPress={() => setCatering(opt.id)} activeOpacity={0.8}>
+                                    <TouchableOpacity key={opt.id} style={[s.pill, catering === opt.id && { backgroundColor: activeColor, borderColor: activeColor }]} onPress={() => setCatering(opt.id)} activeOpacity={0.8}>
                                         <Text style={[s.pillText, catering === opt.id && { color: "#0a0a0a", fontWeight: "700" }]}>{opt.label}</Text>
                                     </TouchableOpacity>
                                 ))}
@@ -493,7 +613,7 @@ export default function LifestyleTravelScreen() {
                                     <Text style={[s.sectionLabel, { marginBottom: 4 }]}>Onward Ground Transfer</Text>
                                     <Text style={{ fontSize: 12, color: C.muted }}>Arrange a chauffeur at your destination</Text>
                                 </View>
-                                <Switch value={groundTransfer} onValueChange={setGroundTransfer} trackColor={{ false: isDark ? "#2a2a2a" : "#e0dbd2", true: GOLD }} thumbColor="#fff" />
+                                <Switch value={groundTransfer} onValueChange={setGroundTransfer} trackColor={{ false: isDark ? "#2a2a2a" : "#e0dbd2", true: activeColor }} thumbColor="#fff" />
                             </View>
                         </View>
 
@@ -503,7 +623,7 @@ export default function LifestyleTravelScreen() {
                                 placeholder="Dietary requirements, specific amenities, security protocols..."
                                 value={specialRequests}
                                 onChange={setSpecialRequests}
-                                accent={GOLD}
+                                accent={activeColor}
                                 textColor={C.text}
                                 border={isDark ? "#2a2a2a" : "#e0dbd2"}
                                 inputBg={C.surface}
@@ -528,19 +648,19 @@ export default function LifestyleTravelScreen() {
                         <View style={s.section}>
                             <Text style={s.sectionLabel}>Destination</Text>
                             <View style={params.prefillCity ? { opacity: 0.6 } : null} pointerEvents={params.prefillCity ? "none" : "auto"}>
-                                <LocationSearch value={stayDest} onChangeText={setStayDest} placeholder="City or country..." onSelect={setStayDest} />
+                                <LocationSearch value={stayDest} onChangeText={setStayDest} placeholder="City or country..." onSelect={setStayDest} accentColor={activeColor} />
                             </View>
                         </View>
 
                         <View style={s.section}>
                             <Text style={s.sectionLabel}>Check-in & Check-out</Text>
                             <View style={s.dateRow}>
-                                <TouchableOpacity style={[s.dateCard, dateFromObj && { borderColor: GOLD }]} onPress={() => setShowDateFrom(true)}>
-                                    <Calendar size={16} color={dateFromObj ? GOLD : C.muted} />
+                                <TouchableOpacity style={[s.dateCard, dateFromObj && { borderColor: activeColor }]} onPress={() => setShowDateFrom(true)}>
+                                    <Calendar size={16} color={dateFromObj ? activeColor : C.muted} />
                                     <View><Text style={s.dateCardLabel}>Check-in</Text><Text style={[s.dateCardValue, { color: dateFromObj ? C.text : C.muted }]}>{fmtDate(dateFromObj) ?? "Select"}</Text></View>
                                 </TouchableOpacity>
-                                <TouchableOpacity style={[s.dateCard, dateToObj && { borderColor: GOLD }]} onPress={() => setShowDateTo(true)}>
-                                    <Calendar size={16} color={dateToObj ? GOLD : C.muted} />
+                                <TouchableOpacity style={[s.dateCard, dateToObj && { borderColor: activeColor }]} onPress={() => setShowDateTo(true)}>
+                                    <Calendar size={16} color={dateToObj ? activeColor : C.muted} />
                                     <View><Text style={s.dateCardLabel}>Check-out</Text><Text style={[s.dateCardValue, { color: dateToObj ? C.text : C.muted }]}>{fmtDate(dateToObj) ?? "Select"}</Text></View>
                                 </TouchableOpacity>
                             </View>
@@ -562,7 +682,7 @@ export default function LifestyleTravelScreen() {
 
                         <View style={s.section}>
                             <Text style={s.sectionLabel}>Daily Budget (per night)</Text>
-                            <BudgetStepper value={dailyBudget} onChange={setDailyBudget} min={20000} step={20000} label="PER NIGHT" C={C} theme={theme} />
+                            <BudgetStepper value={dailyBudget} onChange={setDailyBudget} min={20000} step={20000} label="PER NIGHT" C={C} theme={theme} accentColor={activeColor} />
                         </View>
 
                         <View style={s.section}>
@@ -593,7 +713,7 @@ export default function LifestyleTravelScreen() {
                                 placeholder="Room preferences, special occasions, dietary needs, anything specific..."
                                 value={stayNotes}
                                 onChange={setStayNotes}
-                                accent={GOLD}
+                                accent={activeColor}
                                 textColor={C.text}
                                 border={isDark ? "#2a2a2a" : "#e0dbd2"}
                                 inputBg={C.surface}
@@ -661,12 +781,12 @@ export default function LifestyleTravelScreen() {
                         <View style={s.section}>
                             <Text style={s.sectionLabel}>Date & Time</Text>
                             <View style={s.dateRow}>
-                                <TouchableOpacity style={[s.dateCard, dateFromObj && { borderColor: GOLD }]} onPress={() => setShowDateFrom(true)}>
-                                    <Calendar size={16} color={dateFromObj ? GOLD : C.muted} />
+                                <TouchableOpacity style={[s.dateCard, dateFromObj && { borderColor: activeColor }]} onPress={() => setShowDateFrom(true)}>
+                                    <Calendar size={16} color={dateFromObj ? activeColor : C.muted} />
                                     <View><Text style={s.dateCardLabel}>Date</Text><Text style={[s.dateCardValue, { color: dateFromObj ? C.text : C.muted }]}>{fmtDate(dateFromObj) ?? "Select"}</Text></View>
                                 </TouchableOpacity>
-                                <TouchableOpacity style={[s.dateCard, eventTime && { borderColor: GOLD }]} onPress={() => setShowEventTime(true)}>
-                                    <Calendar size={16} color={eventTime ? GOLD : C.muted} />
+                                <TouchableOpacity style={[s.dateCard, eventTime && { borderColor: activeColor }]} onPress={() => setShowEventTime(true)}>
+                                    <Calendar size={16} color={eventTime ? activeColor : C.muted} />
                                     <View><Text style={s.dateCardLabel}>Time</Text><Text style={[s.dateCardValue, { color: eventTime ? C.text : C.muted }]}>{fmtTime(eventTime) ?? "Select"}</Text></View>
                                 </TouchableOpacity>
                             </View>
@@ -710,7 +830,7 @@ export default function LifestyleTravelScreen() {
 
                         <View style={s.section}>
                             <Text style={s.sectionLabel}>Budget</Text>
-                            <BudgetStepper value={diningBudget} onChange={setDiningBudget} min={50000} step={50000} C={C} theme={theme} />
+                            <BudgetStepper value={diningBudget} onChange={setDiningBudget} min={50000} step={50000} C={C} theme={theme} accentColor={activeColor} />
                         </View>
 
                         <View style={s.section}>
@@ -719,7 +839,7 @@ export default function LifestyleTravelScreen() {
                                 placeholder="Dietary requirements, allergies, dress code, surprise elements..."
                                 value={diningNotes}
                                 onChange={setDiningNotes}
-                                accent={GOLD}
+                                accent={activeColor}
                                 textColor={C.text}
                                 border={isDark ? "#2a2a2a" : "#e0dbd2"}
                                 inputBg={C.surface}
@@ -776,12 +896,12 @@ export default function LifestyleTravelScreen() {
                         <View style={s.section}>
                             <Text style={s.sectionLabel}>Date & Time</Text>
                             <View style={s.dateRow}>
-                                <TouchableOpacity style={[s.dateCard, dateFromObj && { borderColor: GOLD }]} onPress={() => setShowDateFrom(true)}>
-                                    <Calendar size={16} color={dateFromObj ? GOLD : C.muted} />
+                                <TouchableOpacity style={[s.dateCard, dateFromObj && { borderColor: activeColor }]} onPress={() => setShowDateFrom(true)}>
+                                    <Calendar size={16} color={dateFromObj ? activeColor : C.muted} />
                                     <View><Text style={s.dateCardLabel}>Date</Text><Text style={[s.dateCardValue, { color: dateFromObj ? C.text : C.muted }]}>{fmtDate(dateFromObj) ?? "Select"}</Text></View>
                                 </TouchableOpacity>
-                                <TouchableOpacity style={[s.dateCard, eventTime && { borderColor: GOLD }]} onPress={() => setShowEventTime(true)}>
-                                    <Calendar size={16} color={eventTime ? GOLD : C.muted} />
+                                <TouchableOpacity style={[s.dateCard, eventTime && { borderColor: activeColor }]} onPress={() => setShowEventTime(true)}>
+                                    <Calendar size={16} color={eventTime ? activeColor : C.muted} />
                                     <View><Text style={s.dateCardLabel}>Time</Text><Text style={[s.dateCardValue, { color: eventTime ? C.text : C.muted }]}>{fmtTime(eventTime) ?? "Select"}</Text></View>
                                 </TouchableOpacity>
                             </View>
@@ -807,7 +927,7 @@ export default function LifestyleTravelScreen() {
                                 placeholder="Security clearance level, VIP names, flight details, event name, any special protocols..."
                                 value={protocolReqs}
                                 onChange={setProtocolReqs}
-                                accent={GOLD}
+                                accent={activeColor}
                                 textColor={C.text}
                                 border={isDark ? "#2a2a2a" : "#e0dbd2"}
                                 inputBg={C.surface}
@@ -824,16 +944,17 @@ export default function LifestyleTravelScreen() {
                                 value={destination}
                                 onChangeText={setDestination}
                                 placeholder="Search and select location..."
+                                accentColor={activeColor}
                             />
                         </View>
 
                         <View style={s.section}>
                             <Text style={s.sectionLabel}>When is this needed?</Text>
                             <TouchableOpacity
-                                style={[s.dateCard, dateFromObj && { borderColor: GOLD }]}
+                                style={[s.dateCard, dateFromObj && { borderColor: activeColor }]}
                                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowDateFrom(true); }}
                             >
-                                <Calendar size={16} color={dateFromObj ? GOLD : C.muted} />
+                                <Calendar size={16} color={dateFromObj ? activeColor : C.muted} />
                                 <View>
                                     <Text style={s.dateCardLabel}>Date</Text>
                                     <Text style={[s.dateCardValue, { color: dateFromObj ? C.text : C.muted }]}>
@@ -1030,7 +1151,7 @@ export default function LifestyleTravelScreen() {
                                             let borderClr = theme === "dark" ? "#2a2a2a" : "#e0dbd2";
                                             let bgClr = C.background;
                                             if (isSelected) {
-                                                borderClr = u.key === "Flexible" ? "#10b981" : u.key === "This Week" ? GOLD : "#ef4444";
+                                                borderClr = u.key === "Flexible" ? "#10b981" : u.key === "This Week" ? activeColor : "#ef4444";
                                                 bgClr = u.key === "Flexible" ? "rgba(16, 185, 129, 0.08)" : u.key === "This Week" ? "rgba(201, 168, 76, 0.08)" : "rgba(239, 68, 68, 0.08)";
                                             }
                                             return (
@@ -1043,7 +1164,7 @@ export default function LifestyleTravelScreen() {
                                                     onPress={() => setMedicalUrgency(u.key)}
                                                     activeOpacity={0.8}
                                                 >
-                                                    <Text style={[s.urgencyLabel, isSelected && { color: GOLD, fontWeight: "700" }]}>{u.label}</Text>
+                                                    <Text style={[s.urgencyLabel, isSelected && { color: activeColor, fontWeight: "700" }]}>{u.label}</Text>
                                                     <Text style={s.urgencyDesc}>{u.desc}</Text>
                                                 </TouchableOpacity>
                                             );
@@ -1088,12 +1209,12 @@ export default function LifestyleTravelScreen() {
                                                     key={strat.key}
                                                     style={[
                                                         s.strategyCard,
-                                                        isSelected && { borderColor: GOLD, backgroundColor: "rgba(201, 168, 76, 0.08)" }
+                                                        isSelected && { borderColor: activeColor, backgroundColor: "rgba(201, 168, 76, 0.08)" }
                                                     ]}
                                                     onPress={() => setFinanceStrategy(strat.key)}
                                                     activeOpacity={0.8}
                                                 >
-                                                    <Text style={[s.strategyLabel, isSelected && { color: GOLD, fontWeight: "700" }]}>{strat.label}</Text>
+                                                    <Text style={[s.strategyLabel, isSelected && { color: activeColor, fontWeight: "700" }]}>{strat.label}</Text>
                                                     <Text style={s.strategyDesc}>{strat.desc}</Text>
                                                 </TouchableOpacity>
                                             );
@@ -1126,7 +1247,7 @@ export default function LifestyleTravelScreen() {
 
                                 {/* Encryption Confidentiality Banner */}
                                 <View style={s.lockBanner}>
-                                    <Lock size={14} color={GOLD} />
+                                    <Lock size={14} color={activeColor} />
                                     <Text style={s.lockBannerText}>NDA Protection Active • Encrypted Client Briefing Channel</Text>
                                 </View>
                             </>
@@ -1136,7 +1257,7 @@ export default function LifestyleTravelScreen() {
                         {serviceType !== "Gift & Florals" && serviceType !== "Recreational Activities" && serviceType !== "Medical Concierge" && serviceType !== "Financial Advisory" && (
                             <View style={s.section}>
                                 <Text style={s.sectionLabel}>Budget Limit</Text>
-                                <BudgetStepper value={curatedBudget} onChange={setCuratedBudget} min={10000} step={10000} C={C} theme={theme} />
+                                <BudgetStepper value={curatedBudget} onChange={setCuratedBudget} min={10000} step={10000} C={C} theme={theme} accentColor={activeColor} />
                             </View>
                         )}
 
@@ -1149,9 +1270,9 @@ export default function LifestyleTravelScreen() {
                                 placeholder={serviceType === "Legal Advisory" ? "Describe your legal situation in strict confidentiality..." : "e.g., specific requirements, brands, details..."}
                                 value={preferences}
                                 onChange={setPreferences}
-                                accent={GOLD}
+                                accent={activeColor}
                                 textColor={serviceType === "Legal Advisory" && !isDark ? "#1a1a1a" : C.text}
-                                border={serviceType === "Legal Advisory" ? GOLD : (isDark ? "#2a2a2a" : "#e0dbd2")}
+                                border={serviceType === "Legal Advisory" ? activeColor : (isDark ? "#2a2a2a" : "#e0dbd2")}
                                 inputBg={serviceType === "Legal Advisory" ? (isDark ? "#201d14" : "#fffdeb") : C.surface}
                             />
                         </View>
@@ -1173,27 +1294,27 @@ export default function LifestyleTravelScreen() {
                         <View style={s.section}>
                             <Text style={s.sectionLabel}>Destination</Text>
                             <View style={params.prefillCity ? { opacity: 0.6 } : null} pointerEvents={params.prefillCity ? "none" : "auto"}>
-                                <LocationSearch value={destination} onChangeText={setDestination} placeholder="City, country, or let us suggest..." onSelect={setDestination} />
+                                <LocationSearch value={destination} onChangeText={setDestination} placeholder="City, country, or let us suggest..." onSelect={setDestination} accentColor={activeColor} />
                             </View>
                         </View>
 
                         <View style={s.section}>
                             <Text style={s.sectionLabel}>When?</Text>
                             <View style={s.dateRow}>
-                                <TouchableOpacity style={[s.dateCard, dateFromObj && { borderColor: GOLD }]} onPress={() => setShowDateFrom(true)}>
-                                    <Calendar size={16} color={dateFromObj ? GOLD : C.muted} />
+                                <TouchableOpacity style={[s.dateCard, dateFromObj && { borderColor: activeColor }]} onPress={() => setShowDateFrom(true)}>
+                                    <Calendar size={16} color={dateFromObj ? activeColor : C.muted} />
                                     <View><Text style={s.dateCardLabel}>Departure</Text><Text style={[s.dateCardValue, { color: dateFromObj ? C.text : C.muted }]}>{fmtDate(dateFromObj) ?? "Select date"}</Text></View>
                                 </TouchableOpacity>
-                                <TouchableOpacity style={[s.dateCard, dateToObj && { borderColor: GOLD }]} onPress={() => setShowDateTo(true)}>
-                                    <Calendar size={16} color={dateToObj ? GOLD : C.muted} />
-                                    <View><Text style={s.dateCardLabel}>Return</Text><Text style={[s.dateCardValue, { color: dateToObj ? C.text : C.muted }]}>{fmtDate(dateToObj) ?? "Select date"}</Text></View>
+                                <TouchableOpacity style={[s.dateCard, dateToObj && { borderColor: activeColor }]} onPress={() => setShowDateTo(true)}>
+                                    <Calendar size={16} color={dateToObj ? activeColor : C.muted} />
+                                    <View><Text style={s.dateCardLabel}>End Date</Text><Text style={[s.dateCardValue, { color: dateToObj ? C.text : C.muted }]}>{fmtDate(dateToObj) ?? "Select date"}</Text></View>
                                 </TouchableOpacity>
                             </View>
                         </View>
 
                         <View style={s.section}>
                             <Text style={s.sectionLabel}>Budget</Text>
-                            <BudgetStepper value={curatedBudget} onChange={setCuratedBudget} min={50000} step={50000} C={C} theme={theme} />
+                            <BudgetStepper value={curatedBudget} onChange={setCuratedBudget} min={50000} step={50000} C={C} theme={theme} accentColor={activeColor} />
                         </View>
 
                         <View style={s.section}>
@@ -1203,7 +1324,7 @@ export default function LifestyleTravelScreen() {
                                 placeholder="e.g., I want a secluded villa with a private chef for a 10-year anniversary..."
                                 value={preferences}
                                 onChange={setPreferences}
-                                accent={GOLD}
+                                accent={activeColor}
                                 textColor={C.text}
                                 border={isDark ? "#2a2a2a" : "#e0dbd2"}
                                 inputBg={C.surface}
@@ -1225,7 +1346,7 @@ export default function LifestyleTravelScreen() {
                         </View>
                     ) : (
                         <View style={s.feeCard}>
-                            <Text style={s.feeEyebrow}>SERVICE FEE</Text>
+                            <Text style={s.feeEyebrow}>CURATION FEE</Text>
                             <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6, marginBottom: 4 }}>
                                 <Text style={s.feeAmount}>₦5,000</Text>
                                 <Text style={s.feeNote}>per request</Text>
@@ -1246,13 +1367,13 @@ export default function LifestyleTravelScreen() {
                 {/* Submit */}
                 <View style={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 8 }}>
                     {limitReached ? (
-                        <View style={{ borderRadius: 18, padding: 24, alignItems: "center", gap: 10, borderWidth: 1, borderColor: `${GOLD}40`, backgroundColor: `${GOLD}08` }}>
-                            <Text style={{ fontSize: 15, fontWeight: "800", color: GOLD, letterSpacing: -0.2 }}>Monthly Limit Reached</Text>
+                        <View style={{ borderRadius: 18, padding: 24, alignItems: "center", gap: 10, borderWidth: 1, borderColor: `${activeColor}40`, backgroundColor: `${activeColor}08` }}>
+                            <Text style={{ fontSize: 15, fontWeight: "800", color: activeColor, letterSpacing: -0.2 }}>Monthly Limit Reached</Text>
                             <Text style={{ fontSize: 13, color: C.muted, textAlign: "center", lineHeight: 20 }}>
                                 You've used all 5 of your monthly concierge requests. Upgrade to Lapeq Premium for unlimited access.
                             </Text>
                             <TouchableOpacity
-                                style={{ marginTop: 6, backgroundColor: GOLD, paddingHorizontal: 32, paddingVertical: 14, borderRadius: 12 }}
+                                style={{ marginTop: 6, backgroundColor: activeColor, paddingHorizontal: 32, paddingVertical: 14, borderRadius: 12 }}
                                 onPress={() => router.push("/(main)/membership" as any)}
                                 activeOpacity={0.85}
                             >
@@ -1261,11 +1382,14 @@ export default function LifestyleTravelScreen() {
                         </View>
                     ) : (isFreeUser && serviceType === "Curated Itinerary") ? (
                         verifying ? (
-                            <ActivityIndicator color={GOLD} size="small" style={{ marginVertical: 12 }} />
+                            <View style={{ paddingVertical: 12, alignItems: "center", gap: 8 }}>
+                                <ActivityIndicator color={activeColor} size="small" />
+                                <Text style={{ fontSize: 12, color: C.muted }}>Verifying payment with server...</Text>
+                            </View>
                         ) : userEmail ? (
                             <PayWithFlutterwave
                                 options={{
-                                    tx_ref: `CUR-SUB-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 1000)}`,
+                                    tx_ref: itineraryTxRef,
                                     authorization: FLW_PUBLIC_KEY,
                                     customer: { email: userEmail, name: userName },
                                     amount: 5000,
@@ -1295,15 +1419,32 @@ export default function LifestyleTravelScreen() {
                                 )}
                                 onRedirect={async (data) => {
                                     if (data.status === "successful" || data.status === "completed") {
-                                        // Once payment is successful, we complete the submission of the request with payment_status: 'paid'
-                                        await handleSubmit("paid");
+                                        // Never trust the client-side redirect status alone — create the request
+                                        // unpaid, then confirm the charge actually landed via Flutterwave's server API
+                                        // before flipping it to paid. Prevents a failed/blank checkout from silently
+                                        // going through as a free request.
+                                        const requestId = await handleSubmit("unpaid", true);
+                                        if (!requestId) return;
+                                        const result = await verifyPayment({
+                                            tx_ref: itineraryTxRef,
+                                            request_id: requestId,
+                                            expected_amount: 5000,
+                                            payment_type: "curation",
+                                        });
+                                        if (result?.success) {
+                                            setShowSuccess(true);
+                                            Animated.parallel([
+                                                Animated.timing(alertOpacity, { toValue: 1, duration: 250, useNativeDriver: true }),
+                                                Animated.spring(alertScale, { toValue: 1, friction: 8, tension: 40, useNativeDriver: true }),
+                                            ]).start();
+                                        }
                                     } else {
                                         Alert.alert("Payment Cancelled", "Curation fee payment is required to submit your itinerary request.");
                                     }
                                 }}
                             />
                         ) : (
-                            <ActivityIndicator color={GOLD} size="small" style={{ marginVertical: 12 }} />
+                            <ActivityIndicator color={activeColor} size="small" style={{ marginVertical: 12 }} />
                         )
                     ) : (
                         <TouchableOpacity style={[s.submitBtn, loading && { opacity: 0.7 }]} onPress={() => handleSubmit()} disabled={loading} activeOpacity={0.85}>
@@ -1312,14 +1453,14 @@ export default function LifestyleTravelScreen() {
                     )}
                 </View>
 
-            </ScrollView>
+            </KeyboardAwareScrollView>
 
             {/* Success Modal */}
             <Modal visible={showSuccess} transparent animationType="none">
                 <View style={s.overlay}>
                     <Animated.View style={[s.modalBox, { opacity: alertOpacity, transform: [{ scale: alertScale }] }]}>
-                        <View style={[s.modalIcon, { backgroundColor: `${GOLD}18` }]}>
-                            <Check size={28} color={GOLD} strokeWidth={2} />
+                        <View style={[s.modalIcon, { backgroundColor: `${activeColor}18` }]}>
+                            <Check size={28} color={activeColor} strokeWidth={2} />
                         </View>
                         <Text style={s.modalTitle}>{isJets ? "Enquiry Received" : "Inquiry Received"}</Text>
                         <Text style={s.modalBody}>
@@ -1354,7 +1495,7 @@ export default function LifestyleTravelScreen() {
                         <View style={s.pickerHeader}>
                             <TouchableOpacity onPress={() => setShowDateFrom(false)}><Text style={{ color: C.muted, fontSize: 16 }}>Cancel</Text></TouchableOpacity>
                             <Text style={{ color: C.text, fontWeight: "700", fontSize: 16 }}>{isStays ? "Check-in" : "Date"}</Text>
-                            <TouchableOpacity onPress={() => setShowDateFrom(false)}><Text style={{ color: GOLD, fontWeight: "700", fontSize: 16 }}>Done</Text></TouchableOpacity>
+                            <TouchableOpacity onPress={() => setShowDateFrom(false)}><Text style={{ color: activeColor, fontWeight: "700", fontSize: 16 }}>Done</Text></TouchableOpacity>
                         </View>
                         <DateTimePicker value={dateFromObj ?? new Date()} mode="date" display="spinner" minimumDate={startOfToday} themeVariant={theme === "dark" ? "dark" : "light"} style={{ width: "100%" }} onChange={(_, d) => { if (d) setDateFromObj(d); }} />
                     </View>
@@ -1367,7 +1508,7 @@ export default function LifestyleTravelScreen() {
                         <View style={s.pickerHeader}>
                             <TouchableOpacity onPress={() => setShowDateTo(false)}><Text style={{ color: C.muted, fontSize: 16 }}>Cancel</Text></TouchableOpacity>
                             <Text style={{ color: C.text, fontWeight: "700", fontSize: 16 }}>{isStays ? "Check-out" : "Return"}</Text>
-                            <TouchableOpacity onPress={() => setShowDateTo(false)}><Text style={{ color: GOLD, fontWeight: "700", fontSize: 16 }}>Done</Text></TouchableOpacity>
+                            <TouchableOpacity onPress={() => setShowDateTo(false)}><Text style={{ color: activeColor, fontWeight: "700", fontSize: 16 }}>Done</Text></TouchableOpacity>
                         </View>
                         <DateTimePicker value={dateToObj ?? dateFromObj ?? new Date()} mode="date" display="spinner" minimumDate={dateFromObj ?? startOfToday} themeVariant={theme === "dark" ? "dark" : "light"} style={{ width: "100%" }} onChange={(_, d) => { if (d) setDateToObj(d); }} />
                     </View>
@@ -1380,7 +1521,7 @@ export default function LifestyleTravelScreen() {
                         <View style={s.pickerHeader}>
                             <TouchableOpacity onPress={() => setShowEventTime(false)}><Text style={{ color: C.muted, fontSize: 16 }}>Cancel</Text></TouchableOpacity>
                             <Text style={{ color: C.text, fontWeight: "700", fontSize: 16 }}>Time</Text>
-                            <TouchableOpacity onPress={() => setShowEventTime(false)}><Text style={{ color: GOLD, fontWeight: "700", fontSize: 16 }}>Done</Text></TouchableOpacity>
+                            <TouchableOpacity onPress={() => setShowEventTime(false)}><Text style={{ color: activeColor, fontWeight: "700", fontSize: 16 }}>Done</Text></TouchableOpacity>
                         </View>
                         <DateTimePicker value={eventTime ?? new Date()} mode="time" display="spinner" themeVariant={theme === "dark" ? "dark" : "light"} style={{ width: "100%" }} onChange={(_, d) => { if (d) setEventTime(d); }} />
                     </View>
@@ -1407,7 +1548,7 @@ export default function LifestyleTravelScreen() {
                         <View style={s.pickerHeader}>
                             <TouchableOpacity onPress={() => setShowDepDate(false)}><Text style={{ color: C.muted, fontSize: 16 }}>Cancel</Text></TouchableOpacity>
                             <Text style={{ color: C.text, fontWeight: "700", fontSize: 16 }}>Departure Date</Text>
-                            <TouchableOpacity onPress={() => setShowDepDate(false)}><Text style={{ color: GOLD, fontWeight: "700", fontSize: 16 }}>Done</Text></TouchableOpacity>
+                            <TouchableOpacity onPress={() => setShowDepDate(false)}><Text style={{ color: activeColor, fontWeight: "700", fontSize: 16 }}>Done</Text></TouchableOpacity>
                         </View>
                         <DateTimePicker value={depDate ?? new Date()} mode="date" display="spinner" minimumDate={startOfToday} themeVariant={theme === "dark" ? "dark" : "light"} style={{ width: "100%" }} onChange={(_, d) => { if (d) setDepDate(d); }} />
                     </View>
@@ -1420,7 +1561,7 @@ export default function LifestyleTravelScreen() {
                         <View style={s.pickerHeader}>
                             <TouchableOpacity onPress={() => setShowRetDate(false)}><Text style={{ color: C.muted, fontSize: 16 }}>Cancel</Text></TouchableOpacity>
                             <Text style={{ color: C.text, fontWeight: "700", fontSize: 16 }}>Return Date</Text>
-                            <TouchableOpacity onPress={() => setShowRetDate(false)}><Text style={{ color: GOLD, fontWeight: "700", fontSize: 16 }}>Done</Text></TouchableOpacity>
+                            <TouchableOpacity onPress={() => setShowRetDate(false)}><Text style={{ color: activeColor, fontWeight: "700", fontSize: 16 }}>Done</Text></TouchableOpacity>
                         </View>
                         <DateTimePicker value={retDate ?? depDate ?? new Date()} mode="date" display="spinner" minimumDate={depDate ?? startOfToday} themeVariant={theme === "dark" ? "dark" : "light"} style={{ width: "100%" }} onChange={(_, d) => { if (d) setRetDate(d); }} />
                     </View>
@@ -1433,7 +1574,7 @@ export default function LifestyleTravelScreen() {
                         <View style={s.pickerHeader}>
                             <TouchableOpacity onPress={() => setShowDepTime(false)}><Text style={{ color: C.muted, fontSize: 16 }}>Cancel</Text></TouchableOpacity>
                             <Text style={{ color: C.text, fontWeight: "700", fontSize: 16 }}>Departure Time</Text>
-                            <TouchableOpacity onPress={() => setShowDepTime(false)}><Text style={{ color: GOLD, fontWeight: "700", fontSize: 16 }}>Done</Text></TouchableOpacity>
+                            <TouchableOpacity onPress={() => setShowDepTime(false)}><Text style={{ color: activeColor, fontWeight: "700", fontSize: 16 }}>Done</Text></TouchableOpacity>
                         </View>
                         <DateTimePicker value={depTime ?? new Date()} mode="time" display="spinner" themeVariant={theme === "dark" ? "dark" : "light"} style={{ width: "100%" }} onChange={(_, d) => { if (d) setDepTime(d); }} />
                     </View>
@@ -1446,7 +1587,7 @@ export default function LifestyleTravelScreen() {
                         <View style={s.pickerHeader}>
                             <TouchableOpacity onPress={() => setShowRetDate(false)}><Text style={{ color: C.muted, fontSize: 16 }}>Cancel</Text></TouchableOpacity>
                             <Text style={{ color: C.text, fontWeight: "700", fontSize: 16 }}>Return Date</Text>
-                            <TouchableOpacity onPress={() => setShowRetDate(false)}><Text style={{ color: GOLD, fontWeight: "700", fontSize: 16 }}>Done</Text></TouchableOpacity>
+                            <TouchableOpacity onPress={() => setShowRetDate(false)}><Text style={{ color: activeColor, fontWeight: "700", fontSize: 16 }}>Done</Text></TouchableOpacity>
                         </View>
                         <DateTimePicker value={retDate ?? depDate ?? new Date()} mode="date" display="spinner" minimumDate={depDate ?? new Date()} themeVariant={theme === "dark" ? "dark" : "light"} style={{ width: "100%" }} onChange={(_, d) => { if (d) setRetDate(d); }} />
                     </View>
@@ -1456,32 +1597,22 @@ export default function LifestyleTravelScreen() {
     );
 }
 
-const getStyles = (C: any, theme: string) => StyleSheet.create({
+const getStyles = (C: any, theme: string, activeColor: string) => StyleSheet.create({
     root: { flex: 1, backgroundColor: C.background },
 
-    hero: { height: 320, position: "relative" },
-    heroImg: { width: "100%", height: "100%", position: "absolute" },
-    heroScrim: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.52)" },
-    heroTopRow: { position: "absolute", top: 16, left: 20, right: 20 },
-    backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" },
-    heroContent: { position: "absolute", bottom: 28, left: 24, right: 24 },
-    heroEyebrow: { fontSize: 10, fontWeight: "800", color: GOLD, letterSpacing: 3, marginBottom: 8 },
-    heroTitle: { fontSize: 36, fontWeight: "800", color: "#fff", letterSpacing: -0.5, marginBottom: 6 },
-    heroDesc: { fontSize: 14, color: "rgba(255,255,255,0.7)", lineHeight: 20 },
+    slimHeader: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12 },
+    backBtnSlim: { width: 40, height: 40, borderRadius: 20, backgroundColor: C.surface, borderWidth: 1, borderColor: theme === "dark" ? "#2a2a2a" : "#e0dbd2", alignItems: "center", justifyContent: "center" },
+    heroTitle: { fontSize: 36, fontWeight: "800", color: "#fff", letterSpacing: -0.5, marginBottom: 6, flex: 1 },
 
     section: { paddingHorizontal: 24, paddingTop: 28 },
     sectionLabel: { fontSize: 11, fontWeight: "800", color: C.muted, letterSpacing: 2.5, textTransform: "uppercase", marginBottom: 14 },
     sectionSub: { fontSize: 13, color: C.muted, lineHeight: 20, marginBottom: 12 },
 
-    svcChip: { flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, borderWidth: 1, borderColor: theme === "dark" ? "#2a2a2a" : "#e0dbd2", backgroundColor: C.surface },
-    svcChipEmoji: { fontSize: 14, color: C.muted },
-    svcChipText: { fontSize: 13, fontWeight: "600", color: C.muted },
-
     wrapRow: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
     chip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, borderWidth: 1, borderColor: theme === "dark" ? "#2a2a2a" : "#e0dbd2", backgroundColor: C.surface },
-    chipActive: { backgroundColor: "transparent", borderColor: GOLD },
+    chipActive: { backgroundColor: "transparent", borderColor: activeColor },
     chipText: { fontSize: 13, fontWeight: "600", color: C.muted },
-    chipTextActive: { color: GOLD, fontWeight: "700" },
+    chipTextActive: { color: activeColor, fontWeight: "700" },
 
     dateRow: { flexDirection: "row", gap: 12 },
     dateCard: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10, padding: 14, borderRadius: 14, borderWidth: 1, borderColor: theme === "dark" ? "#2a2a2a" : "#e0dbd2", backgroundColor: C.surface },
@@ -1490,13 +1621,13 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
 
     textarea: { backgroundColor: C.surface, borderRadius: 16, padding: 18, fontSize: 15, color: C.text, minHeight: 140, lineHeight: 24, borderWidth: 1, borderColor: theme === "dark" ? "#2a2a2a" : "#e0dbd2" },
 
-    feeCard: { padding: 16, borderRadius: 14, borderWidth: 1, borderColor: `${GOLD}40`, backgroundColor: `${GOLD}08` },
-    feeEyebrow: { fontSize: 9, fontWeight: "800", color: GOLD, letterSpacing: 2, marginBottom: 6 },
-    feeAmount: { fontSize: 22, fontWeight: "800", color: GOLD },
+    feeCard: { padding: 16, borderRadius: 14, borderWidth: 1, borderColor: `${activeColor}40`, backgroundColor: `${activeColor}08` },
+    feeEyebrow: { fontSize: 9, fontWeight: "800", color: activeColor, letterSpacing: 2, marginBottom: 6 },
+    feeAmount: { fontSize: 22, fontWeight: "800", color: activeColor },
     feeNote: { fontSize: 13, color: C.muted, fontWeight: "600" },
     feeSub: { fontSize: 11, color: C.muted, marginTop: 2, lineHeight: 16 },
 
-    submitBtn: { backgroundColor: GOLD, borderRadius: 16, paddingVertical: 18, alignItems: "center" },
+    submitBtn: { backgroundColor: activeColor, borderRadius: 16, paddingVertical: 18, alignItems: "center" },
     submitText: { color: "#0a0a0a", fontSize: 16, fontWeight: "800", letterSpacing: 0.3 },
 
     overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 24 },
@@ -1504,7 +1635,7 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     modalIcon: { width: 64, height: 64, borderRadius: 32, justifyContent: "center", alignItems: "center", marginBottom: 24 },
     modalTitle: { color: C.text, fontSize: 24, fontWeight: "800", marginBottom: 12 },
     modalBody: { color: C.muted, fontSize: 14, textAlign: "center", lineHeight: 22, marginBottom: 32 },
-    modalBtnPri: { width: "100%", paddingVertical: 16, borderRadius: 14, backgroundColor: GOLD, alignItems: "center", marginBottom: 12 },
+    modalBtnPri: { width: "100%", paddingVertical: 16, borderRadius: 14, backgroundColor: activeColor, alignItems: "center", marginBottom: 12 },
     modalBtnTxPri: { color: "#0a0a0a", fontSize: 15, fontWeight: "700" },
     modalBtnSec: { width: "100%", paddingVertical: 14, alignItems: "center" },
     modalBtnTxSec: { color: C.muted, fontSize: 14, fontWeight: "600" },
@@ -1533,7 +1664,7 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     greetingCardBox: {
         borderRadius: 18,
         borderWidth: 1.5,
-        borderColor: GOLD,
+        borderColor: activeColor,
         padding: 24,
         overflow: "hidden",
         position: "relative",
@@ -1550,7 +1681,7 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     greetingCardTitle: {
         fontSize: 10,
         fontWeight: "800",
-        color: GOLD,
+        color: activeColor,
         letterSpacing: 3,
         marginBottom: 20,
     },
@@ -1580,7 +1711,7 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     greetingSenderName: {
         fontSize: 14,
         fontWeight: "700",
-        color: GOLD,
+        color: activeColor,
         fontFamily: "PlayfairDisplay_700Bold",
     },
 
@@ -1600,5 +1731,5 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     strategyDesc: { fontSize: 11, color: C.muted, lineHeight: 15 },
 
     lockBanner: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "rgba(201, 168, 76, 0.1)", paddingVertical: 10, paddingHorizontal: 16, borderBottomWidth: 1, borderTopWidth: 1, borderColor: "rgba(201, 168, 76, 0.15)", marginTop: 20 },
-    lockBannerText: { fontSize: 11, fontWeight: "700", color: GOLD, letterSpacing: 0.5 },
+    lockBannerText: { fontSize: 11, fontWeight: "700", color: activeColor, letterSpacing: 0.5 },
 });
