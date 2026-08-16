@@ -5,6 +5,8 @@ import { useRouter } from "expo-router";
 import { ChevronLeft, Filter, ChevronDown, X, Check } from "lucide-react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { supabase } from "@/lib/supabase";
+import GoldShimmerText from "@/components/GoldShimmerText";
+import DetailQuickRequestModal from "@/components/DetailQuickRequestModal";
 
 const CITIES = ["All", "Abuja", "Lagos", "Port Harcourt", "Akwa Ibom", "Kano"];
 const CATEGORIES = ["All", "Restaurant", "Lounge", "Hotel", "Spa", "Experience"];
@@ -102,7 +104,7 @@ export default function PartnersScreen() {
                     <ChevronLeft size={24} color={C.text} />
                 </TouchableOpacity>
                 <View style={{ flex: 1 }}>
-                    <Text style={s.title}>Our Partners</Text>
+                    <GoldShimmerText text="Our Premium Network" fontSize={22} fontFamily="Jost_700Bold" style={{ flex: 1 }} />
                     <Text style={s.subtitle}>Exclusive benefits & privileges</Text>
                 </View>
             </View>
@@ -208,100 +210,12 @@ export default function PartnersScreen() {
                 </View>
             </Modal>
 
-            {/* Partner Details Modal */}
-            <Modal
+            {/* Custom Detail & Quick Request Popup Modal for Picks/Partners without venue linking */}
+            <DetailQuickRequestModal
                 visible={selectedPartner !== null}
-                transparent
-                animationType="fade"
-                onRequestClose={() => setSelectedPartner(null)}
-            >
-                <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.75)", justifyContent: "center", alignItems: "center", padding: 24 }}>
-                    <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => setSelectedPartner(null)} />
-                    <View style={{ width: "100%", maxWidth: 400, backgroundColor: C.surface, borderRadius: 24, overflow: "hidden", borderWidth: 1, borderColor: theme === "dark" ? "#2a2a2a" : "#d8d3ca", position: "relative" }}>
-                        
-                        {/* Close button at top-right */}
-                        <TouchableOpacity 
-                            style={{ position: "absolute", top: 12, right: 12, zIndex: 10, width: 32, height: 32, borderRadius: 16, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center" }}
-                            onPress={() => setSelectedPartner(null)}
-                        >
-                            <X size={16} color="#fff" />
-                        </TouchableOpacity>
-
-                        {selectedPartner?.image_url && (
-                            <Image source={{ uri: selectedPartner.image_url }} style={{ width: "100%", height: 200 }} resizeMode="cover" />
-                        )}
-                        <View style={{ padding: 20 }}>
-                            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                                <Text style={{ fontSize: 18, fontWeight: "700", color: C.text, flex: 1, marginRight: 8 }} numberOfLines={2}>
-                                    {selectedPartner?.title}
-                                </Text>
-                                {selectedPartner?.category && (
-                                    <Text style={{ fontSize: 11, fontWeight: "700", color: C.primary, textTransform: "uppercase" }}>
-                                        {selectedPartner.category}
-                                    </Text>
-                                )}
-                            </View>
-                            
-                            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 12 }}>
-                                {selectedPartner?.city && (
-                                    <Text style={{ fontSize: 13, color: C.muted }}>
-                                        📍 {selectedPartner.city} {selectedPartner.address ? `· ${selectedPartner.address}` : ''}
-                                    </Text>
-                                )}
-                                {selectedPartner?.opening_hours && (
-                                    <Text style={{ fontSize: 13, color: C.primary, fontWeight: "600" }}>
-                                        🕒 {selectedPartner.opening_hours}
-                                    </Text>
-                                )}
-                            </View>
-
-                            <ScrollView style={{ maxHeight: 200, marginBottom: 20 }}>
-                                <Text style={{ fontSize: 13, color: C.text, lineHeight: 22 }}>
-                                    {selectedPartner?.body || "No additional partner details provided."}
-                                </Text>
-
-                                {selectedPartner?.bullet_points && (
-                                    <View style={{ marginTop: 12, borderTopWidth: 1, borderTopColor: theme === "dark" ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)", paddingTop: 12 }}>
-                                        {selectedPartner.bullet_points.split("\n").filter(b => b.trim() !== "").map((bullet, idx) => (
-                                            <View key={idx} style={{ flexDirection: "row", alignItems: "flex-start", gap: 6, marginBottom: 6 }}>
-                                                <Text style={{ fontSize: 13, color: C.primary, lineHeight: 20 }}>•</Text>
-                                                <Text style={{ fontSize: 13, color: C.muted, lineHeight: 20, flex: 1 }}>{bullet.replace(/^[•\s*-]+/, "")}</Text>
-                                            </View>
-                                        ))}
-                                    </View>
-                                )}
-                            </ScrollView>
-
-                            <TouchableOpacity
-                                style={{ width: "100%", paddingVertical: 14, borderRadius: 16, backgroundColor: C.primary, alignItems: "center", shadowColor: C.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 }}
-                                onPress={() => {
-                                    const item = selectedPartner;
-                                    setSelectedPartner(null);
-                                    if (item) {
-                                        const cat = (item.category || "").toLowerCase();
-                                        let pType = "Bespoke Request";
-                                        if (cat.includes("restaurant") || cat.includes("lounge") || cat.includes("dining")) {
-                                            pType = "Private Dining";
-                                        } else if (cat.includes("hotel") || cat.includes("stay") || cat.includes("accommodation")) {
-                                            pType = "Stays & Accommodations";
-                                        }
-                                        router.push({
-                                            pathname: "/services/lifestyle-travel",
-                                            params: {
-                                                prefillType: pType,
-                                                prefillCity: item.city || undefined,
-                                                prefillVenue: item.title
-                                            }
-                                        });
-                                    }
-                                }}
-                            >
-                                <Text style={{ fontSize: 14, fontWeight: "800", color: "#000", letterSpacing: 0.5 }}>Let LAPEQ Plan This For Me</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
+                item={selectedPartner}
+                onClose={() => setSelectedPartner(null)}
+            />
 
             {/* List */}
             <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40, gap: 16 }}>

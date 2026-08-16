@@ -5,6 +5,8 @@ import { useRouter } from "expo-router";
 import { ChevronLeft, Filter, ChevronDown, X, Check } from "lucide-react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { supabase } from "@/lib/supabase";
+import Skeleton from "@/components/Skeleton";
+import DetailQuickRequestModal from "@/components/DetailQuickRequestModal";
 
 const CITIES = ["All", "Abuja", "Lagos", "Port Harcourt", "Akwa Ibom", "Kano"];
 const CATEGORIES = ["All", "Restaurants", "Lounges", "Hotels", "Spa", "Experiences"];
@@ -20,6 +22,7 @@ export default function MonthlyPicksScreen() {
     const [tempCategory, setTempCategory] = useState("All");
     const [dbVenues, setDbVenues] = useState<{ id: string; name: string; city: string }[]>([]);
     const [picks, setPicks] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
     const [selectedPick, setSelectedPick] = useState<any | null>(null);
 
     useEffect(() => {
@@ -53,9 +56,11 @@ export default function MonthlyPicksScreen() {
                             } else if (fallbackData) {
                                 setPicks(fallbackData);
                             }
+                            setLoading(false);
                         });
-                } else if (data) {
-                    setPicks(data);
+                } else {
+                    if (data) setPicks(data);
+                    setLoading(false);
                 }
             });
     }, []);
@@ -211,7 +216,22 @@ export default function MonthlyPicksScreen() {
             </Modal>
 
             <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40, gap: 16 }}>
-                {filtered.length === 0 ? (
+                {loading ? (
+                    [0, 1, 2].map(i => (
+                        <View key={i} style={s.card}>
+                            <Skeleton width="100%" height={180} borderRadius={0} />
+                            <View style={{ padding: 16, gap: 8 }}>
+                                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                                    <Skeleton width="55%" height={17} borderRadius={6} />
+                                    <Skeleton width={60} height={13} borderRadius={6} />
+                                </View>
+                                <Skeleton width="35%" height={13} borderRadius={6} />
+                                <Skeleton width="90%" height={13} borderRadius={6} />
+                                <Skeleton width="70%" height={13} borderRadius={6} />
+                            </View>
+                        </View>
+                    ))
+                ) : filtered.length === 0 ? (
                     <View style={{ paddingTop: 60, alignItems: "center" }}>
                         <Text style={{ color: C.muted, fontSize: 15 }}>No picks for this filter yet.</Text>
                     </View>
@@ -259,100 +279,12 @@ export default function MonthlyPicksScreen() {
                 })}
             </ScrollView>
 
-            {/* Custom Detail Popup Modal for Picks without venue linking */}
-            <Modal
+            {/* Custom Detail & Quick Request Popup Modal for Picks without venue linking */}
+            <DetailQuickRequestModal
                 visible={selectedPick !== null}
-                transparent
-                animationType="fade"
-                onRequestClose={() => setSelectedPick(null)}
-            >
-                <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "center", alignItems: "center", padding: 24 }}>
-                    <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => setSelectedPick(null)} />
-                    <View style={{ width: "100%", maxWidth: 400, backgroundColor: C.surface, borderRadius: 24, overflow: "hidden", borderWidth: 1, borderColor: theme === "dark" ? "#2a2a2a" : "#d8d3ca", position: "relative" }}>
-                        
-                        {/* Close button at top-right */}
-                        <TouchableOpacity 
-                            style={{ position: "absolute", top: 12, right: 12, zIndex: 10, width: 32, height: 32, borderRadius: 16, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center" }}
-                            onPress={() => setSelectedPick(null)}
-                        >
-                            <X size={16} color="#fff" />
-                        </TouchableOpacity>
-
-                        {selectedPick?.image_url && (
-                            <Image source={{ uri: selectedPick.image_url }} style={{ width: "100%", height: 200 }} resizeMode="cover" />
-                        )}
-                        <View style={{ padding: 20 }}>
-                            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                                <Text style={{ fontSize: 18, fontWeight: "700", color: C.text, flex: 1, marginRight: 8 }} numberOfLines={2}>
-                                    {selectedPick?.title}
-                                </Text>
-                                {selectedPick?.category && (
-                                    <Text style={{ fontSize: 11, fontWeight: "700", color: C.primary, textTransform: "uppercase" }}>
-                                        {selectedPick.category}
-                                    </Text>
-                                )}
-                            </View>
-                            
-                            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 12 }}>
-                                {selectedPick?.city && (
-                                    <Text style={{ fontSize: 13, color: C.muted }}>
-                                        📍 {selectedPick.city} {selectedPick.address ? `· ${selectedPick.address}` : ''}
-                                    </Text>
-                                )}
-                                {selectedPick?.opening_hours && (
-                                    <Text style={{ fontSize: 13, color: C.primary, fontWeight: "600" }}>
-                                        🕒 {selectedPick.opening_hours}
-                                    </Text>
-                                )}
-                            </View>
-
-                            <ScrollView style={{ maxHeight: 200, marginBottom: 20 }}>
-                                <Text style={{ fontSize: 13, color: C.text, lineHeight: 22 }}>
-                                    {selectedPick?.body || "No additional description details provided."}
-                                </Text>
-
-                                {selectedPick?.bullet_points && (
-                                    <View style={{ marginTop: 12, borderTopWidth: 1, borderTopColor: theme === "dark" ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)", paddingTop: 12 }}>
-                                        {selectedPick.bullet_points.split("\n").filter(b => b.trim() !== "").map((bullet, idx) => (
-                                            <View key={idx} style={{ flexDirection: "row", alignItems: "flex-start", gap: 6, marginBottom: 6 }}>
-                                                <Text style={{ fontSize: 13, color: C.primary, lineHeight: 20 }}>•</Text>
-                                                <Text style={{ fontSize: 13, color: C.muted, lineHeight: 20, flex: 1 }}>{bullet.replace(/^[•\s*-]+/, "")}</Text>
-                                            </View>
-                                        ))}
-                                    </View>
-                                )}
-                            </ScrollView>
-
-                            <TouchableOpacity
-                                style={{ width: "100%", paddingVertical: 14, borderRadius: 16, backgroundColor: C.primary, alignItems: "center", shadowColor: C.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 }}
-                                onPress={() => {
-                                    const item = selectedPick;
-                                    setSelectedPick(null);
-                                    if (item) {
-                                        const cat = (item.category || "").toLowerCase();
-                                        let pType = "Bespoke Request";
-                                        if (cat.includes("restaurant") || cat.includes("lounge") || cat.includes("dining")) {
-                                            pType = "Private Dining";
-                                        } else if (cat.includes("hotel") || cat.includes("stay") || cat.includes("accommodation")) {
-                                            pType = "Stays & Accommodations";
-                                        }
-                                        router.push({
-                                            pathname: "/services/lifestyle-travel",
-                                            params: {
-                                                prefillType: pType,
-                                                prefillCity: item.city || undefined,
-                                                prefillVenue: item.title
-                                            }
-                                        });
-                                    }
-                                }}
-                            >
-                                <Text style={{ fontSize: 14, fontWeight: "800", color: "#000", letterSpacing: 0.5 }}>Let LAPEQ Plan This For Me</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
+                item={selectedPick}
+                onClose={() => setSelectedPick(null)}
+            />
         </SafeAreaView>
     );
 }
