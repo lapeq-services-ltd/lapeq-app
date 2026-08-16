@@ -1,5 +1,4 @@
 import { useMemo, useState, useRef, useEffect } from "react";
-import * as Notifications from "expo-notifications";
 import {
     View, Text, TouchableOpacity, StyleSheet, TextInput,
     Image, ScrollView, Modal, Animated, Alert, Platform,
@@ -113,11 +112,11 @@ const ITINERARY = {
     weekday: [
         {
             time: "7:00 AM – 9:30 AM", label: "Morning",
-            items: ["Weather and traffic update provided", "Daily briefing sent via email", "Breakfast — preferred meal, dietary requirements in place", "Morning news & business updates", "Personal trainer session", "Gym workout", "Yoga / stretching exercises"],
+            items: ["Weather and traffic update provided", "Daily briefing sent via email", "Breakfast, preferred meal, dietary requirements in place", "Morning news & business updates", "Personal trainer session", "Gym workout", "Yoga / stretching exercises"],
         },
         {
             time: "10:00 AM – 12:00 PM", label: "Mid-Morning",
-            items: ["Brunch — preferred meal selection", "Executive meetings", "Corporate visits", "Investor meetings", "Conference attendance", "Coffee shop"],
+            items: ["Brunch, preferred meal selection", "Executive meetings", "Corporate visits", "Investor meetings", "Conference attendance", "Coffee shop"],
         },
         {
             time: "12:00 PM – 4:00 PM", label: "Afternoon",
@@ -445,19 +444,6 @@ export default function ExperiencesScreen() {
         }
     }, []);
 
-    const fireItineraryNotification = async () => {
-        await Notifications.requestPermissionsAsync();
-        await Notifications.scheduleNotificationAsync({
-            content: {
-                title: "Your Daily Itinerary is Ready",
-                body: "LAPEQ Premium: Your curated schedule for today has been prepared.",
-                sound: true,
-                data: { url: "/explore/experiences" },
-            },
-            trigger: null,
-        });
-    };
-
     const filtered = useMemo(() => ITINERARIES.filter(exp => {
         const q = query.toLowerCase();
         const matchQ = q === "" || exp.title.toLowerCase().includes(q) || exp.desc.toLowerCase().includes(q) || exp.category.toLowerCase().includes(q);
@@ -526,7 +512,7 @@ export default function ExperiencesScreen() {
                         Your Curated Day, Planned.
                     </Text>
                     <Text style={{ color: C.muted, fontSize: 13, lineHeight: 19, marginBottom: 14 }}>
-                        From morning rituals to evening wind-down — a full weekday or weekend schedule designed around your lifestyle.
+                        From morning rituals to evening wind-down, a full weekday or weekend schedule designed around your lifestyle.
                     </Text>
                     <View style={{ flexDirection: "row", gap: 10 }}>
                         <TouchableOpacity
@@ -535,16 +521,6 @@ export default function ExperiencesScreen() {
                             activeOpacity={0.85}
                         >
                             <Text style={{ color: "#0a0a0a", fontSize: 13, fontWeight: "700" }}>View Itinerary</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={{ flex: 1, borderRadius: 10, paddingVertical: 12, alignItems: "center", borderWidth: 1, borderColor: GOLD + "60" }}
-                            onPress={async () => {
-                                await fireItineraryNotification();
-                                setItineraryVisible(true);
-                            }}
-                            activeOpacity={0.85}
-                        >
-                            <Text style={{ color: GOLD, fontSize: 13, fontWeight: "600" }}>Send to Notifs</Text>
                         </TouchableOpacity>
                     </View>
                 </View>

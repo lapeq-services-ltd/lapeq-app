@@ -2,7 +2,9 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image, Dimensions, Linking, NativeSyntheticEvent, NativeScrollEvent, Modal, TextInput, Platform, Animated, KeyboardAvoidingView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronLeft, ChevronRight, MapPin, Heart, ArrowRight, ExternalLink, Plus, Minus, Calendar, Check, X } from "lucide-react-native";
+import { ChevronLeft, ChevronRight, MapPin, Heart, ArrowRight, ExternalLink, Plus, Minus, Calendar, Check, X, Play } from "lucide-react-native";
+import { useVideoPlayer, VideoView } from "expo-video";
+import { LinearGradient } from "expo-linear-gradient";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -27,7 +29,7 @@ type Venue = {
     menu: string | null;
 };
 
-type VenueImage = { id: string; url: string; sort_order: number };
+type VenueImage = { id: string; url: string; sort_order: number; media_type: "image" | "video"; caption: string | null };
 
 type VenueMenuItem = {
     id: string;
@@ -65,6 +67,58 @@ const CATEGORY_LABELS: Record<string, string> = {
     spa: "Spa & Wellness",
 };
 
+function GalleryThumb({ img, size, C, isDark, onPress }: { img: VenueImage; size: number; C: any; isDark: boolean; onPress: () => void }) {
+    const isVideo = img.media_type === "video";
+    const player = useVideoPlayer(isVideo ? img.url : null, (p) => {
+        p.loop = true;
+        p.muted = true;
+    });
+
+    return (
+        <TouchableOpacity
+            style={{ width: size, height: size, borderRadius: 12, overflow: "hidden", backgroundColor: C.surface, borderWidth: 1, borderColor: isDark ? "#2a2a2a" : "#d8d3ca" }}
+            onPress={onPress}
+            activeOpacity={0.9}
+        >
+            {isVideo ? (
+                <>
+                    <VideoView player={player} style={{ width: "100%", height: "100%" }} nativeControls={false} contentFit="cover" />
+                    <View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.2)" }}>
+                        <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center" }}>
+                            <Play size={14} color="#fff" fill="#fff" />
+                        </View>
+                    </View>
+                </>
+            ) : (
+                <Image source={{ uri: img.url }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
+            )}
+        </TouchableOpacity>
+    );
+}
+
+function ZoomMediaContent({ img }: { img: VenueImage }) {
+    const isVideo = img.media_type === "video";
+    const player = useVideoPlayer(isVideo ? img.url : null, (p) => {
+        p.loop = true;
+        if (isVideo) p.play();
+    });
+
+    return (
+        <View style={{ width: "100%" }}>
+            {isVideo ? (
+                <VideoView player={player} style={{ width: SW, height: SW * 1.3 }} nativeControls contentFit="contain" />
+            ) : (
+                <Image source={{ uri: img.url }} style={{ width: SW, height: SW * 1.3 }} resizeMode="contain" />
+            )}
+            {img.caption && (
+                <Text style={{ color: "#fff", fontSize: 13, textAlign: "center", paddingHorizontal: 24, paddingTop: 14 }}>
+                    {img.caption}
+                </Text>
+            )}
+        </View>
+    );
+}
+
 async function geocodeAddress(query: string): Promise<{ lat: number; lng: number } | null> {
     if (!MAPBOX_TOKEN) return null;
     try {
@@ -85,38 +139,20 @@ function staticMapUrl(lat: number, lng: number) {
     return `https://api.mapbox.com/styles/v1/mapbox/dark-v11/static/pin-s+c9a84c(${lng},${lat})/${lng},${lat},14,0/${w}x${h}@2x?access_token=${MAPBOX_TOKEN}`;
 }
 
-function CollapsibleSection({ title, children, startExpanded = false, C, theme }: {
+function CollapsibleSection({ title, children }: {
     title: string;
     children: React.ReactNode;
-    startExpanded?: boolean;
-    C: any;
-    theme: string;
 }) {
-    const [expanded, setExpanded] = useState(startExpanded);
-    const isDark = theme === "dark";
-
     return (
-        <View style={{ backgroundColor: C.surface, borderRadius: 16, borderWidth: 1, borderColor: isDark ? "#2a2a2a" : "#d8d3ca", overflow: "hidden", marginBottom: 16 }}>
-            <TouchableOpacity
-                style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 16 }}
-                onPress={() => setExpanded(!expanded)}
-                activeOpacity={0.8}
-            >
-                <Text style={{ fontSize: 11, fontWeight: "800", color: GOLD, letterSpacing: 2, textTransform: "uppercase" }}>{title}</Text>
-                <ChevronRight size={16} color={GOLD} style={{ transform: [{ rotate: expanded ? "90deg" : "0deg" }] }} />
-            </TouchableOpacity>
-            
-            {expanded && (
-                <View style={{ paddingHorizontal: 16, paddingBottom: 16, borderTopWidth: 1, borderTopColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)", paddingTop: 16 }}>
-                    {children}
-                </View>
-            )}
+        <View style={{ gap: 12, marginBottom: 28 }}>
+            <Text style={{ fontSize: 10, fontWeight: "800", color: GOLD, letterSpacing: 2 }}>{title}</Text>
+            {children}
         </View>
     );
 }
 
 export default function VenueDetailScreen() {
-    const { id, overrideDescription } = useLocalSearchParams<{ id: string; overrideDescription?: string }>();
+    const { id, overrideDescription, mediaId } = useLocalSearchParams<{ id: string; overrideDescription?: string; mediaId?: string }>();
     const router = useRouter();
     const { C, theme } = useTheme();
     const isDark = theme === "dark";
@@ -135,7 +171,9 @@ export default function VenueDetailScreen() {
     const carouselRef = useRef<ScrollView>(null);
     const [menuItems, setMenuItems] = useState<VenueMenuItem[]>([]);
     const [activeDishIndex, setActiveDishIndex] = useState(0);
-    const [selectedGalleryImage, setSelectedGalleryImage] = useState<string | null>(null);
+    const [aboutExpanded, setAboutExpanded] = useState(false);
+    const [aboutOverflowing, setAboutOverflowing] = useState(false);
+    const [selectedGalleryImage, setSelectedGalleryImage] = useState<VenueImage | null>(null);
 
     // Curation Request Form State
     const [showRequestModal, setShowRequestModal] = useState(false);
@@ -158,6 +196,10 @@ export default function VenueDetailScreen() {
         : null;
 
     const handleSubmitRequest = async (paidAlready = false) => {
+        if (!requestDate) {
+            alert("Please select a preferred date.");
+            return;
+        }
         setRequestLoading(true);
         const { data: { user } } = await supabase.auth.getUser();
         const ref = "CUR-" + Date.now().toString(36).toUpperCase().slice(-5);
@@ -225,10 +267,23 @@ export default function VenueDetailScreen() {
             setVenue(data);
             const { data: imgs } = await supabase
                 .from("venue_images")
-                .select("id, url, sort_order")
+                .select("id, url, sort_order, media_type, caption")
                 .eq("venue_id", id)
                 .order("sort_order");
-            setVenueImages((imgs as VenueImage[]) ?? []);
+            const fetchedImages = (imgs as VenueImage[]) ?? [];
+            setVenueImages(fetchedImages);
+            // Arrived from the Explore grid via a specific tapped photo/video — the
+            // profile opens normally (no popup), just landed on that item in the
+            // hero carousel at the top, same slot the "Curate This" flow uses.
+            if (mediaId) {
+                const targetIndex = fetchedImages.findIndex(img => img.id === mediaId);
+                if (targetIndex > 0) {
+                    setActiveSlide(targetIndex);
+                    requestAnimationFrame(() => {
+                        carouselRef.current?.scrollTo({ x: targetIndex * SW, animated: false });
+                    });
+                }
+            }
             
             // Fetch curated menu dishes
             const { data: menuData } = await supabase
@@ -313,7 +368,11 @@ export default function VenueDetailScreen() {
                         {slides.map((src, i) => (
                             <View key={i} style={{ width: SW, height: 380 }}>
                                 <Image source={src} style={s.heroImg} resizeMode="cover" />
-                                <View style={s.heroOverlay} />
+                                <LinearGradient
+                                    colors={["rgba(0,0,0,0.05)", "rgba(0,0,0,0.15)", "rgba(0,0,0,0.9)"]}
+                                    locations={[0, 0.45, 1]}
+                                    style={StyleSheet.absoluteFillObject}
+                                />
                             </View>
                         ))}
                     </ScrollView>
@@ -349,8 +408,8 @@ export default function VenueDetailScreen() {
                     </SafeAreaView>
 
                     <View style={s.heroContent}>
-                        <View style={[s.categoryPill, { backgroundColor: "rgba(201,168,76,0.85)" }]}>
-                            <Text style={s.categoryPillText}>{CATEGORY_LABELS[venue.category] ?? venue.category}</Text>
+                        <View style={s.categoryPill}>
+                            <Text style={s.categoryPillText}>{(CATEGORY_LABELS[venue.category] ?? venue.category).toUpperCase()}</Text>
                         </View>
                         <Text style={s.heroName}>{venue.name}</Text>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
@@ -364,24 +423,33 @@ export default function VenueDetailScreen() {
                     {/* About */}
                     <View style={s.section}>
                         <Text style={s.sectionLabel}>ABOUT</Text>
-                        <Text style={s.description}>
+                        <Text
+                            style={s.description}
+                            numberOfLines={aboutExpanded ? undefined : 3}
+                            onTextLayout={(e) => {
+                                if (!aboutExpanded && e.nativeEvent.lines.length > 3) setAboutOverflowing(true);
+                            }}
+                        >
                             {overrideDescription || venue.description || "One of Lapeq's curated partner venues, selected for quality, exclusivity, and experience. Book through Lapeq for priority reservations and member benefits."}
                         </Text>
+                        {aboutOverflowing && (
+                        <TouchableOpacity onPress={() => setAboutExpanded(v => !v)} activeOpacity={0.7}>
+                            <Text style={s.readMore}>{aboutExpanded ? "Read less" : "Read more"}</Text>
+                        </TouchableOpacity>
+                        )}
                     </View>
 
                     {/* Perks Section (Collapsible) */}
                     {venue.perks && (
-                        <CollapsibleSection title="MEMBER PERKS" C={C} theme={theme}>
+                        <CollapsibleSection title="MEMBER PERKS">
                             <View style={s.perksCard}>
                                 {venue.perks.split("\n").map((perk, i) => {
                                     const p = perk.trim();
                                     if (!p) return null;
                                     return (
-                                        <View key={i} style={s.perkRow}>
-                                            <View style={s.starIconWrap}>
-                                                <Text style={s.starIcon}>✦</Text>
-                                            </View>
-                                            <Text style={s.perkText}>{p}</Text>
+                                        <View key={i} style={s.perkCell}>
+                                            <Text style={s.starIcon}>✦</Text>
+                                            <Text style={s.perkCellText}>{p}</Text>
                                         </View>
                                     );
                                 })}
@@ -391,7 +459,7 @@ export default function VenueDetailScreen() {
 
                     {/* Curated Menu Swipe Carousel (Collapsible) */}
                     {menuItems.length > 0 && (
-                        <CollapsibleSection title="CURATED SIGNATURE DISHES" C={C} theme={theme}>
+                        <CollapsibleSection title="CURATED SIGNATURE DISHES">
                             <View style={s.dishCarouselContainer}>
                                 {menuItems.length > 1 && (
                                     <TouchableOpacity
@@ -447,7 +515,7 @@ export default function VenueDetailScreen() {
 
                     {/* Menu highlights (Collapsible) */}
                     {venue.menu && (
-                        <CollapsibleSection title="CURATED MENU HIGHLIGHTS" C={C} theme={theme}>
+                        <CollapsibleSection title="CURATED MENU HIGHLIGHTS">
                             <View style={s.menuCard}>
                                 {venue.menu.split("\n").map((menuItem, i) => {
                                     const m = menuItem.trim();
@@ -469,14 +537,14 @@ export default function VenueDetailScreen() {
                             <Text style={s.sectionLabel}>MEDIA GALLERY</Text>
                             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
                                 {venueImages.map((img) => (
-                                    <TouchableOpacity
+                                    <GalleryThumb
                                         key={img.id}
-                                        style={{ width: (SW - 48 - 16) / 3, height: (SW - 48 - 16) / 3, borderRadius: 12, overflow: "hidden", backgroundColor: C.surface, borderWidth: 1, borderColor: isDark ? "#2a2a2a" : "#d8d3ca" }}
-                                        onPress={() => setSelectedGalleryImage(img.url)}
-                                        activeOpacity={0.9}
-                                    >
-                                        <Image source={{ uri: img.url }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
-                                    </TouchableOpacity>
+                                        img={img}
+                                        size={(SW - 48 - 16) / 3}
+                                        C={C}
+                                        isDark={isDark}
+                                        onPress={() => setSelectedGalleryImage(img)}
+                                    />
                                 ))}
                             </View>
                         </View>
@@ -527,7 +595,7 @@ export default function VenueDetailScreen() {
                             <Text style={[s.fieldLabel, { color: C.muted }]}>PREFERRED DATE</Text>
                             <TouchableOpacity style={[s.dateBtn, { backgroundColor: C.surface, borderColor: requestDate ? GOLD : (isDark ? "#2a2a2a" : "#e0dbd2") }]} onPress={() => setShowDatePicker(true)}>
                                 <Calendar size={16} color={requestDate ? GOLD : C.muted} />
-                                <Text style={{ fontSize: 15, color: requestDate ? C.text : C.muted, fontWeight: requestDate ? "600" : "400" }}>{fmtDate(requestDate) ?? "Select a date (optional)"}</Text>
+                                <Text style={{ fontSize: 15, color: requestDate ? C.text : C.muted, fontWeight: requestDate ? "600" : "400" }}>{fmtDate(requestDate) ?? "Select a preferred date"}</Text>
                             </TouchableOpacity>
 
                             <Text style={[s.fieldLabel, { color: C.muted }]}>SPECIAL NOTES</Text>
@@ -576,7 +644,7 @@ export default function VenueDetailScreen() {
                                         amount: 5000,
                                         currency: "NGN",
                                         payment_options: "card,banktransfer,ussd",
-                                        customization: {
+                                        customizations: {
                                             title: "Lapeq Curation Fee",
                                             description: "Venue booking · Concierge-managed",
                                             logo: "https://iwedpnipbuurohaqibag.supabase.co/storage/v1/object/public/avatars/lapeq-logo.png",
@@ -585,7 +653,13 @@ export default function VenueDetailScreen() {
                                     customButton={(props) => (
                                         <TouchableOpacity 
                                             style={[s.submitBtn, (requestLoading || props.disabled) && { opacity: 0.7 }]} 
-                                            onPress={props.onPress} 
+                                            onPress={() => {
+                                                if (!requestDate) {
+                                                    alert("Please select a preferred date.");
+                                                    return;
+                                                }
+                                                props.onPress();
+                                            }} 
                                             disabled={requestLoading || props.disabled} 
                                             activeOpacity={0.85}
                                         >
@@ -653,9 +727,7 @@ export default function VenueDetailScreen() {
                     <TouchableOpacity style={{ position: "absolute", top: 48, right: 24, zIndex: 10, width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center" }} onPress={() => setSelectedGalleryImage(null)}>
                         <X size={24} color="#fff" />
                     </TouchableOpacity>
-                    {selectedGalleryImage && (
-                        <Image source={{ uri: selectedGalleryImage }} style={{ width: SW, height: SW * 1.3 }} resizeMode="contain" />
-                    )}
+                    {selectedGalleryImage && <ZoomMediaContent img={selectedGalleryImage} />}
                 </View>
             </Modal>
         </View>
@@ -667,7 +739,6 @@ const getStyles = (C: any, theme: string) => {
     return StyleSheet.create({
         hero: { height: 380, position: "relative" },
         heroImg: { width: SW, height: 380 },
-        heroOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.45)" },
         heroActions: { position: "absolute", top: 0, left: 0, right: 0, flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 20 },
         dots: { position: "absolute", bottom: 72, left: 0, right: 0, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 5 },
         dot: { height: 6, borderRadius: 3 } as any,
@@ -675,21 +746,21 @@ const getStyles = (C: any, theme: string) => {
         headerCurateBtn: { backgroundColor: GOLD, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, justifyContent: "center", alignItems: "center" },
         headerCurateText: { color: "#000", fontSize: 11, fontWeight: "800", letterSpacing: 0.5 },
         heroContent: { position: "absolute", bottom: 28, left: 20, right: 20 },
-        categoryPill: { alignSelf: "flex-start", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginBottom: 10 },
-        categoryPillText: { fontSize: 10, fontWeight: "800", color: "#fff", letterSpacing: 1 },
-        heroName: { fontSize: 30, fontWeight: "700", color: "#fff", marginBottom: 8, lineHeight: 36 },
+        categoryPill: { alignSelf: "flex-start", marginBottom: 8 },
+        categoryPillText: { fontSize: 10, fontWeight: "800", color: GOLD, letterSpacing: 2.5 },
+        heroName: { fontSize: 32, fontFamily: "PlayfairDisplay_700Bold", color: "#fff", marginBottom: 8, lineHeight: 38 },
         heroAddress: { fontSize: 13, color: "rgba(255,255,255,0.7)" },
 
         body: { padding: 24, gap: 28 },
         section: { gap: 12 },
         sectionLabel: { fontSize: 10, fontWeight: "800", color: GOLD, letterSpacing: 2 },
         description: { fontSize: 15, color: C.muted, lineHeight: 24 },
+        readMore: { fontSize: 13, fontWeight: "700", color: GOLD, marginTop: 8 },
 
-        perksCard: { backgroundColor: isDark ? "rgba(201,168,76,0.06)" : "#fdfbfa", borderWidth: 1, borderColor: `${GOLD}20`, borderRadius: 16, padding: 18, gap: 12 },
-        perkRow: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
-        starIconWrap: { width: 16, height: 16, borderRadius: 8, backgroundColor: `${GOLD}20`, alignItems: "center", justifyContent: "center", marginTop: 2 },
-        starIcon: { fontSize: 10, color: GOLD, fontWeight: "900" },
-        perkText: { fontSize: 14, lineHeight: 20, color: C.text },
+        perksCard: { flexDirection: "row", flexWrap: "wrap", rowGap: 14, columnGap: 12 },
+        perkCell: { width: "47%", flexDirection: "row", alignItems: "flex-start", gap: 8 },
+        perkCellText: { flex: 1, fontSize: 13, lineHeight: 19, color: C.text },
+        starIcon: { fontSize: 10, color: GOLD, fontWeight: "900", marginTop: 3 },
 
         dishCarouselContainer: { flexDirection: "row", alignItems: "center", justifyContent: "center", position: "relative", height: 260, backgroundColor: isDark ? "#0f0f0f" : "#fafafa", borderRadius: 24, borderWidth: 1, borderColor: C.border, overflow: "hidden" },
         dishImageFrame: { width: 220, height: 220, justifyContent: "center", alignItems: "center" },
@@ -705,7 +776,7 @@ const getStyles = (C: any, theme: string) => {
         dishIndicatorDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.15)" },
         dishIndicatorDotActive: { backgroundColor: GOLD, width: 12 },
 
-        menuCard: { backgroundColor: isDark ? "#111" : "#fbfbfb", borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 18, gap: 12 },
+        menuCard: { gap: 12 },
         menuRow: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
         menuBullet: { fontSize: 12, color: GOLD, marginTop: 2 },
         menuItemText: { fontSize: 14, fontWeight: "600", lineHeight: 20, color: C.text },
