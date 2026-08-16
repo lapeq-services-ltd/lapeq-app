@@ -26,6 +26,17 @@ type SavedVenue = {
     image_url: string | null;
 };
 
+// "Cities" stat: pickup/dropoff addresses are free text (e.g. "Millennium Park,
+// Usuma Street, Abuja, Nigeria"), so a city is detected by matching against the
+// cities LAPEQ actually operates in, rather than trying to parse structure out
+// of arbitrary address text.
+const KNOWN_CITIES = ["Abuja", "Lagos", "Port Harcourt", "Ibadan", "Kano", "Kaduna", "Enugu", "Benin City", "Calabar", "Uyo", "Owerri", "Warri", "Asaba"];
+function extractCity(text: string | null | undefined): string | null {
+    if (!text) return null;
+    const lower = text.toLowerCase();
+    return KNOWN_CITIES.find(c => lower.includes(c.toLowerCase())) ?? null;
+}
+
 const SERVICE_LABELS: Record<string, string> = {
     "lifestyle-travel": "Hospitality & Travel",
     "concierge": "Concierge Request",
@@ -75,6 +86,7 @@ export default function ProfileScreen() {
 
     const [requestCount, setRequestCount] = useState<number | null>(null);
     const [savedCount, setSavedCount] = useState<number | null>(null);
+    const [citiesCount, setCitiesCount] = useState<number | null>(null);
     const [recentRequests, setRecentRequests] = useState<RecentRequest[]>([]);
     const [loadingStats, setLoadingStats] = useState(true);
 
@@ -96,16 +108,27 @@ export default function ProfileScreen() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) { setLoadingStats(false); return; }
 
-        const [reqResult, favResult, recentResult, profileResult] = await Promise.all([
+        const [reqResult, favResult, recentResult, profileResult, locationsResult] = await Promise.all([
             supabase.from("requests").select("id", { count: "exact", head: true }).eq("user_id", user.id).neq("status", "cancelled"),
             supabase.from("favorites").select("id", { count: "exact", head: true }).eq("user_id", user.id),
             supabase.from("requests").select("id, service_type, status, created_at, reference").eq("user_id", user.id).neq("status", "cancelled").order("created_at", { ascending: false }).limit(10),
             supabase.from("profiles").select("tier, full_name, preferred_name, region, country, avatar_url").eq("id", user.id).single(),
+            supabase.from("requests").select("pickup_location, dropoff_location").eq("user_id", user.id).neq("status", "cancelled"),
         ]);
 
         setRequestCount(reqResult.count ?? 0);
         setSavedCount(favResult.count ?? 0);
         if (recentResult.data) setRecentRequests(recentResult.data);
+        if (locationsResult.data) {
+            const cities = new Set<string>();
+            for (const r of locationsResult.data) {
+                const pickup = extractCity(r.pickup_location);
+                const dropoff = extractCity(r.dropoff_location);
+                if (pickup) cities.add(pickup);
+                if (dropoff) cities.add(dropoff);
+            }
+            setCitiesCount(cities.size);
+        }
         const meta = user.user_metadata ?? {};
         const metaFullName = meta.full_name || 
             (meta.first_name ? `${meta.first_name} ${meta.last_name ?? ""}`.trim() : "") ||
@@ -222,7 +245,7 @@ export default function ProfileScreen() {
                     <View style={s.statBox}>
                         {loadingStats
                             ? <Skeleton width={40} height={28} borderRadius={6} />
-                            : <Text style={s.statVal}>0</Text>}
+                            : <Text style={s.statVal}>{citiesCount ?? 0}</Text>}
                         <Text style={s.statLabel}>Cities</Text>
                     </View>
                 </View>
