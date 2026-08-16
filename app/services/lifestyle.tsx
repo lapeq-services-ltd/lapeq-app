@@ -16,6 +16,7 @@ import {
     Platform,
     Dimensions,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -137,7 +138,7 @@ export default function LapeqCoBrandScreen() {
     const stepAnim = useRef(new Animated.Value(1)).current;
     const alertOpacity = useRef(new Animated.Value(0)).current;
     const alertScale = useRef(new Animated.Value(0.9)).current;
-    const scrollRef = useRef<ScrollView>(null);
+    const scrollRef = useRef<any>(null);
 
     const fmtDate = (d: Date | null) =>
         d ? d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : null;
@@ -258,7 +259,7 @@ export default function LapeqCoBrandScreen() {
                 <View style={{ width: 40 }} />
             </View>
 
-            <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 120 }}>
+            <KeyboardAwareScrollView ref={scrollRef} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 120 }} enableOnAndroid extraScrollHeight={20} keyboardOpeningTime={0}>
                 
                 {/* Steps container */}
                 <Animated.View style={{ opacity: stepAnim, transform: [{ translateY: stepAnim.interpolate({ inputRange: [0, 1], outputRange: [15, 0] }) }] }}>
@@ -656,7 +657,7 @@ export default function LapeqCoBrandScreen() {
                     )}
 
                 </Animated.View>
-            </ScrollView>
+            </KeyboardAwareScrollView>
 
             {/* Date Picker Modal */}
             <Modal visible={Platform.OS === "ios" && showDatePicker} transparent animationType="slide">

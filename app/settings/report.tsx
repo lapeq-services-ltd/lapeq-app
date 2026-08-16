@@ -1,8 +1,9 @@
 import { useMemo, useState, useRef } from "react";
 import {
-    View, Text, TouchableOpacity, StyleSheet, ScrollView,
-    TextInput, Image, Animated, KeyboardAvoidingView, Platform,
+    View, Text, TouchableOpacity, StyleSheet,
+    TextInput, Image, Animated, Platform,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { ChevronLeft, Smartphone, ImagePlus, Trash2, Send, CheckCircle } from "lucide-react-native";
@@ -98,11 +99,13 @@ export default function ReportScreen() {
                 <Text style={s.headerTitle}>Report a Problem</Text>
             </View>
 
-            <KeyboardAvoidingView behavior={isAndroid ? undefined : "padding"} style={{ flex: 1 }}>
-                <ScrollView
+            <KeyboardAwareScrollView
                     contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
                     keyboardShouldPersistTaps="handled"
                     showsVerticalScrollIndicator={false}
+                    enableOnAndroid
+                    extraScrollHeight={20}
+                    keyboardOpeningTime={0}
                 >
                     {/* Shake hint card */}
                     <View style={s.hintCard}>
@@ -153,8 +156,7 @@ export default function ReportScreen() {
                             <Text style={s.attachSub}>Go back to the problem screen, take a screenshot, then come back and attach it here.</Text>
                         </TouchableOpacity>
                     )}
-                </ScrollView>
-            </KeyboardAvoidingView>
+            </KeyboardAwareScrollView>
 
             {/* Footer button */}
             <View style={s.footer}>

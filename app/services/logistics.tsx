@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef } from "react";
-import { Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, View, Platform, KeyboardAvoidingView, Keyboard, Modal, Animated } from "react-native";
+import { Text, TextInput, TouchableOpacity, StyleSheet, View, Keyboard, Modal, Animated } from "react-native";
 import LocationSearch from "@/components/LocationSearch";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -7,6 +7,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { supabase } from "@/lib/supabase";
 import { Check } from "lucide-react-native";
 import VoiceInput from "@/components/VoiceInput";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 
 export default function LogisticsScreen() {
     const router = useRouter();
@@ -23,7 +24,7 @@ export default function LogisticsScreen() {
     const [showError, setShowError] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
 
-    const scrollRef = useRef<ScrollView>(null);
+    const scrollRef = useRef<any>(null);
     const notesY = useRef(0);
     const pickupRef = useRef<TextInput>(null);
     const deliveryRef = useRef<TextInput>(null);
@@ -55,8 +56,7 @@ export default function LogisticsScreen() {
 
     return (
         <SafeAreaView style={s.root}>
-            <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
-                <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+            <KeyboardAwareScrollView ref={scrollRef} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" enableOnAndroid extraScrollHeight={20} keyboardOpeningTime={0}>
                     <TouchableOpacity onPress={() => router.back()} style={s.backBtn}><Text style={s.backText}>← Back</Text></TouchableOpacity>
                     <Text style={s.title}>Logistics</Text>
                     <Text style={s.subtitle}>Pickup, delivery & item movement</Text>
@@ -128,8 +128,7 @@ export default function LogisticsScreen() {
                         <Text style={s.btnText}>{loading ? "Submitting..." : "Submit Request"}</Text>
                     </TouchableOpacity>
                     <View style={{ height: 40 }} />
-                </ScrollView>
-            </KeyboardAvoidingView>
+            </KeyboardAwareScrollView>
 
             <Modal visible={showSuccess} transparent animationType="none">
                 <View style={s.overlay}>

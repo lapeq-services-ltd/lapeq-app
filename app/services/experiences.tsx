@@ -1,13 +1,14 @@
 import { showToast } from "@/lib/toast";
 import { cleanErr } from "@/lib/cleanErr";
 import { useMemo, useState, useRef } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, TextInput, Modal, Animated, Platform, KeyboardAvoidingView, Alert } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, TextInput, Modal, Animated, Platform, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
 import { ChevronLeft, Calendar, Check, X } from "lucide-react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { supabase } from "@/lib/supabase";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import VoiceInput from "@/components/VoiceInput";
 
 const CITIES = ["Lagos", "Abuja", "Port Harcourt", "Akwa Ibom", "Kano"];
@@ -175,7 +176,7 @@ export default function ExperiencesScreen() {
 
             {/* Request Form Bottom Sheet */}
             <Modal visible={showForm} animationType="slide" transparent onRequestClose={() => setShowForm(false)}>
-                <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
+                <View style={{ flex: 1 }}>
                     <TouchableOpacity style={s.modalBackdrop} activeOpacity={1} onPress={() => setShowForm(false)} />
                     <View style={s.sheet}>
                         <View style={s.sheetHandle} />
@@ -186,7 +187,7 @@ export default function ExperiencesScreen() {
                             </TouchableOpacity>
                         </View>
 
-                        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                        <KeyboardAwareScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" enableOnAndroid extraScrollHeight={20} keyboardOpeningTime={0}>
                             {/* City */}
                             <Text style={s.fieldLabel}>Which city?</Text>
                             <View style={s.cityChips}>
@@ -258,7 +259,7 @@ export default function ExperiencesScreen() {
                                 <Text style={s.submitBtnText}>{loading ? "Sending..." : "Submit Request"}</Text>
                             </TouchableOpacity>
                             <View style={{ height: 40 }} />
-                        </ScrollView>
+                        </KeyboardAwareScrollView>
 
                         {/* iOS Date pickers */}
                         <Modal visible={Platform.OS === "ios" && showDateFrom} transparent animationType="slide">
@@ -289,7 +290,7 @@ export default function ExperiencesScreen() {
                             </View>
                         </Modal>
                     </View>
-                </KeyboardAvoidingView>
+                </View>
             </Modal>
 
             {/* Success Modal */}

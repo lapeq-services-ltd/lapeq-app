@@ -2,8 +2,8 @@ import { showToast } from "@/lib/toast";
 import { cleanErr } from "@/lib/cleanErr";
 import { useState, useMemo, useRef, useEffect } from "react";
 import {
-    Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
-    View, Platform, KeyboardAvoidingView, Modal, Animated, Alert, Keyboard, Dimensions, Switch, Image
+    Text, TextInput, TouchableOpacity, StyleSheet,
+    View, Modal, Animated, Alert, Keyboard, Dimensions, Switch, Image
 } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -11,6 +11,7 @@ import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
 import { Briefcase, Check, FileText, ChevronLeft, ChevronDown, ChevronUp, Globe, Heart, Home, Minus, Plus, TrendingUp, CalendarDays, Shield, CreditCard, BookOpen } from "lucide-react-native";
 import VoiceInput from "@/components/VoiceInput";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 
 const SUGGESTIONS = [
     { label: "UAE", display: "UAE 🇦🇪" },
@@ -102,7 +103,7 @@ const PACKAGES = [
     {
         id: "Passport Renewal",
         label: "Passport Renewal",
-        desc: "We handle your Nigerian passport renewal end-to-end — from application booking and document submission to collection and courier delivery — while you remain abroad.",
+        desc: "We handle your Nigerian passport renewal end-to-end, from application booking and document submission to collection and courier delivery, while you remain abroad.",
         bullet: "Application booking · Processing liaison · Courier delivery",
         Icon: BookOpen
     },
@@ -278,7 +279,7 @@ export default function DiasporaScreen() {
     const [baoDom, setBaoDom] = useState(false);
     const [baoCorporate, setBaoCorporate] = useState(false);
 
-    const scrollRef = useRef<ScrollView>(null);
+    const scrollRef = useRef<any>(null);
     const detailsY = useRef(0);
     const alertOpacity = useRef(new Animated.Value(0)).current;
     const alertScale = useRef(new Animated.Value(0.9)).current;
@@ -424,14 +425,16 @@ export default function DiasporaScreen() {
 
     return (
         <SafeAreaView style={[s.root, { backgroundColor: C.background }]} edges={["top"]}>
-            <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
-                <ScrollView
+            <KeyboardAwareScrollView
                     ref={scrollRef}
                     scrollEnabled={true}
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
                     keyboardDismissMode="on-drag"
                     contentContainerStyle={{ paddingBottom: 60 }}
+                    enableOnAndroid
+                    extraScrollHeight={20}
+                    keyboardOpeningTime={0}
                 >
                     {/* Header */}
                     <View style={s.header}>
@@ -952,7 +955,7 @@ export default function DiasporaScreen() {
                                             <View style={s.toggleRow}>
                                                 <View style={{ flex: 1, paddingRight: 10 }}>
                                                     <Text style={[s.toggleLabel, { color: C.text }]}>Domiciliary (DOM) Account</Text>
-                                                    <Text style={s.toggleSub}>Foreign currency account — USD, GBP, EUR</Text>
+                                                    <Text style={s.toggleSub}>Foreign currency account (USD, GBP, EUR)</Text>
                                                 </View>
                                                 <Switch value={baoDom} onValueChange={setBaoDom} trackColor={{ false: border, true: `${GOLD}80` }} thumbColor={baoDom ? GOLD : "#888"} />
                                             </View>
@@ -1059,8 +1062,7 @@ export default function DiasporaScreen() {
                             </TouchableOpacity>
                         )}
                     </View>
-                </ScrollView>
-            </KeyboardAvoidingView>
+            </KeyboardAwareScrollView>
 
             {/* Success Modal */}
             <Modal visible={showSuccess} transparent animationType="none">
@@ -1209,7 +1211,7 @@ const getStyles = (C: any, theme: string) => {
 
         // Success dialog styling
         overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.65)", justifyContent: "center", alignItems: "center", padding: 24 },
-        modalBox: { width: "100%", borderRadius: 24, padding: 32, borderWidth: 1, borderColor: GOLD, alignItems: "center" },
+        modalBox: { width: "100%", borderRadius: 24, padding: 32, borderWidth: 1, borderColor: GOLD, alignItems: "center", backgroundColor: C.surface },
         modalIcon: { width: 48, height: 48, borderRadius: 24, justifyContent: "center", alignItems: "center", marginBottom: 20 },
         modalTitle: { fontSize: 20, fontWeight: "700", marginBottom: 12, fontFamily: "PlayfairDisplay_700Bold" },
         modalBody: { fontSize: 14, textAlign: "center", lineHeight: 22, marginBottom: 32 },

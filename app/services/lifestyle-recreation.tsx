@@ -169,7 +169,7 @@ export default function RecreationScreen() {
                     </View>
 
                     <View style={s.feeCard}>
-                        <Text style={s.feeEyebrow}>SERVICE FEE</Text>
+                        <Text style={s.feeEyebrow}>CURATION FEE</Text>
                         <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6, marginBottom: 4 }}>
                             <Text style={s.feeAmount}>₦5,000</Text>
                             <Text style={s.feeNote}>per request</Text>

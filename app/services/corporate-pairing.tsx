@@ -1,11 +1,12 @@
 import { useState, useMemo, useRef } from "react";
-import { Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, View, Platform, KeyboardAvoidingView, Keyboard, Modal, Animated } from "react-native";
+import { Text, TextInput, TouchableOpacity, StyleSheet, View, Keyboard, Modal, Animated } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@/context/ThemeContext";
 import { supabase } from "@/lib/supabase";
 import { Check } from "lucide-react-native";
 import VoiceInput from "@/components/VoiceInput";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 
 const PAIRING_TYPES = ["Investor Matching", "Legal Advisory", "Business Partner", "Executive Recruitment", "Industry Introductions", "Other"];
 
@@ -22,7 +23,7 @@ export default function CorporatePairingScreen() {
     const [showError, setShowError] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
 
-    const scrollRef = useRef<ScrollView>(null);
+    const scrollRef = useRef<any>(null);
     const objY = useRef(0);
     const companyRef = useRef<TextInput>(null);
     const alertOpacity = useRef(new Animated.Value(0)).current;
@@ -52,8 +53,7 @@ export default function CorporatePairingScreen() {
 
     return (
         <SafeAreaView style={s.root}>
-            <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
-                <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+            <KeyboardAwareScrollView ref={scrollRef} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" enableOnAndroid extraScrollHeight={20} keyboardOpeningTime={0}>
                     <TouchableOpacity onPress={() => router.back()} style={s.backBtn}><Text style={s.backText}>← Back</Text></TouchableOpacity>
                     <Text style={s.title}>Corporate Pairing</Text>
                     <Text style={s.subtitle}>Business introductions and professional connections</Text>
@@ -109,8 +109,7 @@ export default function CorporatePairingScreen() {
                         <Text style={s.btnText}>{loading ? "Submitting..." : "Submit Request"}</Text>
                     </TouchableOpacity>
                     <View style={{ height: 40 }} />
-                </ScrollView>
-            </KeyboardAvoidingView>
+            </KeyboardAwareScrollView>
 
             <Modal visible={showSuccess} transparent animationType="none">
                 <View style={s.overlay}>

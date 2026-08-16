@@ -7,6 +7,7 @@ import { useRouter } from "expo-router";
 import { ChevronLeft, Lock, Eye, Trash2, ShieldCheck, X } from "lucide-react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { supabase } from "@/lib/supabase";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 
 const DELETE_REASONS = [
     "I'm not using it anymore",
@@ -158,7 +159,14 @@ export default function PrivacyScreen() {
             {/* Delete Account Modal */}
             <Modal visible={showDeleteModal} transparent animationType="slide">
                 <View style={s.modalOverlay}>
-                    <View style={s.modalSheet}>
+                    <KeyboardAwareScrollView
+                        style={{ maxHeight: "90%" }}
+                        contentContainerStyle={s.modalSheet}
+                        keyboardShouldPersistTaps="handled"
+                        enableOnAndroid
+                        extraScrollHeight={20}
+                        keyboardOpeningTime={0}
+                    >
                         <TouchableOpacity style={s.modalClose} onPress={() => setShowDeleteModal(false)}>
                             <X size={20} color={C.muted} />
                         </TouchableOpacity>
@@ -221,7 +229,7 @@ export default function PrivacyScreen() {
                         <TouchableOpacity onPress={() => setShowDeleteModal(false)} style={{ marginTop: 12, alignItems: "center" }}>
                             <Text style={{ fontSize: 14, color: C.muted }}>Actually, keep my account</Text>
         </TouchableOpacity>
-                    </View>
+                    </KeyboardAwareScrollView>
                 </View>
             </Modal>
         </SafeAreaView>

@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef } from "react";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { ScrollView, View, Text, TextInput, TouchableOpacity, StyleSheet, Platform, Modal, Animated, Alert, Image, Dimensions } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Platform, Modal, Animated, Alert, Image, Dimensions } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTheme } from "@/context/ThemeContext";
@@ -77,7 +78,7 @@ export default function GiftsFlowersScreen() {
 
     return (
         <SafeAreaView style={s.root} edges={["top"]}>
-                <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets contentContainerStyle={{ paddingBottom: 80 }}>
+                <KeyboardAwareScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" enableOnAndroid extraScrollHeight={20} keyboardOpeningTime={0} contentContainerStyle={{ paddingBottom: 80 }}>
 
                     <View style={s.hero}>
                         <Image source={require("@/assets/images/lagos-restaurant.jpg")} style={s.heroImg} resizeMode="cover" />
@@ -228,7 +229,7 @@ export default function GiftsFlowersScreen() {
                     </View>
 
                     <View style={s.feeCard}>
-                        <Text style={s.feeEyebrow}>SERVICE FEE</Text>
+                        <Text style={s.feeEyebrow}>CURATION FEE</Text>
                         <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6, marginBottom: 4 }}>
                             <Text style={s.feeAmount}>₦5,000</Text>
                             <Text style={s.feeNote}>per request</Text>
@@ -241,7 +242,7 @@ export default function GiftsFlowersScreen() {
                             <Text style={s.submitText}>{loading ? "Sending..." : "Place Order"}</Text>
                         </TouchableOpacity>
                     </View>
-                </ScrollView>
+                </KeyboardAwareScrollView>
 
             {Platform.OS === "android" && showDatePicker && (
                 <DateTimePicker value={deliveryDate ?? new Date()} mode="date" display="default" minimumDate={new Date()}

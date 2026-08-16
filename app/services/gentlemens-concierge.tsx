@@ -12,6 +12,7 @@ import {
     Mic, Plus, Minus, CalendarDays,
 } from "lucide-react-native";
 import { useTheme } from "@/context/ThemeContext";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { supabase } from "@/lib/supabase";
 import VoiceInput from "@/components/VoiceInput";
 
@@ -46,7 +47,7 @@ const SERVICES: Service[] = [
         short: "Sharp cuts, refined finish",
         tagline: "Looking the part starts here.",
         heroImg: require("@/assets/images/barber-grooming.png"),
-        full: "Expert barbers and grooming specialists available on-site or at your location. From precision cuts and beard sculpting to full grooming sessions — arranged around your schedule, never the other way.",
+        full: "Expert barbers and grooming specialists available on-site or at your location. From precision cuts and beard sculpting to full grooming sessions, arranged around your schedule, never the other way.",
         fields: [
             { kind: "chips", label: "SERVICE", options: ["Haircut", "Beard Trim", "Full Groom", "Hot Towel Shave", "Other"] },
             { kind: "chips", label: "LOCATION", options: ["At Salon", "Come to Me"] },
@@ -59,7 +60,7 @@ const SERVICES: Service[] = [
         short: "Treatments tailored to you",
         tagline: "Your skin, properly looked after.",
         heroImg: require("@/assets/images/skincare-facials.png"),
-        full: "Professional skincare treatments administered by certified aestheticians. Whether you need a classic facial, targeted treatment, or a bespoke regimen built around your skin — we bring the expertise to you.",
+        full: "Professional skincare treatments administered by certified aestheticians. Whether you need a classic facial, targeted treatment, or a bespoke regimen built around your skin, we bring the expertise to you.",
         fields: [
             { kind: "chips", label: "TREATMENT", options: ["Classic Facial", "Deep Cleanse", "Anti-Aging", "Brightening", "Bespoke"] },
             { kind: "chips", label: "LOCATION", options: ["At Spa", "Come to Me"] },
@@ -72,7 +73,7 @@ const SERVICES: Service[] = [
         short: "Full-body restoration",
         tagline: "Restore. Reset. Return better.",
         heroImg: require("@/assets/images/ladies-spa.png"),
-        full: "Access to premium spa facilities and private massage therapists across Abuja and Lagos. Choose your treatment, duration, and location — we handle the rest. In-hotel, in-home, or at a vetted spa partner.",
+        full: "Access to premium spa facilities and private massage therapists across Abuja and Lagos. Choose your treatment, duration, and location, we handle the rest, in-hotel, in-home, or at a vetted spa partner.",
         fields: [
             { kind: "chips", label: "TYPE", options: ["Swedish", "Deep Tissue", "Hot Stone", "Sports", "Custom"] },
             { kind: "chips", label: "DURATION", options: ["60 Min", "90 Min", "2 Hours"] },
@@ -86,7 +87,7 @@ const SERVICES: Service[] = [
         short: "Details that set you apart",
         tagline: "The details others notice.",
         heroImg: require("@/assets/images/onboarding-lifestyle.png"),
-        full: "A complete nail care and finishing service for the gentleman who knows that every detail counts. Manicure, pedicure, buff and polish — professional finish, complete discretion.",
+        full: "A complete nail care and finishing service for the gentleman who knows that every detail counts. Manicure, pedicure, buff and polish, professional finish, complete discretion.",
         fields: [
             { kind: "chips", label: "SERVICE", options: ["Manicure", "Pedicure", "Both", "Buff & Polish"] },
             { kind: "chips", label: "LOCATION", options: ["At Salon", "Come to Me"] },
@@ -99,9 +100,9 @@ const SERVICES: Service[] = [
         tab: "style",
         title: "Bespoke Tailoring",
         short: "Crafted to your exact measure",
-        tagline: "Clothes that were made for you — because they were.",
+        tagline: "Clothes that were made for you, because they were.",
         heroImg: require("@/assets/images/onboarding-driving.png"),
-        full: "Access to master tailors who build each garment from scratch to your exact measurements and specifications. Suits, shirts, agbada, native attire, and formal wear — all cut to reflect who you are.",
+        full: "Access to master tailors who build each garment from scratch to your exact measurements and specifications. Suits, shirts, agbada, native attire, and formal wear, all cut to reflect who you are.",
         fields: [
             { kind: "chips", label: "GARMENT", options: ["Suit", "Shirt", "Native Attire", "Agbada", "Full Outfit"] },
             { kind: "chips", label: "OCCASION", options: ["Work", "Formal", "Social", "Wedding", "Custom"] },
@@ -129,7 +130,7 @@ const SERVICES: Service[] = [
         short: "Source rare. Wear right.",
         tagline: "The right piece changes everything.",
         heroImg: require("@/assets/images/onboarding-driving.png"),
-        full: "We source and authenticate luxury accessories on your behalf — from Swiss timepieces and Italian leather to rare sneakers and statement jewellery. We handle procurement, authentication, and delivery.",
+        full: "We source and authenticate luxury accessories on your behalf, from Swiss timepieces and Italian leather to rare sneakers and statement jewellery. We handle procurement, authentication, and delivery.",
         fields: [
             { kind: "chips", label: "CATEGORY", options: ["Watches", "Shoes", "Bags", "Jewellery", "Sunglasses", "Other"] },
             { kind: "chips", label: "BUDGET RANGE", options: ["₦500k–₦1M", "₦1M–₦5M", "₦5M+", "Open Budget"] },
@@ -144,7 +145,7 @@ const SERVICES: Service[] = [
         short: "Business-class, door to door",
         tagline: "Every leg of your journey, handled.",
         heroImg: require("@/assets/images/range-rover-suv.png"),
-        full: "End-to-end executive travel coordination — airport pickups, hotel arrangements, flight bookings, inter-city movements, and on-ground support in any Nigerian city. Travel without friction.",
+        full: "End-to-end executive travel coordination: airport pickups, hotel arrangements, flight bookings, inter-city movements, and on-ground support in any Nigerian city. Travel without friction.",
         fields: [
             { kind: "date",    label: "DATE" },
             { kind: "chips",   label: "SERVICE", options: ["Airport Transfer", "Hotel Arrangement", "Inter-City", "Full Trip"] },
@@ -186,7 +187,7 @@ const SERVICES: Service[] = [
         short: "Beyond the boardroom",
         tagline: "Relationships are built off the clock.",
         heroImg: require("@/assets/images/onboarding-driving.png"),
-        full: "Curated entertainment experiences for your clients and business partners. Golf outings, private dining, VIP event access, sports packages, and exclusive social experiences — all arranged to impress.",
+        full: "Curated entertainment experiences for your clients and business partners. Golf outings, private dining, VIP event access, sports packages, and exclusive social experiences, all arranged to impress.",
         fields: [
             { kind: "date",    label: "DATE" },
             { kind: "chips",   label: "TYPE", options: ["Golf Outing", "Private Dinner", "VIP Event", "Sports Package", "Custom"] },
@@ -202,7 +203,7 @@ const SERVICES: Service[] = [
         short: "Restaurant quality, in your home",
         tagline: "The best dining room is yours.",
         heroImg: require("@/assets/images/onboarding-lifestyle.png"),
-        full: "Professional chefs brought directly to your home for any occasion — dinner parties, family meals, weekly meal prep, or a private dining experience. Full menu planning, grocery procurement, and kitchen cleanup included.",
+        full: "Professional chefs brought directly to your home for any occasion: dinner parties, family meals, weekly meal prep, or a private dining experience. Full menu planning, grocery procurement, and kitchen cleanup included.",
         fields: [
             { kind: "date",    label: "DATE" },
             { kind: "chips",   label: "OCCASION", options: ["Dinner Party", "Date Night", "Meal Prep", "Family Meal", "Custom"] },
@@ -217,7 +218,7 @@ const SERVICES: Service[] = [
         short: "Immaculate, without the effort",
         tagline: "Your space, always at its best.",
         heroImg: require("@/assets/images/onboarding-lifestyle.png"),
-        full: "Vetted, professional housekeeping staff deployed to your home on a one-time or recurring basis. Deep cleans, regular maintenance, laundry, ironing, and home organisation — done to your standard.",
+        full: "Vetted, professional housekeeping staff deployed to your home on a one-time or recurring basis. Deep cleans, regular maintenance, laundry, ironing, and home organisation, done to your standard.",
         fields: [
             { kind: "chips", label: "SERVICE", options: ["Regular Clean", "Deep Clean", "Laundry & Ironing", "Organisation", "Full Service"] },
             { kind: "chips", label: "FREQUENCY", options: ["Once", "Weekly", "Bi-Weekly", "Monthly"] },
@@ -230,7 +231,7 @@ const SERVICES: Service[] = [
         short: "Fix it before you notice",
         tagline: "A well-kept home is a statement.",
         heroImg: require("@/assets/images/onboarding-benefits.png"),
-        full: "Trusted tradespeople for every home repair and maintenance need — plumbing, electrical, AC servicing, painting, carpentry, and more. Vetted professionals, fair pricing, and work you can rely on.",
+        full: "Trusted tradespeople for every home repair and maintenance need: plumbing, electrical, AC servicing, painting, carpentry, and more. Vetted professionals, fair pricing, and work you can rely on.",
         fields: [
             { kind: "chips", label: "SERVICE", options: ["Plumbing", "Electrical", "AC Service", "Painting", "Carpentry", "Other"] },
             { kind: "notes", label: "NOTES", placeholder: "Describe the issue or work required..." },
@@ -242,7 +243,7 @@ const SERVICES: Service[] = [
         short: "Space that works for you",
         tagline: "Your environment shapes everything.",
         heroImg: require("@/assets/images/onboarding-lifestyle.png"),
-        full: "Interior styling and decoration support for any room or entire property. From artwork curation and furniture sourcing to full room redesigns — we help you build a space that reflects your taste and supports how you live.",
+        full: "Interior styling and decoration support for any room or entire property. From artwork curation and furniture sourcing to full room redesigns, we help you build a space that reflects your taste and supports how you live.",
         fields: [
             { kind: "chips", label: "SCOPE", options: ["One Room", "Multiple Rooms", "Full Home", "Office"] },
             { kind: "chips", label: "STYLE", options: ["Modern", "Classic", "Afro-Luxe", "Minimalist", "Custom"] },
@@ -523,7 +524,7 @@ export default function GentlemensConciergeScreen() {
                             </View>
                         </View>
 
-                        <ScrollView contentContainerStyle={s.sheetScroll}>
+                        <KeyboardAwareScrollView contentContainerStyle={s.sheetScroll} enableOnAndroid extraScrollHeight={20} keyboardOpeningTime={0}>
                             <Text style={s.sheetDesc}>{selected.full}</Text>
                             <View style={s.divider} />
 
@@ -559,7 +560,7 @@ export default function GentlemensConciergeScreen() {
                                     <Text style={s.submitText}>{loading ? "Submitting..." : "Request This Service"}</Text>
                                 </TouchableOpacity>
                             )}
-                        </ScrollView>
+                        </KeyboardAwareScrollView>
                     </View>
                 )}
             </Modal>

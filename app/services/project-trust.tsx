@@ -1,11 +1,12 @@
 import { useState, useMemo, useRef } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Platform, KeyboardAvoidingView, Keyboard, Modal, Animated } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Keyboard, Modal, Animated } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@/context/ThemeContext";
 import { supabase } from "@/lib/supabase";
 import { Check } from "lucide-react-native";
 import VoiceInput from "@/components/VoiceInput";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 
 export default function ProjectTrustScreen() {
     const router = useRouter();
@@ -23,7 +24,7 @@ export default function ProjectTrustScreen() {
 
     const frequencies = ["Weekly", "Bi-weekly", "Monthly"];
 
-    const scrollRef = useRef<ScrollView>(null);
+    const scrollRef = useRef<any>(null);
     const notesY = useRef(0);
     const addressRef = useRef<TextInput>(null);
     const contractorRef = useRef<TextInput>(null);
@@ -54,8 +55,7 @@ export default function ProjectTrustScreen() {
 
     return (
         <SafeAreaView style={s.root}>
-            <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
-                <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+            <KeyboardAwareScrollView ref={scrollRef} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" enableOnAndroid extraScrollHeight={20} keyboardOpeningTime={0}>
                     <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
                         <Text style={s.backText}>← Back</Text>
                     </TouchableOpacity>
@@ -130,8 +130,7 @@ export default function ProjectTrustScreen() {
                         <Text style={s.btnText}>{loading ? "Submitting..." : "Submit Project"}</Text>
                     </TouchableOpacity>
                     <View style={{ height: 40 }} />
-                </ScrollView>
-            </KeyboardAvoidingView>
+            </KeyboardAwareScrollView>
 
             <Modal visible={showSuccess} transparent animationType="none">
                 <View style={s.overlay}>

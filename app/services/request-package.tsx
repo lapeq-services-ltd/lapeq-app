@@ -2,9 +2,10 @@ import { showToast } from "@/lib/toast";
 import { cleanErr } from "@/lib/cleanErr";
 import { useState, useMemo, useEffect } from "react";
 import {
-    View, Text, ScrollView, TouchableOpacity, StyleSheet,
-    TextInput, Alert, Modal, KeyboardAvoidingView, Platform, Keyboard,
+    View, Text, TouchableOpacity, StyleSheet,
+    TextInput, Alert, Modal, Platform, Keyboard,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -179,10 +180,6 @@ export default function RequestPackageScreen() {
     const borderCol = theme === "dark" ? "#2a2a2a" : "#d8d3ca";
 
     return (
-        <KeyboardAvoidingView
-            style={{ flex: 1 }}
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-        >
         <SafeAreaView style={s.root}>
             <View style={s.header}>
                 <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
@@ -194,7 +191,7 @@ export default function RequestPackageScreen() {
                 </View>
             </View>
 
-            <ScrollView contentContainerStyle={s.form} keyboardShouldPersistTaps="handled">
+            <KeyboardAwareScrollView contentContainerStyle={s.form} keyboardShouldPersistTaps="handled" enableOnAndroid extraScrollHeight={20} keyboardOpeningTime={0}>
 
                 {/* City / Location Autocomplete */}
                 <Text style={s.label}>Where are you going?</Text>
@@ -365,7 +362,7 @@ export default function RequestPackageScreen() {
                     Your concierge will review your brief and begin crafting your personalised itinerary. You will be notified when it's ready.
                 </Text>
 
-            </ScrollView>
+            </KeyboardAwareScrollView>
 
             {/* Date picker — iOS only in Modal */}
             {Platform.OS === "ios" && (
@@ -448,7 +445,6 @@ export default function RequestPackageScreen() {
                 </View>
             </Modal>
         </SafeAreaView>
-        </KeyboardAvoidingView>
     );
 }
 

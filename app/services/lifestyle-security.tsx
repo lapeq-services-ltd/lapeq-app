@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef } from "react";
-import { ScrollView, View, Text, TextInput, TouchableOpacity, StyleSheet, Platform, Animated, Alert } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Platform, Animated, Alert } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTheme } from "@/context/ThemeContext";
@@ -110,7 +111,7 @@ export default function SecurityProtocolScreen() {
 
     return (
         <SafeAreaView style={s.root} edges={["top"]}>
-            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets contentContainerStyle={{ paddingBottom: 80 }}>
+            <KeyboardAwareScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" enableOnAndroid extraScrollHeight={20} keyboardOpeningTime={0} contentContainerStyle={{ paddingBottom: 80 }}>
 
                 <View style={s.hero}>
                     <View style={s.heroPattern}>
@@ -125,7 +126,7 @@ export default function SecurityProtocolScreen() {
                         <Shield size={48} color={GOLD} style={{ opacity: 0.9, marginBottom: 16 }} />
                         <Text style={s.heroEyebrow}>LAPEQ SECURITY</Text>
                         <Text style={s.heroTitle}>Security &{"\n"}Protocol</Text>
-                        <Text style={s.heroSub}>Personal protection, event security & VIP arrangements — handled discreetly</Text>
+                        <Text style={s.heroSub}>Personal protection, event security & VIP arrangements, handled discreetly</Text>
                     </View>
                 </View>
 
@@ -227,7 +228,7 @@ export default function SecurityProtocolScreen() {
                     </TouchableOpacity>
 
                 </View>
-            </ScrollView>
+            </KeyboardAwareScrollView>
 
             {showSuccess && (
                 <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">

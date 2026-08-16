@@ -1,13 +1,14 @@
 import { useState, useMemo, useRef } from "react";
 import {
     View, Text, TextInput, TouchableOpacity, StyleSheet,
-    ScrollView, KeyboardAvoidingView, Platform, Modal, Animated, Alert,
+    Modal, Animated, Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTheme } from "@/context/ThemeContext";
 import { ChevronLeft, Check } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import VoiceInput from "@/components/VoiceInput";
 
 const SERVICE_META: Record<string, { label: string; placeholder: string; eyebrow: string }> = {
@@ -105,8 +106,7 @@ export default function LifestyleRequestScreen() {
 
     return (
         <SafeAreaView style={s.root} edges={["top"]}>
-            <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
-                <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 60 }}>
+            <KeyboardAwareScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 60 }} enableOnAndroid extraScrollHeight={20} keyboardOpeningTime={0}>
 
                     <View style={s.header}>
                         <TouchableOpacity style={s.backBtn} onPress={() => router.back()} activeOpacity={0.8}>
@@ -167,8 +167,7 @@ export default function LifestyleRequestScreen() {
                         </TouchableOpacity>
                     </View>
 
-                </ScrollView>
-            </KeyboardAvoidingView>
+            </KeyboardAwareScrollView>
 
             <Modal visible={showSuccess} transparent animationType="none">
                 <View style={s.overlay}>
