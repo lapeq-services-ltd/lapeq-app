@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
 import { LinearGradient } from "expo-linear-gradient";
 import { PayWithFlutterwave } from "flutterwave-react-native";
+import OptionImageCarousel from "@/components/OptionImageCarousel";
 
 const GOLD = "#c9a84c";
 const FLW_PUBLIC_KEY = process.env.EXPO_PUBLIC_FLUTTERWAVE_PUBLIC_KEY ?? "";
@@ -35,12 +36,27 @@ type Request = {
     notes: string | null;
     driver_status: string | null;
     payment_status?: string | null;
+    quoted_fare?: number | null;
+    surcharge_amount?: number | null;
     details: {
         passengers?: number; carType?: string; instructions?: string; carCount?: number; color?: string | null;
         serviceType?: string; destination?: string; dateFrom?: string; dateTo?: string; guests?: number; budget?: string; preferences?: string;
         aircraft?: string; tripType?: string; departure?: string; departureDate?: string; depDate?: string; departureTime?: string; depTime?: string; returnDate?: string | null; retDate?: string | null; catering?: string; groundTransfer?: boolean; notes?: string; specialRequests?: string;
         package?: string; country?: string; timeline?: string; options?: Record<string, boolean>; details?: string;
+        curated_options?: {
+            recommended?: CuratedOption;
+            suggestions?: CuratedOption[];
+            selection?: CuratedOption;
+        };
     } | null;
+};
+
+type CuratedOption = {
+    title: string;
+    price: number;
+    description?: string;
+    images?: string[];
+    image?: string;
 };
 
 const CAR_IMAGES: Record<string, any> = {
@@ -62,6 +78,12 @@ const SERVICE_LABELS: Record<string, string> = {
     "diaspora-support": "Diaspora Support",
     "lifestyle-request": "Bespoke Request",
 };
+
+const DRIVING_SERVICE_TYPES = ["driving-service", "driving", "logistics"];
+
+function rideFareTotal(r: Request): number {
+    return Number(r.quoted_fare || 0) + Number(r.surcharge_amount || 0);
+}
 
 function StatusBadge({ status }: { status: string }) {
     const colors: Record<string, { bg: string; text: string; dot: string }> = {
@@ -161,7 +183,7 @@ export default function RequestDetailsScreen() {
         tx_ref: string;
         request_id: string;
         expected_amount: number;
-        payment_type: "curation" | "option";
+        payment_type: "curation" | "option" | "ride_fare";
         option_title?: string;
     }) => {
         setVerifying(true);
@@ -190,7 +212,7 @@ export default function RequestDetailsScreen() {
         } catch {
             Alert.alert(
                 "Verification Error",
-                "Could not reach our server to verify your payment. Please contact support — your payment may still have gone through."
+                "Could not reach our server to verify your payment. Please contact support, as your payment may still have gone through."
             );
             return null;
         } finally {
@@ -236,6 +258,8 @@ export default function RequestDetailsScreen() {
         month: "long", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit"
     });
 
+    const showRideFareBar = !!request && DRIVING_SERVICE_TYPES.includes(request.service_type) && request.status === "completed" && !!request.quoted_fare && request.payment_status !== "paid";
+
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: C.background }}>
             {/* Header */}
@@ -271,10 +295,14 @@ export default function RequestDetailsScreen() {
                     <Text style={{ fontSize: 16, color: C.muted }}>Request not found.</Text>
                 </View>
             ) : (
-                <ScrollView contentContainerStyle={{ paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
+                <>
+                <ScrollView
+                    contentContainerStyle={{ paddingBottom: showRideFareBar ? 130 : 60 }}
+                    showsVerticalScrollIndicator={false}
+                >
 
                     {/* Driver Live Banner */}
-                    {request.service_type === "driving-service" && request.driver_status && (
+                    {request.service_type === "driving-service" && request.driver_status && request.status !== "cancelled" && (
                         <TouchableOpacity
                             onPress={() => router.push("/(main)/coordination")}
                             style={{ marginHorizontal: 20, marginBottom: 16, borderRadius: 14, overflow: "hidden" }}
@@ -320,6 +348,13 @@ export default function RequestDetailsScreen() {
                             )}
 
                             <StatusBadge status={request.status} />
+
+                            {DRIVING_SERVICE_TYPES.includes(request.service_type) && !!request.quoted_fare && request.status !== "cancelled" && (
+                                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 }}>
+                                    <Text style={{ fontSize: 12, color: C.muted }}>Ride Fare</Text>
+                                    <Text style={{ fontSize: 15, fontWeight: "700", color: GOLD }}>₦{Number(request.quoted_fare).toLocaleString()}</Text>
+                                </View>
+                            )}
 
                             <Text style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>
                                 Submitted {fmtDate(request.created_at)}
@@ -370,7 +405,7 @@ export default function RequestDetailsScreen() {
                                             amount: 5000,
                                             currency: "NGN",
                                             payment_options: "card,banktransfer,ussd",
-                                            customization: {
+                                            customizations: {
                                                 title: "Lapeq Curation Fee",
                                                 description: "One-time concierge request curation",
                                                 logo: "https://iwedpnipbuurohaqibag.supabase.co/storage/v1/object/public/avatars/lapeq-logo.png",
@@ -435,46 +470,104 @@ export default function RequestDetailsScreen() {
                         </View>
                     )}
 
-                    {/* Curated Interactive Suggestions */}
-                    {request.details?.curated_options && (
-                        <View style={{ marginHorizontal: 20, marginBottom: 20, gap: 14 }}>
-                            {request.payment_status === "paid" && request.details.curated_options.selection ? (
-                                <View style={{ borderRadius: 20, backgroundColor: "rgba(76,175,80,0.06)", borderWidth: 1, borderColor: "rgba(76,175,80,0.3)", padding: 20, gap: 8 }}>
-                                    <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                                        <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: "rgba(76,175,80,0.15)", alignItems: "center", justifyContent: "center" }}>
-                                            <Check size={12} color="#4caf50" strokeWidth={3} />
-                                        </View>
-                                        <Text style={{ fontSize: 11, fontWeight: "800", color: "#4caf50", letterSpacing: 1 }}>BOOKING CONFIRMED</Text>
+                    {/* Ride Fare Payment Action Card */}
+                    {DRIVING_SERVICE_TYPES.includes(request.service_type) && request.status === "completed" && !!request.quoted_fare && request.payment_status !== "paid" && (
+                        <View style={{ marginHorizontal: 20, marginBottom: 20, borderRadius: 24, backgroundColor: C.surface, borderWidth: 1, borderColor: `${GOLD}50`, overflow: "hidden" }}>
+                            <LinearGradient colors={[`${GOLD}15`, "transparent"]} style={{ padding: 24, gap: 16 }}>
+                                <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                                    <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: `${GOLD}20`, alignItems: "center", justifyContent: "center" }}>
+                                        <Wallet size={20} color={GOLD} />
                                     </View>
-                                    <Text style={{ fontSize: 16, fontWeight: "700", color: C.text }}>{request.details.curated_options.selection.title}</Text>
-                                    <Text style={{ fontSize: 13, color: C.muted }}>Paid ₦{Number(request.details.curated_options.selection.price).toLocaleString()}</Text>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={{ fontSize: 16, fontWeight: "700", color: C.text }}>Ride Fare</Text>
+                                        <Text style={{ fontSize: 12, color: C.muted, marginTop: 1 }}>Your trip is complete. Settle your fare below</Text>
+                                    </View>
+                                </View>
+
+                                <View style={{ height: 1, backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)" }} />
+
+                                <View style={{ gap: 8 }}>
+                                    <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                                        <Text style={{ fontSize: 13, color: C.muted }}>Ride fare</Text>
+                                        <Text style={{ fontSize: 13, fontWeight: "600", color: C.text }}>₦{Number(request.quoted_fare).toLocaleString()}</Text>
+                                    </View>
+                                    {!!request.surcharge_amount && request.surcharge_amount > 0 && (
+                                        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                                            <Text style={{ fontSize: 13, color: C.muted }}>Waiting surcharge</Text>
+                                            <Text style={{ fontSize: 13, fontWeight: "600", color: C.text }}>₦{Number(request.surcharge_amount).toLocaleString()}</Text>
+                                        </View>
+                                    )}
+                                    <View style={{ flexDirection: "row", justifyContent: "space-between", paddingTop: 8, borderTopWidth: 1, borderTopColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)" }}>
+                                        <Text style={{ fontSize: 13, fontWeight: "700", color: C.text }}>Total</Text>
+                                        <Text style={{ fontSize: 24, fontWeight: "800", color: GOLD }}>₦{rideFareTotal(request).toLocaleString()}</Text>
+                                    </View>
+                                </View>
+
+                                <View style={{ backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)", borderRadius: 12, padding: 12 }}>
+                                    <Text style={{ fontSize: 11, color: C.muted, textAlign: "center" }}>
+                                        Secure payment via Flutterwave · Card, Bank Transfer, USSD
+                                    </Text>
+                                </View>
+                            </LinearGradient>
+                        </View>
+                    )}
+
+                    {/* Ride Fare Paid Banner */}
+                    {DRIVING_SERVICE_TYPES.includes(request.service_type) && request.payment_status === "paid" && !!request.quoted_fare && (
+                        <View style={{ marginHorizontal: 20, marginBottom: 20, borderRadius: 16, backgroundColor: "rgba(76,175,80,0.08)", borderWidth: 1, borderColor: "rgba(76,175,80,0.3)", padding: 16, flexDirection: "row", alignItems: "center", gap: 12 }}>
+                            <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: "rgba(76,175,80,0.15)", alignItems: "center", justifyContent: "center" }}>
+                                <Check size={14} color="#4caf50" strokeWidth={3} />
+                            </View>
+                            <Text style={{ flex: 1, fontSize: 13, color: "#4caf50", fontWeight: "600" }}>
+                                Ride fare paid successfully. Thank you for riding with LAPEQ!
+                            </Text>
+                        </View>
+                    )}
+
+                    {/* Curated Interactive Suggestions */}
+                    {(() => {
+                        const curatedOptions = request.details?.curated_options;
+                        if (!curatedOptions) return null;
+                        return (
+                        <View style={{ marginHorizontal: 20, marginBottom: 20, gap: 14 }}>
+                            {request.payment_status === "paid" && curatedOptions.selection ? (
+                                <View style={{ borderRadius: 20, backgroundColor: "rgba(76,175,80,0.06)", borderWidth: 1, borderColor: "rgba(76,175,80,0.3)", overflow: "hidden" }}>
+                                    <OptionImageCarousel option={curatedOptions.selection} height={140} />
+                                    <View style={{ padding: 20, gap: 8 }}>
+                                        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                                            <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: "rgba(76,175,80,0.15)", alignItems: "center", justifyContent: "center" }}>
+                                                <Check size={12} color="#4caf50" strokeWidth={3} />
+                                            </View>
+                                            <Text style={{ fontSize: 11, fontWeight: "800", color: "#4caf50", letterSpacing: 1 }}>BOOKING CONFIRMED</Text>
+                                        </View>
+                                        <Text style={{ fontSize: 16, fontWeight: "700", color: C.text }}>{curatedOptions.selection.title}</Text>
+                                        <Text style={{ fontSize: 13, color: C.muted }}>Paid ₦{Number(curatedOptions.selection.price).toLocaleString()}</Text>
+                                    </View>
                                 </View>
                             ) : (
                                 <View style={{ gap: 16 }}>
                                     <Text style={{ fontSize: 11, fontWeight: "800", color: GOLD, letterSpacing: 1.5 }}>RECOMMENDED FOR YOU</Text>
-                                    
-                                    {request.details.curated_options.recommended && (
+
+                                    {curatedOptions.recommended && (
                                         <View style={{ borderRadius: 24, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, overflow: "hidden" }}>
-                                            {request.details.curated_options.recommended.image ? (
-                                                <Image source={{ uri: request.details.curated_options.recommended.image }} style={{ width: "100%", height: 160 }} resizeMode="cover" />
-                                            ) : null}
+                                            <OptionImageCarousel option={curatedOptions.recommended} height={160} />
                                             <View style={{ padding: 20, gap: 12 }}>
                                                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
                                                     <View style={{ flex: 1, gap: 4 }}>
                                                         <View style={{ alignSelf: "flex-start", backgroundColor: `${GOLD}20`, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
                                                             <Text style={{ fontSize: 9, fontWeight: "700", color: GOLD }}>STRONGLY RECOMMENDED</Text>
                                                         </View>
-                                                        <Text style={{ fontSize: 17, fontWeight: "700", color: C.text }}>{request.details.curated_options.recommended.title}</Text>
+                                                        <Text style={{ fontSize: 17, fontWeight: "700", color: C.text }}>{curatedOptions.recommended.title}</Text>
                                                     </View>
-                                                    <Text style={{ fontSize: 18, fontWeight: "800", color: GOLD }}>₦{Number(request.details.curated_options.recommended.price).toLocaleString()}</Text>
+                                                    <Text style={{ fontSize: 18, fontWeight: "800", color: GOLD }}>₦{Number(curatedOptions.recommended.price).toLocaleString()}</Text>
                                                 </View>
-                                                
-                                                {request.details.curated_options.recommended.description ? (
-                                                    <Text style={{ fontSize: 13, color: C.muted, lineHeight: 18 }}>{request.details.curated_options.recommended.description}</Text>
+
+                                                {curatedOptions.recommended.description ? (
+                                                    <Text style={{ fontSize: 13, color: C.muted, lineHeight: 18 }}>{curatedOptions.recommended.description}</Text>
                                                 ) : null}
 
-                                                <TouchableOpacity 
-                                                    onPress={() => setPayingOption({ title: request.details.curated_options.recommended.title, price: request.details.curated_options.recommended.price })}
+                                                <TouchableOpacity
+                                                    onPress={() => setPayingOption({ title: curatedOptions.recommended!.title, price: curatedOptions.recommended!.price })}
                                                     style={{ backgroundColor: GOLD, paddingVertical: 12, borderRadius: 14, alignItems: "center" }}
                                                     activeOpacity={0.85}
                                                 >
@@ -484,24 +577,27 @@ export default function RequestDetailsScreen() {
                                         </View>
                                     )}
 
-                                    {request.details.curated_options.suggestions?.length > 0 && (
+                                    {curatedOptions.suggestions && curatedOptions.suggestions.length > 0 && (
                                         <View style={{ gap: 10 }}>
                                             <Text style={{ fontSize: 11, fontWeight: "800", color: C.muted, letterSpacing: 1 }}>ALTERNATIVE OPTIONS</Text>
-                                            {request.details.curated_options.suggestions.map((sug: any, idx: number) => (
-                                                <View key={idx} style={{ borderRadius: 20, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, padding: 18, flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-                                                    <View style={{ flex: 1, gap: 4 }}>
-                                                        <Text style={{ fontSize: 15, fontWeight: "700", color: C.text }}>{sug.title}</Text>
-                                                        {sug.description ? <Text style={{ fontSize: 12, color: C.muted }}>{sug.description}</Text> : null}
-                                                    </View>
-                                                    <View style={{ alignItems: "flex-end", gap: 8 }}>
-                                                        <Text style={{ fontSize: 15, fontWeight: "800", color: GOLD }}>₦{Number(sug.price).toLocaleString()}</Text>
-                                                        <TouchableOpacity 
-                                                            onPress={() => setPayingOption({ title: sug.title, price: sug.price })}
-                                                            style={{ backgroundColor: `${GOLD}20`, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 }}
-                                                            activeOpacity={0.85}
-                                                        >
-                                                            <Text style={{ fontSize: 11, fontWeight: "700", color: GOLD }}>Select</Text>
-                                                        </TouchableOpacity>
+                                            {curatedOptions.suggestions.map((sug: CuratedOption, idx: number) => (
+                                                <View key={idx} style={{ borderRadius: 20, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, overflow: "hidden" }}>
+                                                    <OptionImageCarousel option={sug} height={120} />
+                                                    <View style={{ padding: 18, flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                                                        <View style={{ flex: 1, gap: 4 }}>
+                                                            <Text style={{ fontSize: 15, fontWeight: "700", color: C.text }}>{sug.title}</Text>
+                                                            {sug.description ? <Text style={{ fontSize: 12, color: C.muted }}>{sug.description}</Text> : null}
+                                                        </View>
+                                                        <View style={{ alignItems: "flex-end", gap: 8 }}>
+                                                            <Text style={{ fontSize: 15, fontWeight: "800", color: GOLD }}>₦{Number(sug.price).toLocaleString()}</Text>
+                                                            <TouchableOpacity
+                                                                onPress={() => setPayingOption({ title: sug.title, price: sug.price })}
+                                                                style={{ backgroundColor: `${GOLD}20`, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 }}
+                                                                activeOpacity={0.85}
+                                                            >
+                                                                <Text style={{ fontSize: 11, fontWeight: "700", color: GOLD }}>Select</Text>
+                                                            </TouchableOpacity>
+                                                        </View>
                                                     </View>
                                                 </View>
                                             ))}
@@ -510,7 +606,8 @@ export default function RequestDetailsScreen() {
                                 </View>
                             )}
                         </View>
-                    )}
+                        );
+                    })()}
 
                     {/* Details Card */}
                     <View style={{ marginHorizontal: 20, marginBottom: 20, borderRadius: 20, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, overflow: "hidden" }}>
@@ -671,6 +768,83 @@ export default function RequestDetailsScreen() {
                         </TouchableOpacity>
                     )}
                 </ScrollView>
+
+                {/* Sticky Ride Fare Pay Bar — always visible, no scrolling required */}
+                {showRideFareBar && (
+                    <View style={{
+                        position: "absolute", left: 0, right: 0, bottom: 0,
+                        paddingHorizontal: 20, paddingTop: 14, paddingBottom: 20,
+                        backgroundColor: C.background,
+                        borderTopWidth: 1, borderTopColor: C.border,
+                        shadowColor: "#000", shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 12,
+                    }}>
+                        {verifying ? (
+                            <View style={{ paddingVertical: 16, alignItems: "center", gap: 8 }}>
+                                <ActivityIndicator size="small" color={GOLD} />
+                                <Text style={{ fontSize: 12, color: C.muted }}>Verifying payment with server...</Text>
+                            </View>
+                        ) : userEmail ? (
+                            <PayWithFlutterwave
+                                options={{
+                                    // Deterministic tx_ref — derived from request.id, never changes.
+                                    tx_ref: `RIDE-${request.id.replace(/-/g, "").slice(0, 20)}`,
+                                    authorization: FLW_PUBLIC_KEY,
+                                    customer: { email: userEmail, name: userName },
+                                    amount: rideFareTotal(request),
+                                    currency: "NGN",
+                                    payment_options: "card,banktransfer,ussd",
+                                    customizations: {
+                                        title: "Lapeq Ride Fare",
+                                        description: "Chauffeur ride fare payment",
+                                        logo: "https://iwedpnipbuurohaqibag.supabase.co/storage/v1/object/public/avatars/lapeq-logo.png",
+                                    },
+                                }}
+                                customButton={(props) => (
+                                    <TouchableOpacity
+                                        onPress={props.onPress}
+                                        disabled={props.disabled}
+                                        style={{
+                                            backgroundColor: GOLD,
+                                            paddingVertical: 16,
+                                            borderRadius: 16,
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            shadowColor: GOLD,
+                                            shadowOffset: { width: 0, height: 4 },
+                                            shadowOpacity: 0.2,
+                                            shadowRadius: 8,
+                                            elevation: 3,
+                                        }}
+                                        activeOpacity={0.85}
+                                    >
+                                        <Text style={{ fontSize: 15, fontWeight: "700", color: "#000" }}>
+                                            Pay Ride Fare (₦{rideFareTotal(request).toLocaleString()})
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
+                                onRedirect={async (data) => {
+                                    if (data.status === "successful" || data.status === "completed") {
+                                        const result = await verifyPayment({
+                                            tx_ref: `RIDE-${request.id.replace(/-/g, "").slice(0, 20)}`,
+                                            request_id: request.id,
+                                            expected_amount: rideFareTotal(request),
+                                            payment_type: "ride_fare",
+                                        });
+                                        if (result?.success) {
+                                            setRequest(prev => prev ? { ...prev, payment_status: "paid" } : prev);
+                                            Alert.alert("Payment Successful", `Your ride fare of ₦${rideFareTotal(request).toLocaleString()} has been paid. Thank you for riding with LAPEQ.`);
+                                        }
+                                    } else {
+                                        Alert.alert("Payment Cancelled", "The payment process was not completed.");
+                                    }
+                                }}
+                            />
+                        ) : (
+                            <ActivityIndicator size="small" color={GOLD} />
+                        )}
+                    </View>
+                )}
+                </>
             )}
 
             {/* Cancel Modal */}
@@ -727,7 +901,7 @@ export default function RequestDetailsScreen() {
                                 <ActivityIndicator size="small" color={GOLD} />
                                 <Text style={{ fontSize: 12, color: C.muted }}>Verifying payment with server...</Text>
                             </View>
-                        ) : userEmail && payingOption ? (
+                        ) : request && userEmail && payingOption ? (
                             <PayWithFlutterwave
                                 options={{
                                     // Deterministic: same option on same request always produces the same tx_ref.
@@ -738,7 +912,7 @@ export default function RequestDetailsScreen() {
                                     amount: payingOption.price,
                                     currency: "NGN",
                                     payment_options: "card,banktransfer,ussd",
-                                    customization: {
+                                    customizations: {
                                         title: `Lapeq · ${payingOption.title}`,
                                         description: "Concierge-managed service · Secure checkout",
                                         logo: "https://iwedpnipbuurohaqibag.supabase.co/storage/v1/object/public/avatars/lapeq-logo.png",

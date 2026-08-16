@@ -9,6 +9,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { ChevronLeft, Calendar, Clock, Check, X, Plus, ArrowLeft, MapPin, Coffee, Crown, Star, Car, Wallet, Lock } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { PayWithFlutterwave } from "flutterwave-react-native";
+import OptionImageCarousel from "@/components/OptionImageCarousel";
 
 const GOLD = "#c9a84c";
 const FLW_PUBLIC_KEY = process.env.EXPO_PUBLIC_FLUTTERWAVE_PUBLIC_KEY ?? "";
@@ -19,6 +20,9 @@ interface ItineraryItem {
     label: string;
     description?: string;
     checked: boolean;
+    category?: string;
+    badge?: string;
+    rating?: number;
 }
 
 interface ItineraryDay {
@@ -510,9 +514,7 @@ export default function ItineraryViewScreen() {
 
                     {recommended && (
                         <View style={{ borderRadius: 24, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, overflow: "hidden" }}>
-                            {recommended.image && (
-                                <Image source={{ uri: recommended.image }} style={{ width: "100%", height: 140 }} resizeMode="cover" />
-                            )}
+                            <OptionImageCarousel option={recommended} height={140} />
                             <View style={{ padding: 20, gap: 12 }}>
                                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
                                     <View style={{ flex: 1, gap: 4 }}>
@@ -580,7 +582,9 @@ export default function ItineraryViewScreen() {
                         <View style={{ gap: 10 }}>
                             <Text style={{ fontSize: 11, fontWeight: "800", color: C.muted, letterSpacing: 1 }}>ALTERNATIVE OPTIONS</Text>
                             {suggestions.map((sug: any, idx: number) => (
-                                <View key={idx} style={{ borderRadius: 20, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, padding: 16, gap: 12 }}>
+                                <View key={idx} style={{ borderRadius: 20, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, overflow: "hidden" }}>
+                                    <OptionImageCarousel option={sug} height={120} />
+                                    <View style={{ padding: 16, gap: 12 }}>
                                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
                                         <View style={{ flex: 1, gap: 4 }}>
                                             <Text style={{ fontSize: 14, fontWeight: "700", color: C.text }}>{sug.title}</Text>
@@ -634,6 +638,7 @@ export default function ItineraryViewScreen() {
                                     ) : (
                                         <ActivityIndicator size="small" color={GOLD} />
                                     )}
+                                    </View>
                                 </View>
                             ))}
                         </View>
