@@ -8,23 +8,25 @@ import {
 } from "react-native";
 import { useSafeAreaInsets, SafeAreaView } from "react-native-safe-area-context";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { ChevronLeft, CheckCircle2, X, Plus, Minus, Mic, Maximize2, Play, Pause, Trash2, ChevronDown, ChevronUp } from "lucide-react-native";
+import { ChevronLeft, CheckCircle2, X, Plus, Minus, Mic, Maximize2, Play, Pause, Trash2 } from "lucide-react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { supabase } from "@/lib/supabase";
 import { Audio } from "expo-av";
 
 const { width: W } = Dimensions.get("window");
+const archWidth = (W - 48 - 24) / 3; // 24px side padding, 12px gaps, ~3 visible per screen
 
 const OCCASIONS = [
-    { id: "date",          label: "Date Night",    emoji: "◎", color: "#7A3B5E", desc: "A night to remember, arranged for you" },
-    { id: "spa",           label: "Spa Day",        emoji: "✿", color: "#4A7A6A", desc: "Your body deserves the finest care" },
-    { id: "shopping",      label: "Shopping",       emoji: "✤", color: "#8C6844", desc: "Curated fashion, personal styling" },
-    { id: "event",         label: "Event Prep",     emoji: "❋", color: "#6A3F72", desc: "Arrive flawless, always" },
-    { id: "wellness",      label: "Wellness",       emoji: "◈", color: "#5A6A9E", desc: "Mind, body and soul, restored" },
-    { id: "home",          label: "Home",           emoji: "⌂", color: "#8A5C40", desc: "Your household, perfectly managed" },
-    { id: "business",      label: "Business",       emoji: "✦", color: "#3E5068", desc: "Corporate dining, workspace & executive travel" },
-    { id: "entertainment", label: "Entertainment",  emoji: "◎", color: "#2E6655", desc: "VIP events & private experiences" },
+    { id: "date",          label: "Date Night",    emoji: "◎", color: "#7A3B5E", desc: "A night to remember, arranged for you", img: require("@/assets/images/ladies-date-night.png") },
+    { id: "spa",           label: "Spa Day",        emoji: "✿", color: "#4A7A6A", desc: "Your body deserves the finest care", img: require("@/assets/images/ladies-spa.png") },
+    { id: "shopping",      label: "Shopping",       emoji: "✤", color: "#8C6844", desc: "Curated fashion, personal styling", img: require("@/assets/images/ladies-shopping.png") },
+    { id: "event",         label: "Event Prep",     emoji: "❋", color: "#6A3F72", desc: "Arrive flawless, always", img: require("@/assets/images/lagos-beach.jpg") },
+    { id: "wellness",      label: "Wellness",       emoji: "◈", color: "#5A6A9E", desc: "Mind, body and soul, restored", img: require("@/assets/images/onboarding-lifestyle.png") },
+    { id: "home",          label: "Home",           emoji: "⌂", color: "#8A5C40", desc: "Your household, perfectly managed", img: require("@/assets/images/lagos-hotel.jpg") },
+    { id: "business",      label: "Business",       emoji: "✦", color: "#3E5068", desc: "Corporate dining, workspace & executive travel", img: require("@/assets/images/onboarding-trust.png") },
+    { id: "entertainment", label: "Entertainment",  emoji: "◎", color: "#2E6655", desc: "VIP events & private experiences", img: require("@/assets/images/lagos-rooftop.jpg") },
 ];
 
 // ── Reusable form primitives ─────────────────────────────────────────────────
@@ -433,7 +435,7 @@ function DateNightForm({ accent, muted, textColor, cardBg, border, onData, onDat
                 <Text style={[fl.formDesc, { color: muted }]}>Tell us what you'd like arranged - we handle every detail with complete discretion.</Text>
                 <SectionLabel text="WHAT SHOULD WE ARRANGE?" muted={muted} />
                 <MultiPill options={["Transport & Driver", "Outfit Styling", "Restaurant / Venue", "Beauty Appointment", "Full Evening Package"]} selected={needs} onToggle={toggle} accent={accent} textColor={textColor} />
-                <SectionLabel text="WHEN IS THE OCCASION?" muted={muted} />
+                <SectionLabel text="WHEN IS THE SERVICE?" muted={muted} />
                 <TouchableOpacity style={[fl.dateBtn, { borderColor: `${accent}40`, backgroundColor: cardBg }]} onPress={() => onDatePick(date, (d: Date) => update("date", d))}>
                     <Text style={[fl.dateBtnText, { color: textColor }]}>{date.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</Text>
                 </TouchableOpacity>
@@ -777,12 +779,11 @@ export default function LadiesConciergeScreen() {
     const { eventTag, eventDate: eventDateParam } = useLocalSearchParams<{ eventTag?: string; eventDate?: string }>();
 
     const [occasion, setOccasion] = useState<string | null>(null);
-    const [occExpanded, setOccExpanded] = useState(false);
     const [formData, setFormData] = useState<any>({});
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
     const formAnim = useRef(new Animated.Value(0)).current;
-    const heroOpacity = useRef(new Animated.Value(1)).current;
+    const archScrollRef = useRef<ScrollView>(null);
 
     const [userTier, setUserTier] = useState<string | null>(null);
     const [monthlyRequestsCount, setMonthlyRequestsCount] = useState(0);
@@ -824,10 +825,6 @@ export default function LadiesConciergeScreen() {
 
     const selectOccasion = (id: string) => {
         if (id === occasion) return;
-        Animated.sequence([
-            Animated.timing(heroOpacity, { toValue: 0.5, duration: 180, useNativeDriver: true }),
-            Animated.timing(heroOpacity, { toValue: 1, duration: 220, useNativeDriver: true }),
-        ]).start();
         Animated.timing(formAnim, { toValue: 0, duration: 150, useNativeDriver: true }).start(() => {
             setOccasion(id);
             setFormData({});
@@ -835,12 +832,20 @@ export default function LadiesConciergeScreen() {
         });
     };
 
+    useEffect(() => {
+        const idx = OCCASIONS.findIndex(o => o.id === occasion);
+        if (idx < 0 || !archScrollRef.current) return;
+        const itemLeft = 24 + idx * (archWidth + 12);
+        const targetX = Math.max(0, itemLeft - (W - archWidth) / 2);
+        archScrollRef.current.scrollTo({ x: targetX, animated: true });
+    }, [occasion]);
+
     const handleSubmit = async () => {
         if (limitReached) {
             Alert.alert("Limit Reached", "You've used all 5 of your monthly requests. Upgrade to Premium to continue.");
             return;
         }
-        if (!occasion) { Alert.alert("Please select an occasion first."); return; }
+        if (!occasion) { Alert.alert("Please select a service first."); return; }
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
         setLoading(true);
@@ -887,114 +892,82 @@ export default function LadiesConciergeScreen() {
 
     return (
         <View style={[s.root, { backgroundColor: pageBg }]}>
-            <ScrollView scrollEnabled={!occExpanded} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+            {/* Faint wash of the active occasion's own color */}
+            <View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { backgroundColor: currentOccasion ? `${currentOccasion.color}1A` : "transparent" }]} />
 
-                {/* ── Hero ── */}
-                <View style={s.heroWrap}>
-                    <Animated.Image
-                        source={(currentOccasion as any)?.img ?? require("@/assets/images/queens.jpg")}
-                        style={[s.heroImg, { opacity: heroOpacity }]}
-                        resizeMode="cover"
-                    />
-                    <View style={s.heroOverlay} />
-                    <View style={s.heroScrim} />
-                    <TouchableOpacity style={[s.backBtn, { top: insets.top + 12 }]} onPress={() => router.back()}>
-                        <ChevronLeft size={22} color="#fff" />
-                    </TouchableOpacity>
-                    <View style={s.heroTextWrap}>
-                        <Text style={s.heroEyebrow}>FOR HER</Text>
-                        <Text style={s.heroTitle}>Ladies{"\n"}Concierge</Text>
-                        {!!eventTag && (
-                            <View style={{ flexDirection: "row", alignItems: "center", marginTop: 6 }}>
-                                <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99, backgroundColor: "#c9a84c25", borderWidth: 1, borderColor: "#c9a84c60" }}>
-                                    <Text style={{ fontSize: 11, fontWeight: "700", color: "#c9a84c", letterSpacing: 0.5 }}>EVENT · {eventTag}</Text>
-                                </View>
-                            </View>
-                        )}
-                        <Text style={s.heroTagline}>
-                            {currentOccasion ? currentOccasion.desc : "Every detail, thoughtfully arranged"}
-                        </Text>
+            <View style={[s.slimHeader, { paddingTop: insets.top + 8 }]}>
+                <TouchableOpacity style={[s.backBtnSlim, { backgroundColor: cardBg }]} onPress={() => router.back()}>
+                    <ChevronLeft size={20} color={textColor} />
+                </TouchableOpacity>
+                <Text style={[s.slimHeaderTitle, { color: textColor }]} numberOfLines={1}>
+                    {currentOccasion ? currentOccasion.label : "Ladies Concierge"}
+                </Text>
+                <View style={{ width: 40 }} />
+            </View>
+
+            {!!eventTag && (
+                <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 24, marginTop: 4 }}>
+                    <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99, backgroundColor: "#c9a84c25", borderWidth: 1, borderColor: "#c9a84c60" }}>
+                        <Text style={{ fontSize: 11, fontWeight: "700", color: "#c9a84c", letterSpacing: 0.5 }}>EVENT · {eventTag}</Text>
                     </View>
                 </View>
+            )}
 
-                {/* ── Occasion cards ── */}
-                <View style={[s.occasionSection, { backgroundColor: pageBg, paddingHorizontal: 24 }]}>
-                    <Text style={[s.occasionHeading, { color: textColor, paddingHorizontal: 0 }]}>What's the occasion?</Text>
-                    
-                    {!occExpanded ? (
-                        currentOccasion ? (
+            <KeyboardAwareScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }} enableOnAndroid extraScrollHeight={20} keyboardOpeningTime={0}>
+
+                {/* ── Occasion arches ── */}
+                <ScrollView
+                    ref={archScrollRef}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ gap: 12, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 6 }}
+                >
+                    {OCCASIONS.map(o => {
+                        const active = occasion === o.id;
+                        return (
                             <TouchableOpacity
-                                style={[s.occSelectedCard, { backgroundColor: currentOccasion.color }]}
-                                onPress={() => setOccExpanded(true)}
+                                key={o.id}
+                                style={{ width: archWidth, opacity: active ? 1 : 0.65 }}
+                                onPress={() => selectOccasion(o.id)}
                                 activeOpacity={0.85}
                             >
-                                <View style={s.occSelectedCardContent}>
-                                    <Text style={s.occSelectedCardEmoji}>{currentOccasion.emoji}</Text>
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={s.occSelectedCardLabel}>{currentOccasion.label}</Text>
-                                        <Text style={s.occSelectedCardDesc} numberOfLines={1}>{currentOccasion.desc}</Text>
-                                    </View>
-                                    <ChevronDown size={20} color="#fff" />
+                                <View
+                                    style={{
+                                        width: archWidth,
+                                        height: 158,
+                                        borderTopLeftRadius: archWidth / 2,
+                                        borderTopRightRadius: archWidth / 2,
+                                        borderBottomLeftRadius: 28,
+                                        borderBottomRightRadius: 28,
+                                        overflow: "hidden",
+                                        backgroundColor: cardBg,
+                                    }}
+                                >
+                                    <Image source={o.img} style={{ width: "100%", height: "100%", position: "absolute" }} resizeMode="cover" />
+                                    <View
+                                        pointerEvents="none"
+                                        style={{
+                                            position: "absolute",
+                                            top: 0, left: 0, right: 0, bottom: 0,
+                                            borderTopLeftRadius: archWidth / 2,
+                                            borderTopRightRadius: archWidth / 2,
+                                            borderBottomLeftRadius: 28,
+                                            borderBottomRightRadius: 28,
+                                            borderWidth: active ? 2.5 : 1.5,
+                                            borderColor: o.color,
+                                        }}
+                                    />
                                 </View>
+                                <Text
+                                    style={{ fontSize: 11, fontWeight: "800", color: textColor, textAlign: "center", marginTop: 8 }}
+                                    numberOfLines={2}
+                                >
+                                    {o.label}
+                                </Text>
                             </TouchableOpacity>
-                        ) : (
-                            <TouchableOpacity
-                                style={[s.occDropdownPlaceholder, { backgroundColor: cardBg, borderColor: border }]}
-                                onPress={() => setOccExpanded(true)}
-                                activeOpacity={0.85}
-                            >
-                                <Text style={[s.occPlaceholderEmoji, { color: C.primary }]}>✦</Text>
-                                <Text style={[s.occPlaceholderText, { color: textColor }]}>Select the Occasion...</Text>
-                                <ChevronDown size={20} color={C.primary} />
-                            </TouchableOpacity>
-                        )
-                    ) : (
-                        <View style={{ gap: 12 }}>
-                            <TouchableOpacity
-                                style={s.dropdownHeader}
-                                onPress={() => setOccExpanded(false)}
-                                activeOpacity={0.85}
-                            >
-                                <Text style={[s.dropdownHeaderText, { color: muted }]}>Choose an Occasion</Text>
-                                <ChevronUp size={20} color={C.primary} />
-                            </TouchableOpacity>
-                            
-                            <View style={{ maxHeight: 310, borderRadius: 18, overflow: "hidden", borderWidth: 1, borderColor: border }}>
-                                <ScrollView nestedScrollEnabled={true} style={{ backgroundColor: isDark ? "#111" : "#faf6ee" }} contentContainerStyle={{ padding: 10, gap: 10 }}>
-                                    {OCCASIONS.map(o => {
-                                        const active = occasion === o.id;
-                                        return (
-                                            <TouchableOpacity
-                                                key={o.id}
-                                                style={[
-                                                    s.occListCard,
-                                                    { backgroundColor: o.color },
-                                                    active && { borderColor: C.primary, borderWidth: 2 },
-                                                ]}
-                                                onPress={() => {
-                                                    selectOccasion(o.id);
-                                                    setOccExpanded(false);
-                                                }}
-                                                activeOpacity={0.85}
-                                            >
-                                                <View style={s.occListCardContent}>
-                                                    <Text style={s.occListCardEmoji}>{o.emoji}</Text>
-                                                    <View style={{ flex: 1 }}>
-                                                        <Text style={s.occListCardLabel}>{o.label}</Text>
-                                                        <Text style={s.occListCardDesc} numberOfLines={1}>{o.desc}</Text>
-                                                    </View>
-                                                    <View style={[s.occRadio, active && { borderColor: C.primary }]}>
-                                                        {active && <View style={[s.occRadioInner, { backgroundColor: C.primary }]} />}
-                                                    </View>
-                                                </View>
-                                            </TouchableOpacity>
-                                        );
-                                    })}
-                                </ScrollView>
-                            </View>
-                        </View>
-                    )}
-                </View>
+                        );
+                    })}
+                </ScrollView>
 
                 {/* ── Form ── */}
                 {FormComponent && (
@@ -1048,13 +1021,13 @@ export default function LadiesConciergeScreen() {
                     <View style={s.emptyState}>
                         <Image
                             source={require("@/assets/emptystate/ladies.png")}
-                            style={{ width: 170, height: 170 }}
+                            style={{ width: 260, height: 260 }}
                             resizeMode="contain"
                         />
-                        <Text style={[s.emptyText, { color: muted }]}>Select an occasion above{"\n"}to get started</Text>
+                        <Text style={[s.emptyText, { color: muted }]}>Select a service above{"\n"}to get started</Text>
                     </View>
                 )}
-            </ScrollView>
+            </KeyboardAwareScrollView>
 
             {/* ── Date Picker (screen-level, avoids overflow/nesting issues) ── */}
             <Modal visible={showDatePicker} transparent animationType="slide" onRequestClose={() => setShowDatePicker(false)}>
@@ -1134,25 +1107,9 @@ const fl = StyleSheet.create({
 // ── Screen styles ─────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
     root: { flex: 1 },
-    heroWrap: { width: W, height: 400, position: "relative" },
-    heroImg: { width: "100%", height: "100%", position: "absolute" },
-    heroOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(80,20,30,0.4)" },
-    heroScrim: { position: "absolute", bottom: 0, left: 0, right: 0, height: 200, backgroundColor: "rgba(15,8,5,0.65)" },
-    backBtn: { position: "absolute", left: 20, width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center" },
-    heroTextWrap: { position: "absolute", bottom: 28, left: 0, right: 0, paddingHorizontal: 24 },
-    heroEyebrow: { fontSize: 10, fontWeight: "800", color: "#c9a84c", letterSpacing: 3, marginBottom: 8 },
-    heroTitle: { fontSize: 52, fontWeight: "800", color: "#fff", letterSpacing: -2, lineHeight: 54, marginBottom: 10, fontFamily: "PlayfairDisplay_700Bold" },
-    heroTagline: { fontSize: 14, color: "rgba(255,255,255,0.65)", fontStyle: "italic" },
-
-    occasionSection: { paddingTop: 28, paddingBottom: 8 },
-    occasionHeading: { fontSize: 20, fontWeight: "700", paddingHorizontal: 24, marginBottom: 16, fontFamily: "PlayfairDisplay_700Bold" },
-    occasionScroll: { paddingHorizontal: 20, gap: 10 },
-    occasionCard: { width: 110, height: 130, borderRadius: 18, overflow: "hidden", borderWidth: 1.5, borderColor: "transparent" },
-    occasionCardImg: { width: "100%", height: "100%", position: "absolute" },
-    occasionCardOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.42)" },
-    occasionCardContent: { flex: 1, alignItems: "center", justifyContent: "center", gap: 6 },
-    occasionCardEmoji: { fontSize: 22, color: "#fff" },
-    occasionCardLabel: { fontSize: 12, fontWeight: "700", color: "#fff", textAlign: "center" },
+    slimHeader: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 20, paddingBottom: 12 },
+    backBtnSlim: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
+    slimHeaderTitle: { flex: 1, fontSize: 20, fontWeight: "800", textAlign: "center", fontFamily: "PlayfairDisplay_700Bold" },
 
     formSection: { paddingHorizontal: 20, paddingTop: 24 },
     formCard: { borderRadius: 20, borderWidth: 1, overflow: "hidden", marginBottom: 20, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 3 },
@@ -1169,22 +1126,4 @@ const s = StyleSheet.create({
     successBtn: { width: "100%", paddingVertical: 16, borderRadius: 14, alignItems: "center" },
     successBtnText: { fontSize: 15, fontWeight: "700", color: "#0a0a0a" },
     successDone: { fontSize: 14 },
-
-    occListCard: { width: "100%", height: 74, borderRadius: 16, borderWidth: 1.5, borderColor: "transparent" },
-    occListCardContent: { flex: 1, flexDirection: "row", alignItems: "center", paddingHorizontal: 16, gap: 12 },
-    occListCardEmoji: { fontSize: 20, color: "#fff", width: 28, textAlign: "center" },
-    occListCardLabel: { fontSize: 14, fontWeight: "700", color: "#fff", fontFamily: "PlayfairDisplay_700Bold" },
-    occListCardDesc: { fontSize: 11, color: "rgba(255,255,255,0.6)", marginTop: 2, fontStyle: "italic" },
-    occRadio: { width: 18, height: 18, borderRadius: 9, borderWidth: 1.5, borderColor: "rgba(255,255,255,0.4)", alignItems: "center", justifyContent: "center" },
-    occRadioInner: { width: 10, height: 10, borderRadius: 5 },
-    occSelectedCard: { width: "100%", height: 74, borderRadius: 16 },
-    occSelectedCardContent: { flex: 1, flexDirection: "row", alignItems: "center", paddingHorizontal: 16, gap: 12 },
-    occSelectedCardEmoji: { fontSize: 20, color: "#fff", width: 28, textAlign: "center" },
-    occSelectedCardLabel: { fontSize: 14, fontWeight: "700", color: "#fff", fontFamily: "PlayfairDisplay_700Bold" },
-    occSelectedCardDesc: { fontSize: 11, color: "rgba(255,255,255,0.6)", marginTop: 2, fontStyle: "italic" },
-    occDropdownPlaceholder: { width: "100%", height: 68, borderRadius: 16, borderStyle: "solid", borderWidth: 1, flexDirection: "row", alignItems: "center", paddingHorizontal: 18, gap: 12 },
-    occPlaceholderEmoji: { fontSize: 16, fontWeight: "700" },
-    occPlaceholderText: { flex: 1, fontSize: 14, fontWeight: "600", fontFamily: "PlayfairDisplay_700Bold", fontStyle: "italic" },
-    dropdownHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 8, paddingHorizontal: 4 },
-    dropdownHeaderText: { fontSize: 12, fontWeight: "800", textTransform: "uppercase", letterSpacing: 1 },
 });
