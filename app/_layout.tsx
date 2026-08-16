@@ -11,14 +11,17 @@ import { useState, useRef as useReactRef } from "react";
 import * as Linking from "expo-linking";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
-import { Animated, TouchableOpacity, Text } from "react-native";
+import { Animated, TouchableOpacity, Text, DeviceEventEmitter, Modal } from "react-native";
+import { Car, Calendar, CalendarX, Crown, MessageCircle, Bell, X as XIcon } from "lucide-react-native";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 import { Session } from "@supabase/supabase-js";
 import { usePushToken } from "@/lib/usePushToken";
 import ShakeReport from "@/components/ShakeReport"
 import TermsSheet from "@/components/TermsSheet";
 import LapeqToast from "@/components/LapeqToast";
-import { View, ActivityIndicator } from "react-native";
+import ErrorBoundary from "@/components/ErrorBoundary";
+import { View } from "react-native";
+import Skeleton from "@/components/Skeleton";
 import { useFonts } from "expo-font";
 import {
     PlayfairDisplay_400Regular,
@@ -58,32 +61,52 @@ function useProtectedRoute(session: Session | null, loading: boolean) {
     }, [session, loading, segments]);
 }
 
+const GOLD = "#c9a84c";
+const NOTIF_URGENT_TYPES = ["trip_status", "itinerary_cancelled"];
+const NOTIF_TYPE_CONFIG: Record<string, { icon: any; color: string }> = {
+    chauffeur_assigned: { icon: Car, color: "#a78bfa" },
+    trip_status: { icon: Car, color: GOLD },
+    itinerary_cancelled: { icon: CalendarX, color: "#ef5350" },
+    itinerary: { icon: Calendar, color: "#c084fc" },
+    welcome: { icon: Crown, color: GOLD },
+    chat: { icon: MessageCircle, color: GOLD },
+};
+
 function NotificationBanner() {
     const { theme, C } = useTheme();
     const router = useRouter();
     const [notification, setNotification] = useState<Notifications.Notification | null>(null);
-    const translateY = useReactRef(new Animated.Value(-150)).current;
+    const scale = useReactRef(new Animated.Value(0.85)).current;
+    const opacity = useReactRef(new Animated.Value(0)).current;
+    const dismissTimer = useReactRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const animateOut = (cb?: () => void) => {
+        if (dismissTimer.current) clearTimeout(dismissTimer.current);
+        Animated.parallel([
+            Animated.timing(scale, { toValue: 0.9, duration: 180, useNativeDriver: true }),
+            Animated.timing(opacity, { toValue: 0, duration: 180, useNativeDriver: true }),
+        ]).start(() => { setNotification(null); cb?.(); });
+    };
 
     useEffect(() => {
         let sub: any, responseSub: any;
         try {
             sub = Notifications.addNotificationReceivedListener(notif => {
                 setNotification(notif);
-                Animated.spring(translateY, {
-                    toValue: 0,
-                    velocity: 3,
-                    tension: 2,
-                    friction: 8,
-                    useNativeDriver: true,
-                }).start();
+                scale.setValue(0.85);
+                opacity.setValue(0);
+                Animated.parallel([
+                    Animated.spring(scale, { toValue: 1, tension: 220, friction: 16, useNativeDriver: true }),
+                    Animated.timing(opacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+                ]).start();
 
-                setTimeout(() => {
-                    Animated.timing(translateY, {
-                        toValue: -150,
-                        duration: 300,
-                        useNativeDriver: true,
-                    }).start(() => setNotification(null));
-                }, 4000);
+                // Urgent types (trip status, itinerary cancelled) stay up until the
+                // member acknowledges them — everything else auto-dismisses.
+                const notifData = notif.request.content.data as Record<string, any> | undefined;
+                if (!NOTIF_URGENT_TYPES.includes(notifData?.type)) {
+                    if (dismissTimer.current) clearTimeout(dismissTimer.current);
+                    dismissTimer.current = setTimeout(() => animateOut(), 5000);
+                }
             });
 
             responseSub = Notifications.addNotificationResponseReceivedListener(response => {
@@ -92,10 +115,12 @@ function NotificationBanner() {
                 const notifType = data?.type || data?.notification_type;
                 const notifId = data?.notif_id || data?.notifId;
 
-                if (notifType === "itinerary") {
+                if (notifType === "chauffeur_assigned" || notifType === "trip_status") {
+                    router.push("/(main)/coordination");
+                } else if (notifType === "itinerary") {
                     if (notifId) router.push({ pathname: "/itinerary-view", params: { notifId } } as any);
                     else router.push("/(main)/notifications");
-                } else if (notifType === "request" || notifType === "receipt") {
+                } else if (notifType === "request" || notifType === "receipt" || notifType === "itinerary_cancelled") {
                     if (reqId) router.push(`/requests/${reqId}`);
                     else router.push("/requests");
                 } else if (notifType === "chat") {
@@ -111,6 +136,7 @@ function NotificationBanner() {
         return () => {
             try { sub?.remove(); } catch {}
             try { responseSub?.remove(); } catch {}
+            if (dismissTimer.current) clearTimeout(dismissTimer.current);
         };
     }, []);
 
@@ -118,60 +144,94 @@ function NotificationBanner() {
 
     const title = notification.request.content.title;
     const body = notification.request.content.body;
+    const data = notification.request.content.data as Record<string, any> | undefined;
+    const notifType: string = data?.type || data?.notification_type || "general";
+    const isUrgent = NOTIF_URGENT_TYPES.includes(notifType);
+    const cfg = NOTIF_TYPE_CONFIG[notifType] ?? { icon: Bell, color: GOLD };
+    const Icon = cfg.icon;
+
+    const goToTarget = () => {
+        const reqId = data?.target_id || data?.targetId || data?.request_id || data?.requestId;
+        const notifId = data?.notif_id || data?.notifId;
+
+        if (notifType === "chauffeur_assigned" || notifType === "trip_status") {
+            router.push("/(main)/coordination");
+        } else if (notifType === "itinerary") {
+            if (notifId) router.push({ pathname: "/itinerary-view", params: { notifId } } as any);
+            else router.push("/(main)/notifications");
+        } else if (notifType === "request" || notifType === "receipt" || notifType === "itinerary_cancelled") {
+            if (reqId) router.push(`/requests/${reqId}`);
+            else router.push("/requests");
+        } else if (notifType === "chat") {
+            router.push({ pathname: "/(main)/chat", params: { mode: "concierge" } } as any);
+        } else if (data?.url) {
+            router.push(data.url);
+        } else {
+            router.push("/(main)/notifications");
+        }
+    };
 
     return (
-        <Animated.View
-            style={{
-                position: "absolute",
-                top: 50,
-                left: 16,
-                right: 16,
-                zIndex: 9999,
-                transform: [{ translateY }],
-            }}
-        >
+        <Modal transparent visible animationType="none" statusBarTranslucent onRequestClose={() => { if (!isUrgent) animateOut(); }}>
             <TouchableOpacity
-                activeOpacity={0.9}
-                onPress={() => {
-                    Animated.timing(translateY, { toValue: -150, duration: 200, useNativeDriver: true }).start(() => {
-                        const data = notification.request.content.data as Record<string, any> | undefined;
-                        const reqId = data?.target_id || data?.targetId || data?.request_id || data?.requestId;
-                        const notifType = data?.type || data?.notification_type;
-                        const notifId = data?.notif_id || data?.notifId;
-
-                        if (notifType === "itinerary") {
-                            if (notifId) router.push({ pathname: "/itinerary-view", params: { notifId } } as any);
-                            else router.push("/(main)/notifications");
-                        } else if (notifType === "request" || notifType === "receipt") {
-                            if (reqId) router.push(`/requests/${reqId}`);
-                            else router.push("/requests");
-                        } else if (notifType === "chat") {
-                            router.push({ pathname: "/(main)/chat", params: { mode: "concierge" } } as any);
-                        } else if (data?.url) {
-                            router.push(data.url);
-                        } else {
-                            router.push("/(main)/notifications");
-                        }
-                        setNotification(null);
-                    });
-                }}
-                style={{
-                    backgroundColor: theme === "dark" ? "#1a1a1a" : "#fff",
-                    borderRadius: 16,
-                    padding: 16,
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.15,
-                    shadowRadius: 12,
-                    elevation: 5,
-                    borderWidth: 1,
-                    borderColor: theme === "dark" ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)",
-                }}
+                activeOpacity={1}
+                onPress={() => { if (!isUrgent) animateOut(); }}
+                style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center", padding: 28 }}
             >
-                {title && <Text style={{ fontFamily: "Jost_600SemiBold", fontSize: 16, color: C.text, marginBottom: 4 }}>{title}</Text>}
-                {body && <Text style={{ fontFamily: "Jost_400Regular", fontSize: 14, color: C.muted }}>{body}</Text>}
+                <Animated.View
+                    style={{
+                        width: "100%",
+                        maxWidth: 380,
+                        backgroundColor: theme === "dark" ? "#161616" : "#fff",
+                        borderRadius: 24,
+                        padding: 26,
+                        alignItems: "center",
+                        borderWidth: 1,
+                        borderColor: theme === "dark" ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: 12 },
+                        shadowOpacity: 0.35,
+                        shadowRadius: 30,
+                        elevation: 16,
+                        transform: [{ scale }],
+                        opacity,
+                    }}
+                >
+                    {!isUrgent && (
+                        <TouchableOpacity
+                            onPress={() => animateOut()}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            style={{ position: "absolute", top: 16, right: 16 }}
+                        >
+                            <XIcon size={18} color={C.muted} />
+                        </TouchableOpacity>
+                    )}
+
+                    <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: `${cfg.color}18`, alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                        <Icon size={26} color={cfg.color} />
+                    </View>
+
+                    {title && <Text style={{ fontFamily: "PlayfairDisplay_700Bold", fontSize: 19, color: C.text, textAlign: "center", marginBottom: 8 }}>{title}</Text>}
+                    {body && <Text style={{ fontFamily: "Jost_400Regular", fontSize: 14, color: C.muted, textAlign: "center", lineHeight: 21, marginBottom: 22 }}>{body}</Text>}
+
+                    <TouchableOpacity
+                        activeOpacity={0.85}
+                        onPress={() => animateOut(goToTarget)}
+                        style={{ backgroundColor: cfg.color, borderRadius: 14, paddingVertical: 14, width: "100%", alignItems: "center" }}
+                    >
+                        <Text style={{ fontFamily: "Jost_700Bold", fontSize: 14, color: "#0a0a0a" }}>
+                            {isUrgent ? "View Details" : "View"}
+                        </Text>
+                    </TouchableOpacity>
+
+                    {!isUrgent && (
+                        <TouchableOpacity onPress={() => animateOut()} style={{ marginTop: 12 }}>
+                            <Text style={{ fontFamily: "Jost_400Regular", fontSize: 13, color: C.muted }}>Dismiss</Text>
+                        </TouchableOpacity>
+                    )}
+                </Animated.View>
             </TouchableOpacity>
-        </Animated.View>
+        </Modal>
     );
 }
 
@@ -298,6 +358,9 @@ function RootContent() {
     const [session, setSession] = useState<Session | null>(null);
     const [loading, setLoading] = useState(true);
     const [showSplash, setShowSplash] = useState(true);
+    const [tierPopup, setTierPopup] = useState<{ name: string; accent: string; perks: string[] } | null>(null);
+    const popupScale = useReactRef(new Animated.Value(0.85)).current;
+    const popupOpacity = useReactRef(new Animated.Value(0)).current;
     const { theme, C } = useTheme();
     const router = useRouter();
 
@@ -356,6 +419,63 @@ function RootContent() {
 
     useProtectedRoute(session, loading);
 
+    const TIER_META: Record<string, { accent: string; perks: string[] }> = {
+        silver: { accent: "#a8b8cc", perks: ["Virtual concierge support", "Curated itinerary planning", "Airport & flight coordination", "Access to luxury hotels & apartments", "Access to sold-out event tickets"] },
+        gold:   { accent: "#c9a84c", perks: ["Dedicated concierge manager", "Private jet access & bookings", "Last minute reservations", "Elite networking access", "Lapeq Privé", "Investment advisorship"] },
+        black:  { accent: "#e8e8e8", perks: ["Priority fast-track on all requests", "Private security attached", "Medical concierge, priority specialist", "Dedicated concierge (extended hours)", "VIP fashion events & summits"] },
+    };
+
+    const showTierPopup = (tierId: string) => {
+        const meta = TIER_META[tierId];
+        if (!meta) return;
+        setTierPopup({ name: tierId.charAt(0).toUpperCase() + tierId.slice(1), accent: meta.accent, perks: meta.perks });
+        Animated.parallel([
+            Animated.spring(popupScale, { toValue: 1, useNativeDriver: true, tension: 80, friction: 8 }),
+            Animated.timing(popupOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+        ]).start();
+    };
+
+    // Show tier popup when "Welcome to Lapeq X" push arrives in foreground (most reliable path)
+    useEffect(() => {
+        let sub: any;
+        try {
+            sub = Notifications.addNotificationReceivedListener(notif => {
+                const data = notif.request.content.data as Record<string, any> | undefined;
+                if (data?.type === 'welcome') {
+                    const title = notif.request.content.title ?? '';
+                    const match = title.match(/Welcome to Lapeq (\w+)/i);
+                    if (match) showTierPopup(match[1].toLowerCase());
+                }
+            });
+        } catch {}
+        return () => { try { sub?.remove(); } catch {} };
+    }, []);
+
+    useEffect(() => {
+        if (!session?.user?.id) return;
+        const channel = supabase
+            .channel(`tier-watch-${session.user.id}`)
+            .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${session.user.id}` }, (payload: any) => {
+                console.log("[tier-watch] change received:", payload.old?.tier, "->", payload.new?.tier);
+                const newTier = payload.new?.tier?.toLowerCase();
+                const oldTier = payload.old?.tier?.toLowerCase();
+                if (newTier && newTier !== oldTier && newTier !== "free" && newTier !== "standard") {
+                    showTierPopup(newTier);
+                    // DB trigger inserts a notification ~instant after — give it a moment then refresh badge
+                    setTimeout(() => DeviceEventEmitter.emit("notifications:refresh"), 400);
+                }
+            })
+            .subscribe((status) => console.log("[tier-watch] subscription status:", status));
+        return () => { supabase.removeChannel(channel); };
+    }, [session?.user?.id]);
+
+    const userIdRef = useReactRef<string | null>(null);
+
+    useEffect(() => {
+        if (!session?.user?.id) return;
+        userIdRef.current = session.user.id;
+    }, [session?.user?.id]);
+
     // Cold-start: if the app was killed and launched via a notification tap,
     // addNotificationResponseReceivedListener misses it — useLastNotificationResponse catches it.
     const lastNotifResponse = Notifications.useLastNotificationResponse();
@@ -368,10 +488,12 @@ function RootContent() {
         const notifType = data?.type || data?.notification_type;
         const notifId = data?.notif_id || data?.notifId;
 
-        if (notifType === "itinerary") {
+        if (notifType === "chauffeur_assigned" || notifType === "trip_status") {
+            router.push("/(main)/coordination");
+        } else if (notifType === "itinerary") {
             if (notifId) router.push({ pathname: "/itinerary-view", params: { notifId } } as any);
             else router.push("/(main)/notifications");
-        } else if (notifType === "request" || notifType === "receipt") {
+        } else if (notifType === "request" || notifType === "receipt" || notifType === "itinerary_cancelled") {
             if (reqId) router.push(`/requests/${reqId}`);
             else router.push("/requests");
         } else if (notifType === "chat") {
@@ -381,20 +503,8 @@ function RootContent() {
         }
     }, [loading, showSplash, lastNotifResponse]);
 
-    if (showSplash) {
-        return <AppSplash onDone={() => setShowSplash(false)} />;
-    }
-
-    if (loading) {
-        return (
-            <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#000000" }}>
-                <ActivityIndicator color="#c9a84c" />
-            </View>
-        );
-    }
-
     return (
-        <>
+        <View style={{ flex: 1, backgroundColor: C.background }}>
             <StatusBar style={theme === "dark" ? "light" : "dark"} />
             <NotificationBanner />
             <ShakeReport />
@@ -424,7 +534,80 @@ function RootContent() {
                 <Stack.Screen name="settings/report" options={{ gestureEnabled: true, animation: "slide_from_right" }} />
                 <Stack.Screen name="settings/change-password" options={{ gestureEnabled: true, animation: "slide_from_right" }} />
             </Stack>
-        </>
+            {/* Skeleton home screen while session is loading */}
+            {loading && (
+                <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "#0a0a0a", zIndex: 997, paddingTop: 64, paddingHorizontal: 20 }}>
+                    {/* Header */}
+                    <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 24 }}>
+                        <View style={{ flex: 1, gap: 8 }}>
+                            <Skeleton width={72} height={9} borderRadius={5} style={{ backgroundColor: "rgba(255,255,255,0.07)" }} />
+                            <Skeleton width={180} height={20} borderRadius={6} style={{ backgroundColor: "rgba(255,255,255,0.1)" }} />
+                        </View>
+                        <Skeleton width={40} height={40} borderRadius={20} style={{ backgroundColor: "rgba(255,255,255,0.07)" }} />
+                    </View>
+                    {/* Hero card */}
+                    <Skeleton width="100%" height={172} borderRadius={20} style={{ marginBottom: 16, backgroundColor: "rgba(255,255,255,0.06)" }} />
+                    {/* 2×2 service grid */}
+                    <View style={{ flexDirection: "row", gap: 12, marginBottom: 12 }}>
+                        <Skeleton width="48%" height={128} borderRadius={16} style={{ backgroundColor: "rgba(255,255,255,0.06)" }} />
+                        <Skeleton width="48%" height={128} borderRadius={16} style={{ backgroundColor: "rgba(255,255,255,0.06)" }} />
+                    </View>
+                    <View style={{ flexDirection: "row", gap: 12, marginBottom: 24 }}>
+                        <Skeleton width="48%" height={128} borderRadius={16} style={{ backgroundColor: "rgba(255,255,255,0.06)" }} />
+                        <Skeleton width="48%" height={128} borderRadius={16} style={{ backgroundColor: "rgba(255,255,255,0.06)" }} />
+                    </View>
+                    {/* Section label */}
+                    <Skeleton width={110} height={11} borderRadius={5} style={{ marginBottom: 14, backgroundColor: "rgba(255,255,255,0.07)" }} />
+                    {/* Horizontal partner cards */}
+                    <View style={{ flexDirection: "row", gap: 12 }}>
+                        <Skeleton width={150} height={190} borderRadius={16} style={{ backgroundColor: "rgba(255,255,255,0.05)" }} />
+                        <Skeleton width={150} height={190} borderRadius={16} style={{ backgroundColor: "rgba(255,255,255,0.05)" }} />
+                        <Skeleton width={150} height={190} borderRadius={16} style={{ backgroundColor: "rgba(255,255,255,0.05)" }} />
+                    </View>
+                </View>
+            )}
+            {/* Splash overlay — always on top; stack renders underneath so navigation fires before it fades */}
+            {showSplash && <AppSplash onDone={() => setShowSplash(false)} />}
+
+            {/* Membership upgrade popup */}
+            {tierPopup && (
+                <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", zIndex: 999, paddingHorizontal: 24 }}>
+                    <Animated.View style={{ width: "100%", opacity: popupOpacity, transform: [{ scale: popupScale }], backgroundColor: "#111", borderRadius: 28, padding: 28, borderWidth: 1, borderColor: `${tierPopup.accent}30` }}>
+                        <Text style={{ fontSize: 10, fontWeight: "800", letterSpacing: 3, color: tierPopup.accent, marginBottom: 10 }}>LAPEQ {tierPopup.name.toUpperCase()}</Text>
+                        <Text style={{ fontSize: 26, fontWeight: "800", color: "#fff", marginBottom: 6 }}>You're in.</Text>
+                        <Text style={{ fontSize: 14, color: "rgba(255,255,255,0.45)", marginBottom: 24, lineHeight: 20 }}>Your membership is active. Here's what you now have access to.</Text>
+
+                        <View style={{ gap: 12, marginBottom: 28 }}>
+                            {tierPopup.perks.map((perk, i) => (
+                                <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
+                                    <View style={{ width: 18, height: 18, borderRadius: 5, backgroundColor: `${tierPopup.accent}24`, alignItems: "center", justifyContent: "center", marginTop: 1, flexShrink: 0 }}>
+                                        <Text style={{ fontSize: 9, color: tierPopup.accent, fontWeight: "900" }}>✓</Text>
+                                    </View>
+                                    <Text style={{ flex: 1, fontSize: 13.5, color: "rgba(255,255,255,0.8)", lineHeight: 20 }}>{perk}</Text>
+                                </View>
+                            ))}
+                        </View>
+
+                        <TouchableOpacity
+                            style={{ backgroundColor: tierPopup.accent, borderRadius: 16, paddingVertical: 16, alignItems: "center" }}
+                            onPress={() => {
+                                Animated.parallel([
+                                    Animated.timing(popupOpacity, { toValue: 0, duration: 150, useNativeDriver: true }),
+                                    Animated.timing(popupScale, { toValue: 0.85, duration: 150, useNativeDriver: true }),
+                                ]).start(() => {
+                                    setTierPopup(null);
+                                    popupScale.setValue(0.85);
+                                    popupOpacity.setValue(0);
+                                });
+                            }}
+                            activeOpacity={0.85}
+                        >
+                            <Text style={{ fontSize: 15, fontWeight: "800", color: "#0a0a0a" }}>Start Exploring</Text>
+                        </TouchableOpacity>
+                    </Animated.View>
+                </View>
+            )}
+        </View>
     );
 }
 
@@ -451,7 +634,9 @@ export default function RootLayout() {
 
     return (
         <ThemeProvider>
-            <RootContent />
+            <ErrorBoundary>
+                <RootContent />
+            </ErrorBoundary>
         </ThemeProvider>
     );
 }

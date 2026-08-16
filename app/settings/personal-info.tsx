@@ -1,6 +1,7 @@
 import { cleanErr } from "@/lib/cleanErr";
 import { useEffect, useMemo, useState, useRef } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, Image, Alert, KeyboardAvoidingView, Platform, Keyboard, Modal, FlatList, Animated, ActivityIndicator } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, TextInput, Image, Alert, Keyboard, Modal, FlatList, Animated, ActivityIndicator } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { ChevronLeft, Camera, User, Phone, MapPin, Crown, Check, ChevronDown, X, Mail, Lock } from "lucide-react-native";
@@ -40,6 +41,8 @@ export default function PersonalInfoScreen() {
     const [showCountryModal, setShowCountryModal] = useState(false);
     const toastAnim = useRef(new Animated.Value(-100)).current;
     const [toastVisible, setToastVisible] = useState(false);
+    const [toastMessage, setToastMessage] = useState("Profile updated");
+    const [toastType, setToastType] = useState<"success" | "error">("success");
 
     useEffect(() => {
         loadProfile();
@@ -90,12 +93,14 @@ export default function PersonalInfoScreen() {
         if (!result.canceled) setImageUri(result.assets[0].uri);
     };
 
-    const showToast = () => {
+    const showToast = (message = "Profile updated", type: "success" | "error" = "success") => {
+        setToastMessage(message);
+        setToastType(type);
         setToastVisible(true);
         Animated.timing(toastAnim, { toValue: 20, duration: 300, useNativeDriver: true }).start();
         setTimeout(() => {
             Animated.timing(toastAnim, { toValue: -100, duration: 300, useNativeDriver: true }).start(() => setToastVisible(false));
-        }, 2000);
+        }, type === "error" ? 3500 : 2000);
     };
 
     const handleSave = async () => {
@@ -120,7 +125,7 @@ export default function PersonalInfoScreen() {
 
                 if (upErr) { setSaving(false); Alert.alert("Upload failed", upErr.message); return; }
 
-                // Use signed URL — works whether the bucket is public or private
+                // Use signed URL â€” works whether the bucket is public or private
                 const { data: signed } = await supabase.storage
                     .from("avatars")
                     .createSignedUrl(path, 60 * 60 * 24 * 365);
@@ -162,9 +167,9 @@ export default function PersonalInfoScreen() {
     return (
         <SafeAreaView style={s.root}>
             {toastVisible && (
-                <Animated.View style={[s.toastContainer, { transform: [{ translateY: toastAnim }] }]}>
-                    <Check size={20} color={C.background} />
-                    <Text style={s.toastText}>Profile updated</Text>
+                <Animated.View style={[s.toastContainer, { backgroundColor: toastType === "error" ? "#ef5350" : C.text, transform: [{ translateY: toastAnim }] }]}>
+                    {toastType === "error" ? <X size={20} color="#fff" /> : <Check size={20} color={C.background} />}
+                    <Text style={[s.toastText, toastType === "error" && { color: "#fff" }]}>{toastMessage}</Text>
                 </Animated.View>
             )}
 
@@ -175,8 +180,7 @@ export default function PersonalInfoScreen() {
                 <Text style={s.headerTitle}>Personal Info</Text>
             </View>
 
-            <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
-                <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+            <KeyboardAwareScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" enableOnAndroid extraScrollHeight={20} keyboardOpeningTime={0}>
 
                     {/* Avatar */}
                     <View style={s.pfpContainer}>
@@ -258,8 +262,7 @@ export default function PersonalInfoScreen() {
                         <Text style={s.tierBtnText}>Manage Membership</Text>
                     </TouchableOpacity>
 
-                </ScrollView>
-            </KeyboardAvoidingView>
+            </KeyboardAwareScrollView>
 
             <View style={s.footer}>
                 <TouchableOpacity style={[s.saveBtn, saving && { opacity: 0.6 }]} onPress={handleSave} disabled={saving}>

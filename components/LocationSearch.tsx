@@ -12,9 +12,11 @@ interface Props {
     placeholder?: string;
     onSelect?: (place: string) => void;
     style?: object;
+    accentColor?: string;
 }
 
 const GOOGLE_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY;
+const MAP_SEARCH_DISABLED = true;
 
 // Reverse-geocode coords → street address using Google
 export async function reverseGeocodeWithMapbox(lat: number, lng: number): Promise<string | null> {
@@ -26,11 +28,13 @@ export async function reverseGeocodeWithMapbox(lat: number, lng: number): Promis
         if (json.results?.length > 0) {
             return json.results[0].formatted_address ?? null;
         }
-    } catch {}
+    } catch (err) {
+        console.warn("Reverse geocode failed:", err);
+    }
     return null;
 }
 
-export default function LocationSearch({ value, onChangeText, placeholder = "Search location...", onSelect, style }: Props) {
+export default function LocationSearch({ value, onChangeText, placeholder = "Search location...", onSelect, style, accentColor }: Props) {
     const { C, theme } = useTheme();
     const [suggestions, setSuggestions] = useState<string[]>([]);
     const [searching, setSearching] = useState(false);
@@ -39,6 +43,7 @@ export default function LocationSearch({ value, onChangeText, placeholder = "Sea
     const abortRef = useRef<AbortController | null>(null);
 
     const search = useCallback(async (text: string) => {
+        if (MAP_SEARCH_DISABLED) { setSuggestions([]); return; }
         if (timer.current) clearTimeout(timer.current);
         if (abortRef.current) abortRef.current.abort();
         if (text.length < 2) { setSuggestions([]); return; }
@@ -79,14 +84,15 @@ export default function LocationSearch({ value, onChangeText, placeholder = "Sea
         onSelect?.(place);
     };
 
-    const borderColor = focused ? C.primary : (theme === "dark" ? "#2a2a2a" : "#d8d3ca");
+    const accent = accentColor ?? C.primary;
+    const borderColor = focused ? accent : (theme === "dark" ? "#2a2a2a" : "#d8d3ca");
 
     return (
         <View style={style}>
             <View style={[s.inputRow, { backgroundColor: C.surface, borderColor }]}>
                 {searching
-                    ? <ActivityIndicator size="small" color={C.primary} style={{ marginRight: 8 }} />
-                    : <MapPin size={18} color={C.primary} style={{ marginRight: 8 }} />
+                    ? <ActivityIndicator size="small" color={accent} style={{ marginRight: 8 }} />
+                    : <MapPin size={18} color={accent} style={{ marginRight: 8 }} />
                 }
                 <TextInput
                     style={[s.input, { color: C.text }]}

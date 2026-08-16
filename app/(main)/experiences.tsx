@@ -54,11 +54,11 @@ const ITINERARY = {
     weekday: [
         {
             time: "7:00 AM – 9:30 AM", label: "Morning",
-            items: ["Weather and traffic update provided", "Daily briefing sent via email", "Breakfast — preferred meal, dietary requirements in place", "Morning news & business updates", "Personal trainer session", "Gym workout", "Yoga / stretching exercises"],
+            items: ["Weather and traffic update provided", "Daily briefing sent via email", "Breakfast, preferred meal, dietary requirements in place", "Morning news & business updates", "Personal trainer session", "Gym workout", "Yoga / stretching exercises"],
         },
         {
             time: "10:00 AM – 12:00 PM", label: "Mid-Morning",
-            items: ["Brunch — preferred meal selection", "Executive meetings", "Corporate visits", "Investor meetings", "Conference attendance", "Coffee shop"],
+            items: ["Brunch, preferred meal selection", "Executive meetings", "Corporate visits", "Investor meetings", "Conference attendance", "Coffee shop"],
         },
         {
             time: "12:00 PM – 4:00 PM", label: "Afternoon",
@@ -245,38 +245,20 @@ export default function ExperiencesScreen() {
 
             {loading ? (
                 <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40, paddingTop: 4 }} scrollEnabled={false}>
-                    {/* Summary card skeleton */}
-                    <View style={[s.summaryCard, { marginBottom: 16 }]}>
-                        {[0, 1, 2].map((i) => (
-                            <View key={i} style={{ flex: 1, alignItems: "center", gap: 8 }}>
-                                <Skeleton width={40} height={24} borderRadius={6} />
-                                <Skeleton width={64} height={10} borderRadius={4} />
-                                {i < 2 && <View style={[s.summaryDivider, { position: "absolute", right: 0 }]} />}
-                            </View>
-                        ))}
-                    </View>
-
-                    {/* "Request another" button skeleton */}
-                    <Skeleton width="100%" height={56} borderRadius={16} style={{ marginBottom: 16 }} />
-
-                    {/* Package card skeletons */}
+                    {/* Hero card — matches showcase card in empty state */}
+                    <Skeleton width="100%" height={220} borderRadius={20} style={{ marginBottom: 28 }} />
+                    {/* Step rows — matches the 1-2-3 steps for new users, generic enough for request rows too */}
                     {[0, 1, 2].map((i) => (
-                        <View key={i} style={[s.premiumPkgCard, { borderLeftColor: "transparent", marginBottom: 12, backgroundColor: "transparent" }]}>
-                            <Skeleton width="100%" height={170} borderRadius={20} />
-                            <View style={{ position: "absolute", top: 14, left: 16, right: 16, gap: 10 }}>
-                                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                                    <Skeleton width={60} height={10} borderRadius={4} />
-                                    <Skeleton width={70} height={22} borderRadius={8} />
-                                </View>
-                                <Skeleton width="70%" height={18} borderRadius={6} style={{ marginTop: 12 }} />
-                                <Skeleton width={90} height={12} borderRadius={4} />
-                                <View style={{ position: "absolute", top: 100, left: 0, right: 0, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                                    <Skeleton width={120} height={12} borderRadius={4} />
-                                    <Skeleton width={28} height={28} borderRadius={14} />
-                                </View>
+                        <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 16, marginBottom: 22 }}>
+                            <Skeleton width={36} height={36} borderRadius={18} />
+                            <View style={{ flex: 1, gap: 8 }}>
+                                <Skeleton width="55%" height={13} borderRadius={6} />
+                                <Skeleton width="80%" height={10} borderRadius={5} />
                             </View>
                         </View>
                     ))}
+                    {/* CTA button */}
+                    <Skeleton width="100%" height={52} borderRadius={14} style={{ marginTop: 8 }} />
                 </ScrollView>
             ) : (
                 <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}>
@@ -292,7 +274,7 @@ export default function ExperiencesScreen() {
                                     <Text style={s.showcaseEyebrow}>HOW IT WORKS</Text>
                                     <Text style={s.showcaseTitle}>Your Concierge Plans Everything</Text>
                                     <Text style={s.showcaseBody}>
-                                        Tell us your city, dates, and what you're looking for. Your concierge builds a full day-by-day itinerary — hotels, dining, transport, experiences — and delivers it here.
+                                        Tell us your city, dates, and what you're looking for. Your concierge builds a full day-by-day itinerary covering hotels, dining, transport, and experiences, then delivers it here.
                                     </Text>
                                 </View>
                             </View>
@@ -434,18 +416,6 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     stepDesc:        { fontSize: 13, color: C.muted, lineHeight: 20 },
     ctaBtn:          { backgroundColor: C.primary, borderRadius: 16, paddingVertical: 18, alignItems: "center" },
     ctaBtnText:      { fontSize: 16, fontWeight: "700", color: "#ffffff" },
-
-    // Package cards
-    pkgCard:       { backgroundColor: C.surface, borderRadius: 18, padding: 18, borderWidth: 1, borderColor: theme === "dark" ? "#2a2a2a" : "#d8d3ca" },
-    pkgCardTop:    { flexDirection: "row", alignItems: "flex-start", marginBottom: 14 },
-    pkgCity:       { fontSize: 11, fontWeight: "700", color: C.primary, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 },
-    pkgTitle:      { fontSize: 17, fontWeight: "700", color: C.text },
-    statusBadge:   { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 99 },
-    statusText:    { fontSize: 11, fontWeight: "700" },
-    pkgCardBottom: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: 14, borderTopWidth: 1, borderTopColor: theme === "dark" ? "#2a2a2a" : "#e8e4dc" },
-    pkgMeta:       { fontSize: 13, color: C.muted },
-    newPackageRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, padding: 16 },
-    newPackageText:{ fontSize: 14, fontWeight: "600", color: C.primary },
 
     // Summary widget
     summaryCard: { flexDirection: "row", alignItems: "center", backgroundColor: C.surface, borderRadius: 20, paddingVertical: 16, paddingHorizontal: 12, marginBottom: 10, borderWidth: 1, borderColor: theme === "dark" ? "#2a2a2a" : "#d8d3ca" },

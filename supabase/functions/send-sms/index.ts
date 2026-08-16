@@ -2,6 +2,18 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 serve(async (req) => {
     try {
+        // Verify the internal webhook secret — no client code in the app calls this
+        // function directly, so nothing legitimate needs to reach it without one.
+        // Set INTERNAL_WEBHOOK_SECRET in Dashboard > Settings > Edge Function Secrets.
+        const webhookSecret = Deno.env.get("INTERNAL_WEBHOOK_SECRET");
+        const incomingSecret = req.headers.get("x-webhook-secret");
+        if (!webhookSecret || incomingSecret !== webhookSecret) {
+            return new Response(JSON.stringify({ error: "Unauthorized" }), {
+                status: 401,
+                headers: { "Content-Type": "application/json" },
+            });
+        }
+
         const body = await req.json();
         const phone: string = body.user?.phone;
         const otp: string = body.sms?.otp;

@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, Alert, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ChevronLeft, Check, Lock } from "lucide-react-native";
+import { supabase } from "@/lib/supabase";
+import { cleanErr } from "@/lib/cleanErr";
 
 const TIER_DATA: Record<string, {
     name: string;
@@ -16,9 +18,9 @@ const TIER_DATA: Record<string, {
         accent: "#a8b8cc",
         bg: "#0a0c10",
         plans: [
-            { label: "3 Months", price: "₦350,000", note: "Best for trying out" },
-            { label: "6 Months", price: "₦500,000", note: "Best value" },
-            { label: "1 Year", price: "₦850,000", note: "Full annual access" },
+            { label: "3 Months", price: "â‚¦350,000", note: "Best for trying out" },
+            { label: "6 Months", price: "â‚¦500,000", note: "Best value" },
+            { label: "1 Year", price: "â‚¦850,000", note: "Full annual access" },
         ],
         invite: false,
     },
@@ -27,7 +29,7 @@ const TIER_DATA: Record<string, {
         accent: "#c9a84c",
         bg: "#080806",
         plans: [
-            { label: "1 Year", price: "₦2,500,000", note: "Full annual access" },
+            { label: "1 Year", price: "â‚¦2,500,000", note: "Full annual access" },
         ],
         invite: false,
     },
@@ -47,6 +49,34 @@ export default function MembershipRequestScreen() {
     const data = TIER_DATA[tierKey] ?? TIER_DATA.silver;
 
     const [selectedPlan, setSelectedPlan] = useState(0);
+    const [submitting, setSubmitting] = useState(false);
+    const [submitted, setSubmitted] = useState(false);
+
+    const handleRequestInvitation = async () => {
+        setSubmitting(true);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+            setSubmitting(false);
+            Alert.alert("Please sign in", "You need to be signed in to request an invitation.");
+            return;
+        }
+        const ref = "LPQ-" + Date.now().toString(36).toUpperCase().slice(-5);
+        const { error } = await supabase.from("requests").insert({
+            user_id: user.id,
+            reference: ref,
+            service_type: "tier-invitation",
+            status: "pending",
+            title: "Black Membership Invitation Request",
+            notes: `Customer has requested an invitation to Lapeq Black membership.`,
+        });
+        setSubmitting(false);
+        if (error) {
+            Alert.alert("Couldn't Send Request", cleanErr(error));
+            return;
+        }
+        setSubmitted(true);
+        Alert.alert("Request Sent", "Your invitation request has been received. Our team will review your profile and reach out personally.");
+    };
 
     return (
         <View style={[s.root, { backgroundColor: data.bg }]}>
@@ -153,13 +183,18 @@ export default function MembershipRequestScreen() {
                         </Text>
                     )}
                     <TouchableOpacity
-                        style={[s.cta, { backgroundColor: data.accent }]}
+                        style={[s.cta, { backgroundColor: data.accent, opacity: submitting || (data.invite && submitted) ? 0.6 : 1 }]}
                         activeOpacity={0.85}
-                        onPress={() => router.back()}
+                        disabled={submitting || (data.invite && submitted)}
+                        onPress={data.invite ? handleRequestInvitation : () => router.back()}
                     >
-                        <Text style={s.ctaText}>
-                            {data.invite ? "Request Invitation" : "Pay Now"}
-                        </Text>
+                        {submitting ? (
+                            <ActivityIndicator color="#0a0a0a" />
+                        ) : (
+                            <Text style={s.ctaText}>
+                                {data.invite ? (submitted ? "Request Sent" : "Request Invitation") : "Pay Now"}
+                            </Text>
+                        )}
                     </TouchableOpacity>
                 </View>
             </SafeAreaView>

@@ -37,7 +37,7 @@ serve(async (req) => {
         tx_ref: string;
         request_id: string;
         expected_amount: number;
-        payment_type: "curation" | "option";
+        payment_type: "curation" | "option" | "ride_fare";
         option_title?: string;
     };
     try {
@@ -46,9 +46,9 @@ serve(async (req) => {
         return json({ error: "Invalid JSON body" }, 400);
     }
 
-    const { tx_ref, request_id, expected_amount, payment_type, option_title } = body;
-    if (!tx_ref || !request_id || !expected_amount || !payment_type) {
-        return json({ error: "Missing required fields: tx_ref, request_id, expected_amount, payment_type" }, 400);
+    const { tx_ref, request_id, payment_type, option_title } = body;
+    if (!tx_ref || !request_id || !payment_type) {
+        return json({ error: "Missing required fields: tx_ref, request_id, payment_type" }, 400);
     }
 
     // ── 3. Admin client for DB reads/writes (bypasses RLS) ──────────────────
@@ -61,7 +61,7 @@ serve(async (req) => {
     // ── 4. Fetch the request row & enforce ownership ─────────────────────────
     const { data: requestRow, error: fetchError } = await supabaseAdmin
         .from("requests")
-        .select("id, user_id, payment_status, details")
+        .select("id, user_id, payment_status, details, quoted_fare, surcharge_amount")
         .eq("id", request_id)
         .single();
 
@@ -71,6 +71,33 @@ serve(async (req) => {
     // ── 5. Idempotency: already paid — return success without re-verifying ───
     if (requestRow.payment_status === "paid") {
         return json({ success: true, already_paid: true });
+    }
+
+    // ── 5b. Determine the REAL price server-side — never trust a client-sent
+    // amount as the fraud check, or a lower-value real payment could be
+    // laundered into a higher-value outcome (e.g. pay ₦100, claim a
+    // ₦500,000 option). Each payment_type has its own server-owned source.
+    const CURATION_FEE = 5000;
+    let realAmount: number;
+    let matchedOption: any = null;
+
+    if (payment_type === "curation") {
+        realAmount = CURATION_FEE;
+    } else if (payment_type === "ride_fare") {
+        realAmount = Number(requestRow.quoted_fare || 0) + Number(requestRow.surcharge_amount || 0);
+        if (realAmount <= 0) return json({ error: "No ride fare owed on this request" }, 400);
+    } else if (payment_type === "option") {
+        if (!option_title) return json({ error: "Missing option_title" }, 400);
+        const curated = requestRow.details?.curated_options ?? {};
+        matchedOption = curated.recommended?.title === option_title
+            ? curated.recommended
+            : (curated.suggestions ?? []).find((s: any) => s.title === option_title);
+        if (!matchedOption || typeof matchedOption.price !== "number") {
+            return json({ error: "No matching option with a known price found on this request" }, 404);
+        }
+        realAmount = matchedOption.price;
+    } else {
+        return json({ error: "Invalid payment_type" }, 400);
     }
 
     // ── 6. Call Flutterwave's server-side verification endpoint ─────────────
@@ -102,9 +129,10 @@ serve(async (req) => {
         return json({ error: "Transaction not successful", flw_status: tx?.status }, 402);
     }
 
-    // Amount must match within ₦1 (floating-point tolerance)
-    if (Math.abs(tx.amount - expected_amount) > 1) {
-        return json({ error: "Amount mismatch", paid: tx.amount, expected: expected_amount }, 402);
+    // Amount paid must match the server-computed real price (within ₦1
+    // floating-point tolerance) — never the client-sent expected_amount.
+    if (Math.abs(tx.amount - realAmount) > 1) {
+        return json({ error: "Amount mismatch", paid: tx.amount, expected: realAmount }, 402);
     }
 
     if (tx.currency !== "NGN") {
@@ -112,18 +140,16 @@ serve(async (req) => {
     }
 
     // ── 8. Build DB update payload ───────────────────────────────────────────
-    const updatePayload: Record<string, any> = { payment_status: "paid" };
+    // payment_tx_ref is unique across all requests (DB constraint) — this is
+    // what actually stops one real transaction from being replayed against a
+    // different request_id, not just the amount/ownership checks above.
+    const updatePayload: Record<string, any> = { payment_status: "paid", payment_tx_ref: tx_ref };
 
-    if (payment_type === "option" && option_title) {
+    if (payment_type === "option" && matchedOption) {
         const curated = requestRow.details?.curated_options ?? {};
-        let selection = curated.recommended?.title === option_title
-            ? curated.recommended
-            : (curated.suggestions ?? []).find((s: any) => s.title === option_title)
-                ?? { title: option_title, price: expected_amount };
-
         updatePayload.details = {
             ...requestRow.details,
-            curated_options: { ...curated, selection },
+            curated_options: { ...curated, selection: matchedOption },
         };
     }
 
@@ -134,6 +160,9 @@ serve(async (req) => {
         .eq("id", request_id);
 
     if (updateError) {
+        if (updateError.code === "23505") {
+            return json({ error: "This payment has already been applied to a different request" }, 409);
+        }
         return json({ error: "Database update failed", detail: updateError.message }, 500);
     }
 
