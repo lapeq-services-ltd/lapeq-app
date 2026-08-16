@@ -10,12 +10,16 @@ import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Eye, EyeOff } from "lucide-react-native";
 import EmailInput from "@/components/EmailInput";
-
-const isAndroid = Platform.OS === "android";
 import Svg, { Path } from "react-native-svg";
 import { supabase } from "@/lib/supabase";
 import * as AppleAuthentication from "expo-apple-authentication";
-import Constants from "expo-constants";
+import * as WebBrowser from "expo-web-browser";
+import { makeRedirectUri } from "expo-auth-session";
+
+WebBrowser.maybeCompleteAuthSession();
+
+const isAndroid = Platform.OS === "android";
+
 
 const GOLD = "#c9a84c";
 const DARK = "#0a0a0a";
@@ -37,14 +41,6 @@ const DIAL_CODES = [
     { flag: "🇩🇪", code: "+49", name: "Germany" },
 ];
 
-function AppleIcon({ size = 20, color = "#fff" }: { size?: number; color?: string }) {
-    return (
-        <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
-            <Path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
-        </Svg>
-    );
-}
-
 function GoogleIcon({ size = 20 }: { size?: number }) {
     return (
         <Svg width={size} height={size} viewBox="0 0 24 24">
@@ -55,6 +51,15 @@ function GoogleIcon({ size = 20 }: { size?: number }) {
         </Svg>
     );
 }
+
+function AppleIcon({ size = 20, color = "#fff" }: { size?: number; color?: string }) {
+    return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+            <Path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
+        </Svg>
+    );
+}
+
 
 export default function LoginScreen() {
     const router = useRouter();
@@ -72,20 +77,6 @@ export default function LoginScreen() {
 
     useEffect(() => {
         AppleAuthentication.isAvailableAsync().then(setAppleAuthAvailable);
-
-        const isExpoGo = Constants.executionEnvironment === "storeClient";
-        if (!isExpoGo) {
-            try {
-                const { GoogleSignin } = require("@react-native-google-signin/google-signin");
-                GoogleSignin.configure({
-                    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-                    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-                    scopes: ["profile", "email"],
-                });
-            } catch (err) {
-                console.warn("Failed to load Google Sign-In", err);
-            }
-        }
     }, []);
     const [alertType, setAlertType] = useState<"denied" | "unconfirmed">("denied");
 
@@ -148,41 +139,28 @@ export default function LoginScreen() {
     };
 
     const handleGoogleSignIn = async () => {
-        // Native Google Sign-In doesn't work in Expo Go — requires a real build
-        const isExpoGo = Constants.executionEnvironment === "storeClient";
-        if (isExpoGo) {
-            Alert.alert(
-                "Google Sign-In",
-                "Google Sign-In is available in the full Lapeq app. Please download it from the App Store or TestFlight."
-            );
-            return;
-        }
-
-        const { GoogleSignin, statusCodes } = require("@react-native-google-signin/google-signin");
-
         setLoading(true);
         try {
-            await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-            const response = await GoogleSignin.signIn();
-            const idToken = response.data?.idToken;
-
-            if (!idToken) throw new Error("No ID token returned from Google.");
-
-            const { error } = await supabase.auth.signInWithIdToken({
+            const redirectTo = makeRedirectUri({ scheme: "lapeq" });
+            const { data, error } = await supabase.auth.signInWithOAuth({
                 provider: "google",
-                token: idToken,
+                options: { redirectTo, skipBrowserRedirect: true },
             });
             if (error) throw error;
-        } catch (e: any) {
-            if (e.code === statusCodes.SIGN_IN_CANCELLED) {
-                // User cancelled — do nothing
-            } else if (e.code === statusCodes.IN_PROGRESS) {
-                // Already signing in — do nothing
-            } else if (e.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-                Alert.alert("Google Sign-In", "Google Play Services not available on this device.");
-            } else {
-                Alert.alert("Google Sign-In", e.message || "Something went wrong.");
+            if (!data?.url) throw new Error("No auth URL");
+            const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+            if (result.type === "success" && result.url) {
+                const fragment = result.url.split("#")[1] || result.url.split("?")[1] || "";
+                const params = new URLSearchParams(fragment);
+                const access_token = params.get("access_token");
+                const refresh_token = params.get("refresh_token");
+                if (access_token && refresh_token) {
+                    const { error: sessErr } = await supabase.auth.setSession({ access_token, refresh_token });
+                    if (sessErr) throw sessErr;
+                }
             }
+        } catch (e: any) {
+            Alert.alert("Google Sign-In", e.message || "Something went wrong.");
         } finally {
             setLoading(false);
         }
