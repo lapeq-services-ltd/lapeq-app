@@ -1,9 +1,9 @@
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image } from "react-native";
 import Skeleton from "@/components/Skeleton";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@/context/ThemeContext";
 import { useMemo, useEffect, useState, useCallback } from "react";
-import { Bell, ChevronLeft, Calendar, Trash2 } from "lucide-react-native";
+import { Bell, ChevronLeft, Calendar, CalendarX, Trash2, Crown, Car } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { supabase } from "@/lib/supabase";
 
@@ -30,10 +30,13 @@ function timeAgo(dateStr: string) {
     return `${days}d ago`;
 }
 
-// All types → Bell + gold, EXCEPT itinerary → Calendar + purple
-const TYPE_CONFIG: Record<string, { icon: any; glow: string; iconColor: string }> = {
-    itinerary: { icon: Calendar, glow: "rgba(192, 132, 252, 0.12)", iconColor: "#c084fc" },
-    default:   { icon: Bell,     glow: `${GOLD}18`,                 iconColor: GOLD },
+const TYPE_CONFIG: Record<string, { icon: any; glow: string; iconColor: string; clickable?: boolean }> = {
+    itinerary:          { icon: Calendar, glow: "rgba(192, 132, 252, 0.12)", iconColor: "#c084fc" },
+    welcome:            { icon: Crown,    glow: `${GOLD}22`,                 iconColor: GOLD,      clickable: false },
+    chauffeur_assigned: { icon: Car,      glow: "rgba(167, 139, 250, 0.15)", iconColor: "#a78bfa" },
+    trip_status:        { icon: Car,      glow: "rgba(201, 168, 76, 0.15)",  iconColor: GOLD },
+    itinerary_cancelled:{ icon: CalendarX,glow: "rgba(239, 83, 80, 0.15)",   iconColor: "#ef5350" },
+    default:            { icon: Bell,     glow: `${GOLD}18`,                 iconColor: GOLD },
 };
 
 function getCfg(type: string) {
@@ -54,10 +57,14 @@ export default function NotificationsScreen() {
         const user = session.user;
         setUserId(user.id);
 
+        // Staff-only ops alerts (from the admin dashboard's internal notification
+        // system) must never surface in a personal member inbox, even for accounts
+        // that are also staff — this table is shared, but this screen is member-facing.
         const { data } = await supabase
             .from("notifications")
             .select("*")
             .eq("user_id", user.id)
+            .not("type", "in", '("chat_alert","request_alert","status_alert","payment_alert","driver_assignment")')
             .order("created_at", { ascending: false })
             .limit(50);
 
@@ -128,8 +135,9 @@ export default function NotificationsScreen() {
                 </View>
             ) : notifications.length === 0 ? (
                 <View style={s.center}>
-                    <Bell size={40} color={C.border} />
-                    <Text style={s.empty}>No notifications yet</Text>
+                    <Image source={require("@/assets/emptystate/notif.png")} style={s.emptyImg} resizeMode="contain" />
+                    <Text style={s.emptyTitle}>All caught up</Text>
+                    <Text style={s.emptySubtitle}>Your notifications will appear here: updates on requests, itineraries, and more.</Text>
                 </View>
             ) : (
                 <FlatList
@@ -140,6 +148,35 @@ export default function NotificationsScreen() {
                     renderItem={({ item }) => {
                         const cfg = getCfg(item.type);
                         const IconComponent = cfg.icon;
+                        const isWelcome = item.type === "welcome";
+
+                        if (isWelcome) {
+                            const tierColor = item.title.toLowerCase().includes("silver") ? "#a8b8cc"
+                                : item.title.toLowerCase().includes("black") ? "#e8e8e8"
+                                : GOLD;
+                            return (
+                                <View style={[s.welcomeCard, { borderColor: `${tierColor}30`, backgroundColor: `${tierColor}08` }]}>
+                                    <View style={[s.welcomeIconBox, { backgroundColor: `${tierColor}20` }]}>
+                                        <Crown size={20} color={tierColor} />
+                                    </View>
+                                    <View style={{ flex: 1, gap: 4 }}>
+                                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                                            <Text style={[s.welcomeTitle, { color: tierColor }]}>{item.title}</Text>
+                                            <Text style={s.time}>{timeAgo(item.created_at)}</Text>
+                                        </View>
+                                        <Text style={s.message}>{item.body}</Text>
+                                    </View>
+                                    <TouchableOpacity
+                                        onPress={() => deleteNotif(item.id)}
+                                        style={s.deleteBtn}
+                                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                    >
+                                        <Trash2 size={15} color={C.muted} />
+                                    </TouchableOpacity>
+                                </View>
+                            );
+                        }
+
                         return (
                             <TouchableOpacity
                                style={[
@@ -153,21 +190,20 @@ export default function NotificationsScreen() {
                                ]}
                                activeOpacity={0.7}
                                onPress={() => {
-                                    // Mark this one read locally
                                     setNotifications(prev => prev.map(n => n.id === item.id ? { ...n, read: true } : n));
                                     supabase.from("notifications").update({ read: true }).eq("id", item.id);
 
-                                    if (item.type === "request" || item.type === "receipt") {
+                                    if (item.type === "chauffeur_assigned" || item.type === "trip_status") {
+                                        router.push("/(main)/coordination");
+                                    } else if (item.type === "request" || item.type === "receipt" || item.type === "itinerary_cancelled") {
                                         if (item.target_id) router.push(`/requests/${item.target_id}`);
                                         else router.push("/requests");
                                     } else if (item.type === "chat") {
                                         router.push({ pathname: "/(main)/chat", params: { mode: "concierge" } } as any);
                                     } else if (item.type === "itinerary") {
                                         router.push({ pathname: "/itinerary-view", params: { notifId: item.id } });
-                                    } else if (item.type === "welcome") {
-                                        router.push("/explore");
                                     } else {
-                                        router.push("/");
+                                        router.push("/(tabs)");
                                     }
                                 }}
                             >
@@ -208,7 +244,10 @@ const getStyles = (C: any) => StyleSheet.create({
     header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16, gap: 12 },
     backBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" },
     headerTitle: { fontSize: 24, fontWeight: "700", color: C.text, flex: 1 },
-    center: { flex: 1, justifyContent: "center", alignItems: "center", gap: 12 },
+    center: { flex: 1, justifyContent: "center", alignItems: "center", gap: 16, paddingHorizontal: 40 },
+    emptyImg: { width: 180, height: 180, marginBottom: 8 },
+    emptyTitle: { fontSize: 20, fontWeight: "700", color: C.text, textAlign: "center" },
+    emptySubtitle: { fontSize: 14, color: C.muted, textAlign: "center", lineHeight: 22 },
     empty: { fontSize: 14, color: C.muted },
     notifItem: {
         flexDirection: "row",
@@ -226,4 +265,7 @@ const getStyles = (C: any) => StyleSheet.create({
     time: { fontSize: 11, color: C.muted, fontWeight: "500" },
     message: { fontSize: 13, color: C.muted, lineHeight: 18, paddingRight: 4 },
     deleteBtn: { paddingLeft: 8, paddingTop: 2, alignSelf: "flex-start" },
+    welcomeCard: { flexDirection: "row", alignItems: "flex-start", gap: 14, paddingVertical: 16, paddingHorizontal: 16, borderRadius: 16, borderWidth: 1, marginVertical: 4 },
+    welcomeIconBox: { width: 44, height: 44, borderRadius: 14, alignItems: "center", justifyContent: "center", flexShrink: 0 },
+    welcomeTitle: { fontSize: 14, fontWeight: "700", letterSpacing: 0.2 },
 });

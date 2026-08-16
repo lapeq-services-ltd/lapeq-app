@@ -38,7 +38,7 @@ const FAQ_ANSWERS: Record<string, string> = {
     "What cities do you cover?":
         "We currently operate in Abuja and Lagos, with services in Port Harcourt, Akwa Ibom, and Kano coming soon. Our on-the-ground concierge teams ensure real-time service delivery.",
     "How do I upgrade my tier?":
-        "You can upgrade your membership directly in the app. Go to Profile â†’ Upgrade Membership, select your desired tier, and submit a request. Our team will process it and reach out to confirm.",
+        "You can upgrade your membership directly in the app. Go to Profile → Upgrade Membership, select your desired tier, and submit a request. Our team will process it and reach out to confirm.",
 };
 
 const FAQ_KEYWORDS: { keywords: string[]; answer: string }[] = [
@@ -75,6 +75,7 @@ export default function ConciergeChatScreen() {
     const router = useRouter();
     const { mode: initialMode, packageId } = useLocalSearchParams<{ mode?: string; packageId?: string }>();
     const { C, theme } = useTheme();
+    const isDark = theme === "dark";
     const s = useMemo(() => getStyles(C, theme), [C, theme]);
 
     const [mode, setMode] = useState<ChatMode>((initialMode as ChatMode) ?? "concierge");
@@ -152,7 +153,6 @@ export default function ConciergeChatScreen() {
                     .from("requests")
                     .select("id, reference, title")
                     .eq("user_id", user.id)
-                    .is("deleted_at", null)
                     .order("created_at", { ascending: false });
 
                 if (reqs) {
@@ -272,15 +272,17 @@ export default function ConciergeChatScreen() {
             );
             const replyText = matchingFaq ? matchingFaq.answer : "Your concierge will follow up on this shortly. Is there anything else we can help you with?";
 
-            setTimeout(async () => {
-                // Save bot auto-reply directly to the DB so it persists
-                // The Realtime channel will pick this up and append it to local state automatically
-                await supabase.from("messages").insert({
-                    user_id: userId,
-                    sender_type: "admin",
+            setTimeout(() => {
+                // Bot FAQ reply — local only, never saved to DB so the notification trigger doesn't fire
+                const botMsg: Message = {
+                    id: `bot-${Date.now()}`,
                     content: replyText,
-                    type: messageType,
-                });
+                    sender_type: "admin",
+                    created_at: new Date().toISOString(),
+                    type: messageType ?? undefined,
+                };
+                setMessages(prev => [...prev, botMsg]);
+                setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
             }, 800);
         } else {
             // request / concierge / driver_chat - save to DB, no auto-reply
@@ -370,7 +372,7 @@ export default function ConciergeChatScreen() {
     return (
         <SafeAreaView style={s.root}>
             <View style={s.header}>
-                <TouchableOpacity onPress={() => setMode(null)} style={s.backBtn}>
+                <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
                     <ChevronLeft size={28} color={C.text} />
                 </TouchableOpacity>
                 <View style={s.headerTitleContainer}>
