@@ -61,7 +61,7 @@ const REDESIGNED_PERKS = [
         icon: Shield,
         badge: "Elite Protection",
         img: require("@/assets/images/exterior-luxury.jpg"),
-        route: "/services/lifestyle-security" as const,
+        route: "/services/lifestyle-bespoke-care" as const,
     },
 ];
 
@@ -77,7 +77,7 @@ const WHAT_WE_DO = [
     "Sold-out event tickets & exclusive access",
     "Personal styling & fashion appointments",
     "Medical concierge & specialist access",
-    "Diaspora support — your eyes on the ground",
+    "Diaspora support, your eyes on the ground",
     "Investment advisorship introductions",
     "Private security arrangements",
     "Monthly complimentary experiences",

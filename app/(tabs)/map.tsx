@@ -115,7 +115,7 @@ export default function MapScreen() {
             {/* Bottom list */}
             <View style={s.bottomCard}>
                 <View style={s.bottomHandle} />
-                <Text style={s.bottomTitle}>{activeCity} Partners  <Text style={{ fontSize: 12, color: "rgba(201,168,76,0.6)", fontWeight: "600" }}>{cityVenues.length} places</Text></Text>
+                <Text style={s.bottomTitle}>{activeCity} Premium Network  <Text style={{ fontSize: 12, color: "rgba(201,168,76,0.6)", fontWeight: "600" }}>{cityVenues.length} places</Text></Text>
                 {activeCity !== "Lagos" && activeCity !== "Abuja" ? (
                     <View style={{ paddingVertical: 20, paddingRight: 20 }}>
                         <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 14, fontFamily: "Jost_400Regular", lineHeight: 20 }}>
