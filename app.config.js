@@ -2,21 +2,24 @@ require("dotenv").config({ path: ".env.local" });
 
 module.exports = {
   expo: {
-    name: "lapeq-app",
+    name: "Lapeq",
     slug: "lapeq-app",
     scheme: "lapeq",
     version: "1.0.0",
     orientation: "portrait",
-    icon: "./assets/icon.png",
+    icon: "./assets/logo/logo-bg.png",
     userInterfaceStyle: "light",
     splash: {
-      image: "./assets/splash-icon.png",
+      image: "./assets/logo/logo-bg.png",
       resizeMode: "contain",
-      backgroundColor: "#f7f4ee",
+      backgroundColor: "#000000",
     },
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.lapeq.app",
+      infoPlist: {
+        ITSAppUsesNonExemptEncryption: false,
+      },
     },
     android: {
       package: "com.lapeq.app",
@@ -39,19 +42,13 @@ module.exports = {
     plugins: [
       "expo-router",
       "expo-font",
+      "expo-video",
       [
-        "@rnmapbox/maps",
+        "expo-build-properties",
         {
-          RNMapboxMapsDownloadToken: process.env.MAPBOX_SECRET_TOKEN,
-        },
-      ],
-      [
-        "@react-native-google-signin/google-signin",
-        {
-          // Derived from iOS OAuth Client ID: strip ".apps.googleusercontent.com" suffix
-          iosUrlScheme: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID
-            ? `com.googleusercontent.apps.${process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID.replace(".apps.googleusercontent.com", "")}`
-            : "com.googleusercontent.apps.placeholder",
+          ios: {
+            useModularHeaders: true,
+          },
         },
       ],
     ],
