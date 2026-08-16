@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from "react";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useIsFocused } from "@react-navigation/native";
 import {
     View,
     Text,
@@ -12,10 +12,13 @@ import {
     Modal,
     Pressable,
     Switch,
+    DeviceEventEmitter,
+    Easing,
 } from "react-native";
 import AppTour from "@/components/AppTour";
-import PromoPopup from "@/components/PromoPopup";
 import Skeleton from "@/components/Skeleton";
+import GoldShimmerText from "@/components/GoldShimmerText";
+import DetailQuickRequestModal from "@/components/DetailQuickRequestModal";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
 
@@ -25,12 +28,88 @@ import { useRouter } from "expo-router";
 import { Bell, Crown, ChevronRight, Calendar, Plane, Car, HelpCircle, MessageCircle, LayoutGrid, Plus, Headphones, ClipboardList, Sparkles, Settings, FileText, X, Sun, Moon } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
-import { LinearGradient } from "expo-linear-gradient";
-
-const GOLD = "#c9a84c";
+// Staff-only alert types (e.g. a superadmin's own profile matching the staff
+// notify list on request submission) — never counted or shown in the member badge.
+const STAFF_ALERT_TYPES = ["chat_alert", "request_alert", "status_alert", "payment_alert", "driver_assignment"];
+const STAFF_ALERT_TYPES_SQL = '("chat_alert","request_alert","status_alert","payment_alert","driver_assignment")';
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_WIDTH = SCREEN_WIDTH * 0.72;
 const CARD_GAP = 12;
+
+const GREETING_PROMPTS = [
+    "What can we help you with?",
+    "Need a chauffeur today?",
+    "Ready for your next request?",
+    "What can Lapeq do for you?",
+];
+
+// Isolated so the per-character state updates only re-render this tiny
+// component, not the entire (expensive) home screen tree.
+function GreetingTypewriter({ userName, color }: { userName: string; color: string }) {
+    const [typedPrompt, setTypedPrompt] = useState("");
+    const cursorOpacity = useRef(new Animated.Value(1)).current;
+
+    useEffect(() => {
+        const rotation = userName ? [userName, ...GREETING_PROMPTS] : GREETING_PROMPTS;
+        let wordIndex = 0;
+        let charIndex = 0;
+        let deleting = false;
+        let timer: ReturnType<typeof setTimeout>;
+
+        const tick = () => {
+            const full = rotation[wordIndex];
+            if (!deleting) {
+                charIndex++;
+                setTypedPrompt(full.slice(0, charIndex));
+                if (charIndex === full.length) {
+                    deleting = true;
+                    timer = setTimeout(tick, full === userName ? 6500 : 4200);
+                    return;
+                }
+                timer = setTimeout(tick, 42);
+            } else {
+                charIndex--;
+                setTypedPrompt(full.slice(0, charIndex));
+                if (charIndex === 0) {
+                    deleting = false;
+                    wordIndex = (wordIndex + 1) % rotation.length;
+                    timer = setTimeout(tick, 300);
+                    return;
+                }
+                timer = setTimeout(tick, 22);
+            }
+        };
+        timer = setTimeout(tick, 600);
+
+        const cursorLoop = Animated.loop(
+            Animated.sequence([
+                Animated.timing(cursorOpacity, { toValue: 0, duration: 500, useNativeDriver: true }),
+                Animated.timing(cursorOpacity, { toValue: 1, duration: 500, useNativeDriver: true }),
+            ])
+        );
+        cursorLoop.start();
+
+        return () => { clearTimeout(timer); cursorLoop.stop(); };
+    }, [userName]);
+
+    const lapeqIdx = typedPrompt.indexOf("Lapeq");
+    const lapeqFullyTyped = lapeqIdx !== -1 && typedPrompt.length >= lapeqIdx + "Lapeq".length;
+
+    return (
+        <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap" }}>
+            {lapeqFullyTyped ? (
+                <>
+                    <Text style={{ fontSize: 28, fontWeight: "700", color }}>{typedPrompt.slice(0, lapeqIdx)}</Text>
+                    <GoldShimmerText text="Lapeq" fontSize={24} fontFamily="Jost_700Bold" style={{ width: 70 }} />
+                    <Text style={{ fontSize: 28, fontWeight: "700", color }}>{typedPrompt.slice(lapeqIdx + "Lapeq".length)}</Text>
+                </>
+            ) : (
+                <Text style={{ fontSize: 28, fontWeight: "700", color }}>{typedPrompt}</Text>
+            )}
+            <Animated.Text style={{ fontSize: 26, fontWeight: "700", color, marginLeft: 2, opacity: cursorOpacity }}>|</Animated.Text>
+        </View>
+    );
+}
 
 const PARTNER_IMGS: Record<string, any> = {
     restaurant: require("@/assets/images/lagos-restaurant.jpg"),
@@ -40,7 +119,7 @@ const PARTNER_IMGS: Record<string, any> = {
     spa: require("@/assets/images/lagos-restaurant.jpg"),
 };
 
-type Partner = { id: string; name: string; category: string; city: string; image_url: string | null; venue_id?: string | null; body?: string | null };
+type Partner = { id: string; name: string; category: string; city: string; image_url: string | null; venue_id?: string | null; body?: string | null; bullet_points?: string | null; opening_hours?: string | null };
 
 const ADS = [
     {
@@ -78,7 +157,6 @@ const LOOPED = [...ADS, ...ADS, ...ADS];
 
 let welcomeShownSession = false;
 let trialShownSession = false;
-let promoShownSession = false;
 
 export default function HomeScreen() {
     const router = useRouter();
@@ -94,32 +172,28 @@ export default function HomeScreen() {
     const [picks, setPicks] = useState<any[]>([]);
     const [showTrialPopup, setShowTrialPopup] = useState(false);
     const [hasActiveRide, setHasActiveRide] = useState(false);
+    const [activeRideDriverStatus, setActiveRideDriverStatus] = useState<string | null>(null);
+    const [unpaidRideId, setUnpaidRideId] = useState<string | null>(null);
+    const isFocused = useIsFocused();
     const [showTour, setShowTour] = useState(false);
     const [profileLoaded, setProfileLoaded] = useState(false);
-    const [showPromo, setShowPromo] = useState(false);
     const [monthlyRequestsCount, setMonthlyRequestsCount] = useState(0);
     const [selectedDetailItem, setSelectedDetailItem] = useState<{
+        id: string;
         title: string;
         body: string | null;
         image_url: string | null;
         category?: string;
         city?: string;
         tag?: string | null;
+        bullet_points?: string | null;
+        opening_hours?: string | null;
     } | null>(null);
 
-    const triggerPromoAfterDelay = useCallback(() => {
-        if (promoShownSession) return;
-        setTimeout(() => {
-            if (promoShownSession) return;
-            promoShownSession = true;
-            setShowPromo(true);
-        }, 5000);
-    }, []);
-
     const triggerTrialAfterDelay = useCallback((user: any) => {
-        if (trialShownSession || promoShownSession) return;
+        if (trialShownSession) return;
         setTimeout(async () => {
-            if (trialShownSession || promoShownSession) return;
+            if (trialShownSession) return;
             const now = new Date();
             const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
@@ -135,9 +209,6 @@ export default function HomeScreen() {
             if (needsTrial && requestCount >= 3) {
                 trialShownSession = true;
                 setShowTrialPopup(true);
-            } else {
-                promoShownSession = true;
-                setShowPromo(true);
             }
         }, 5000);
     }, []);
@@ -150,6 +221,29 @@ export default function HomeScreen() {
     const dropdownScale = useRef(new Animated.Value(0.85)).current;
     const dropdownOpacity = useRef(new Animated.Value(0)).current;
     const fabRotate = useRef(new Animated.Value(0)).current;
+    const ridePing = useRef(new Animated.Value(0)).current;
+    const rideBreathe = useRef(new Animated.Value(1)).current;
+
+
+    useEffect(() => {
+        if (!hasActiveRide) return;
+        ridePing.setValue(0);
+        const pingLoop = Animated.loop(
+            Animated.sequence([
+                Animated.timing(ridePing, { toValue: 1, duration: 1300, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+                Animated.delay(250),
+            ])
+        );
+        const breatheLoop = Animated.loop(
+            Animated.sequence([
+                Animated.timing(rideBreathe, { toValue: 0.5, duration: 1500, useNativeDriver: true }),
+                Animated.timing(rideBreathe, { toValue: 1, duration: 1500, useNativeDriver: true }),
+            ])
+        );
+        pingLoop.start();
+        breatheLoop.start();
+        return () => { pingLoop.stop(); breatheLoop.stop(); };
+    }, [hasActiveRide]);
 
     const openDropdown = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -189,19 +283,62 @@ export default function HomeScreen() {
         useCallback(() => {
             supabase.auth.getUser().then(async ({ data: { user } }) => {
                 if (!user) return;
-                const { data } = await supabase
-                    .from("requests")
-                    .select("id, driver_status")
-                    .eq("user_id", user.id)
-                    .in("service_type", ["driving", "driving-service"])
-                    .not("status", "in", '("completed","cancelled")')
-                    .order("created_at", { ascending: false })
-                    .limit(1);
 
-                if (data && data.length > 0 && data[0].driver_status) {
+                // A driver truly en route/with her takes priority; otherwise an unpaid fare
+                // from a trip she just finished is more urgent than a *different*, merely
+                // assigned-but-not-started trip — same priority as the coordination screen.
+                // Picking "current" by driver progress (not just newest created_at) matters
+                // here too — a brand-new untouched request must not mask an older assigned one.
+                const [{ data: activeAll }, { data: unpaid }] = await Promise.all([
+                    supabase
+                        .from("requests")
+                        .select("id, driver_status, created_at")
+                        .eq("user_id", user.id)
+                        .in("service_type", ["driving", "driving-service", "logistics"])
+                        .not("status", "in", '("completed","cancelled")'),
+                    supabase
+                        .from("requests")
+                        .select("id")
+                        .eq("user_id", user.id)
+                        .in("service_type", ["driving", "driving-service", "logistics"])
+                        .eq("status", "completed")
+                        .not("quoted_fare", "is", null)
+                        // NULL payment_status (never attempted) must count as unpaid — see
+                        // coordination.tsx for why plain .neq() silently misses NULL rows.
+                        .or("payment_status.is.null,payment_status.neq.paid")
+                        .order("updated_at", { ascending: false })
+                        .limit(1),
+                ]);
+
+                const DRIVER_STATUS_RANK: Record<string, number> = {
+                    en_route: 2, arrived: 2, in_progress: 2,
+                    assigned: 1,
+                };
+                const active = activeAll && activeAll.length > 0
+                    ? [...activeAll].sort((a, b) => {
+                        const ra = DRIVER_STATUS_RANK[a.driver_status ?? ""] ?? 0;
+                        const rb = DRIVER_STATUS_RANK[b.driver_status ?? ""] ?? 0;
+                        if (ra !== rb) return rb - ra;
+                        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+                    })
+                    : [];
+
+                const ds = active.length > 0 ? active[0].driver_status : null;
+                const hasLiveDriver = ds === "en_route" || ds === "arrived" || ds === "in_progress";
+                const unpaidTripId = unpaid && unpaid.length > 0 ? unpaid[0].id : null;
+
+                if (unpaidTripId && !hasLiveDriver) {
                     setHasActiveRide(true);
+                    setActiveRideDriverStatus("unpaid");
+                    setUnpaidRideId(unpaidTripId);
+                } else if (ds) {
+                    setHasActiveRide(true);
+                    setActiveRideDriverStatus(ds);
+                    setUnpaidRideId(null);
                 } else {
                     setHasActiveRide(false);
+                    setActiveRideDriverStatus(null);
+                    setUnpaidRideId(null);
                 }
             });
         }, [])
@@ -222,7 +359,6 @@ export default function HomeScreen() {
                 await AsyncStorage.multiRemove(["lapeq_welcome_seen", "lapeq_tour_seen", "lapeq_cached_name"]);
                 welcomeShownSession = false;
                 trialShownSession = false;
-                promoShownSession = false;
             }
             await AsyncStorage.setItem("lapeq_last_user", user.id);
 
@@ -230,11 +366,19 @@ export default function HomeScreen() {
             const [tourSeen, profileResult, notifResult, lastChatOpen] = await Promise.all([
                 AsyncStorage.getItem("lapeq_tour_seen"),
                 supabase.from("profiles").select("full_name, tier").eq("id", user.id).single(),
-                supabase.from("notifications").select("*", { count: "exact", head: true }).eq("user_id", user.id).eq("read", false),
+                supabase.from("notifications").select("*", { count: "exact", head: true }).eq("user_id", user.id).eq("read", false).not("type", "in", STAFF_ALERT_TYPES_SQL),
                 AsyncStorage.getItem(`lapeq_chat_last_open_${user.id}`),
             ]);
 
             triggerTrialAfterDelay(user);
+
+            // First time this device has seen this user's home screen — show the
+            // interactive app tour automatically instead of relying on someone finding
+            // "Replay App Tour" buried in Settings → App Guide.
+            if (!tourSeen) {
+                AsyncStorage.setItem("lapeq_tour_seen", "1");
+                setTimeout(() => setShowTour(true), 1200);
+            }
 
             if (!profileResult.data) {
                 const meta2 = user.user_metadata ?? {};
@@ -381,7 +525,10 @@ export default function HomeScreen() {
             .channel(`home-notifs-${userId}`)
             .on('postgres_changes',
                 { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
-                () => setUnreadCount(prev => prev + 1)
+                (payload: any) => {
+                    if (STAFF_ALERT_TYPES.includes(payload.new?.type)) return;
+                    setUnreadCount(prev => prev + 1);
+                }
             )
             .on('postgres_changes',
                 { event: 'INSERT', schema: 'public', table: 'messages', filter: `user_id=eq.${userId}` },
@@ -395,12 +542,25 @@ export default function HomeScreen() {
         return () => { supabase.removeChannel(ch); };
     }, [userId]);
 
+    // Refresh badge when _layout detects a tier upgrade (DB trigger inserts notification)
+    useEffect(() => {
+        if (!userId) return;
+        const sub = DeviceEventEmitter.addListener("notifications:refresh", () => {
+            supabase.from("notifications").select("*", { count: "exact", head: true })
+                .eq("user_id", userId).eq("read", false)
+                .not("type", "in", STAFF_ALERT_TYPES_SQL)
+                .then(({ count }) => setUnreadCount(count ?? 0));
+        });
+        return () => sub.remove();
+    }, [userId]);
+
     // Re-fetch unread count whenever home screen comes into focus
     useFocusEffect(useCallback(() => {
         if (!userId) return;
         // Notification badge
         supabase.from("notifications").select("*", { count: "exact", head: true })
             .eq("user_id", userId).eq("read", false)
+            .not("type", "in", STAFF_ALERT_TYPES_SQL)
             .then(({ count }) => setUnreadCount(count ?? 0));
         // Message dot — compare against last time user opened chat
         AsyncStorage.getItem(`lapeq_chat_last_open_${userId}`).then(async lastOpen => {
@@ -492,6 +652,27 @@ export default function HomeScreen() {
                     <Text style={s.headerTitle}>Lapeq</Text>
                 </View>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                    {hasActiveRide && (
+                        <TouchableOpacity
+                            style={s.activeRideBtn}
+                            onPress={() => unpaidRideId ? router.push(`/requests/${unpaidRideId}`) : router.push("/(main)/coordination")}
+                            activeOpacity={0.75}
+                        >
+                            <Animated.View
+                                pointerEvents="none"
+                                style={[
+                                    s.activeRidePulse,
+                                    {
+                                        opacity: ridePing.interpolate({ inputRange: [0, 1], outputRange: [0.6, 0] }),
+                                        transform: [{ scale: ridePing.interpolate({ inputRange: [0, 1], outputRange: [1, 1.8] }) }],
+                                    },
+                                ]}
+                            />
+                            <Animated.View style={{ opacity: rideBreathe }}>
+                                <Car size={28} color="#e5484d" strokeWidth={2.2} />
+                            </Animated.View>
+                        </TouchableOpacity>
+                    )}
                     <TouchableOpacity style={s.iconBtn} onPress={() => router.push("/notifications")}>
                         <Bell size={24} color={C.text} />
                         {unreadCount > 0 && (
@@ -507,36 +688,9 @@ export default function HomeScreen() {
             </View>
 
             <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 80 }}>
-                {hasActiveRide && (
-                    <TouchableOpacity
-                        onPress={() => router.push("/(main)/coordination")}
-                        activeOpacity={0.8}
-                        style={{
-                            marginBottom: 16,
-                            borderRadius: 16,
-                            overflow: "hidden",
-                            borderWidth: 1,
-                            borderColor: `${GOLD}40`,
-                        }}
-                    >
-                        <LinearGradient
-                            colors={[`${GOLD}33`, `${GOLD}10`]}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={{ padding: 14, flexDirection: "row", alignItems: "center", gap: 12 }}
-                        >
-                            <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: GOLD }} />
-                            <View style={{ flex: 1 }}>
-                                <Text style={{ fontSize: 13, fontWeight: "700", color: GOLD }}>Chauffeur Ride Active</Text>
-                                <Text style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>Tap to track driver location and details</Text>
-                            </View>
-                            <ChevronRight size={16} color={GOLD} />
-                        </LinearGradient>
-                    </TouchableOpacity>
-                )}
                 <View style={{ marginBottom: 20 }}>
                     <Text style={s.greetSub}>{(() => { const h = new Date().getHours(); return h < 12 ? "Good morning" + (userName ? "," : ".") : h < 17 ? "Good afternoon" + (userName ? "," : ".") : "Good evening" + (userName ? "," : "."); })()}</Text>
-                    {userName ? <Text style={s.greetName}>{userName}</Text> : null}
+                    <GreetingTypewriter userName={userName} color={C.text} />
                 </View>
 
                 <TouchableOpacity style={s.diasporaCard} onPress={() => router.push("/services/diaspora-support" as any)} activeOpacity={0.88}>
@@ -583,47 +737,62 @@ export default function HomeScreen() {
                 </View>
 
                 {/* Concierge quick-access */}
-                <View style={{ flexDirection: "row", justifyContent: "center", gap: 12, marginTop: 4, marginBottom: 24 }}>
+                <View style={{ marginTop: 4, marginBottom: 24, gap: 10 }}>
                     <TouchableOpacity
                         onPress={() => router.push({ pathname: "/(main)/chat", params: { mode: "concierge" } } as any)}
-                        activeOpacity={0.75}
+                        activeOpacity={0.8}
                         style={{
-                            flexDirection: "row", alignItems: "center", gap: 8,
-                            paddingVertical: 11, paddingHorizontal: 18,
-                            borderRadius: 50,
+                            flexDirection: "row", alignItems: "center", gap: 14,
+                            padding: 16,
+                            borderRadius: 18,
                             borderWidth: 1,
                             borderColor: `${C.primary}40`,
                             backgroundColor: `${C.primary}0d`,
                         }}
                     >
                         <View style={{ position: "relative" }}>
-                            <MessageCircle size={16} color={C.primary} />
+                            <View style={{
+                                width: 48, height: 48, borderRadius: 24,
+                                backgroundColor: `${C.primary}20`,
+                                alignItems: "center", justifyContent: "center",
+                            }}>
+                                <MessageCircle size={22} color={C.primary} />
+                            </View>
                             {unreadMessages > 0 && (
                                 <View style={{
-                                    position: "absolute", top: -3, right: -3,
-                                    width: 8, height: 8, borderRadius: 4,
-                                    backgroundColor: C.primary,
+                                    position: "absolute", top: -4, right: -4,
+                                    minWidth: 20, height: 20, borderRadius: 10,
+                                    backgroundColor: C.red,
+                                    alignItems: "center", justifyContent: "center",
+                                    paddingHorizontal: 4,
                                     borderWidth: 1.5, borderColor: C.background,
-                                }} />
+                                }}>
+                                    <Text style={{ fontSize: 11, fontWeight: "800", color: "#fff" }}>{unreadMessages}</Text>
+                                </View>
                             )}
                         </View>
-                        <Text style={{ fontSize: 13, fontWeight: "600", color: C.primary, fontFamily: "Jost_600SemiBold" }}>My Concierge</Text>
+                        <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 16, fontWeight: "700", color: C.text, fontFamily: "Jost_700Bold" }}>My Concierge</Text>
+                            <Text style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>
+                                {unreadMessages > 0 ? `${unreadMessages} new message${unreadMessages > 1 ? "s" : ""}` : "Chat with your concierge team"}
+                            </Text>
+                        </View>
+                        <ChevronRight size={20} color={C.primary} />
                     </TouchableOpacity>
 
                     <TouchableOpacity
                         onPress={() => router.push({ pathname: "/(main)/chat", params: { mode: "question" } } as any)}
                         activeOpacity={0.75}
                         style={{
-                            flexDirection: "row", alignItems: "center", gap: 8,
-                            paddingVertical: 11, paddingHorizontal: 18,
-                            borderRadius: 50,
-                            borderWidth: 1,
-                            borderColor: `${C.primary}40`,
-                            backgroundColor: `${C.primary}0d`,
+                            flexDirection: "row", alignItems: "center", gap: 10,
+                            paddingVertical: 12, paddingHorizontal: 16,
+                            borderRadius: 14,
+                            backgroundColor: C.surface,
                         }}
                     >
-                        <HelpCircle size={16} color={C.primary} />
-                        <Text style={{ fontSize: 13, fontWeight: "600", color: C.primary, fontFamily: "Jost_600SemiBold" }}>Ask a Question</Text>
+                        <HelpCircle size={17} color={C.muted} />
+                        <Text style={{ flex: 1, fontSize: 13, fontWeight: "600", color: C.text, fontFamily: "Jost_600SemiBold" }}>Ask a Question</Text>
+                        <ChevronRight size={16} color={C.muted} />
                     </TouchableOpacity>
                 </View>
 
@@ -652,7 +821,7 @@ export default function HomeScreen() {
 
                 {/* Partners carousel */}
                 <View style={s.sectionRow}>
-                    <Text style={s.sectionTitle}>Our Partners</Text>
+                    <GoldShimmerText text="Our Premium Network" fontSize={18} fontFamily="Jost_700Bold" style={{ flex: 1 }} />
                     <TouchableOpacity onPress={() => router.push("/partners" as any)}>
                         <Text style={s.viewAll}>See all →</Text>
                     </TouchableOpacity>
@@ -675,6 +844,7 @@ export default function HomeScreen() {
                                                 router.push({ pathname: "/explore/venue-detail", params: { id: venueId } });
                                             } else if (p.body || p.image_url || p.bullet_points) {
                                                 setSelectedDetailItem({
+                                                    id: p.id,
                                                     title: p.name,
                                                     body: p.body ?? null,
                                                     image_url: p.image_url,
@@ -733,6 +903,7 @@ export default function HomeScreen() {
                                                 });
                                             } else if (card.body || card.image_url || card.bullet_points) {
                                                 setSelectedDetailItem({
+                                                    id: card.id,
                                                     title: card.title,
                                                     body: card.body,
                                                     image_url: card.image_url,
@@ -808,17 +979,13 @@ export default function HomeScreen() {
                             onPress={() => {
                                 setShowTrialPopup(false);
                                 router.push("/membership");
-                                triggerPromoAfterDelay();
                             }}
                             activeOpacity={0.85}
                         >
                             <Text style={s.trialUpgradeBtnText}>Upgrade Membership</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                            onPress={() => {
-                                setShowTrialPopup(false);
-                                triggerPromoAfterDelay();
-                            }}
+                            onPress={() => setShowTrialPopup(false)}
                             style={{ marginTop: 14 }}
                         >
                             <Text style={s.trialSkip}>Skip for now</Text>
@@ -836,102 +1003,13 @@ export default function HomeScreen() {
                     });
                 }}
             />
-            <PromoPopup visible={showPromo} onClose={() => setShowPromo(false)} />
 
-            {/* Custom Detail Popup Modal for Picks/Partners without venue linking */}
-            <Modal
+            {/* Custom Detail & Quick Request Popup Modal for Picks/Partners without venue linking */}
+            <DetailQuickRequestModal
                 visible={selectedDetailItem !== null}
-                transparent
-                animationType="fade"
-                onRequestClose={() => setSelectedDetailItem(null)}
-            >
-                <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "center", alignItems: "center", padding: 24 }}>
-                    <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => setSelectedDetailItem(null)} />
-                    <View style={{ width: "100%", maxWidth: 400, backgroundColor: C.surface, borderRadius: 24, overflow: "hidden", borderWidth: 1, borderColor: theme === "dark" ? "#2a2a2a" : "#d8d3ca", position: "relative" }}>
-                        
-                        {/* Close button at top-right */}
-                        <TouchableOpacity 
-                            style={{ position: "absolute", top: 12, right: 12, zIndex: 10, width: 32, height: 32, borderRadius: 16, backgroundColor: "rgba(0,0,0,0.5)", itemsAlign: "center", justifyContent: "center", alignItems: "center" }}
-                            onPress={() => setSelectedDetailItem(null)}
-                        >
-                            <X size={16} color="#fff" />
-                        </TouchableOpacity>
-
-                        {selectedDetailItem?.image_url && (
-                            <Image source={{ uri: selectedDetailItem.image_url }} style={{ width: "100%", height: 200 }} resizeMode="cover" />
-                        )}
-                        <View style={{ padding: 20 }}>
-                            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                                <Text style={{ fontSize: 18, fontWeight: "700", color: C.text, flex: 1, marginRight: 8 }} numberOfLines={2}>
-                                    {selectedDetailItem?.title}
-                                </Text>
-                                {selectedDetailItem?.category && (
-                                    <Text style={{ fontSize: 11, fontWeight: "700", color: C.primary, textTransform: "uppercase" }}>
-                                        {selectedDetailItem.category}
-                                    </Text>
-                                )}
-                            </View>
-                            
-                            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 12 }}>
-                                {selectedDetailItem?.city && (
-                                    <Text style={{ fontSize: 13, color: C.muted }}>
-                                        📍 {selectedDetailItem.city}
-                                    </Text>
-                                )}
-                                {selectedDetailItem?.opening_hours && (
-                                    <Text style={{ fontSize: 13, color: C.primary, fontWeight: "600" }}>
-                                        🕒 {selectedDetailItem.opening_hours}
-                                    </Text>
-                                )}
-                            </View>
-
-                            <ScrollView style={{ maxHeight: 200, marginBottom: 20 }}>
-                                <Text style={{ fontSize: 13, color: C.text, lineHeight: 22 }}>
-                                    {selectedDetailItem?.body || "No additional description details provided."}
-                                </Text>
-
-                                {selectedDetailItem?.bullet_points && (
-                                    <View style={{ marginTop: 12, borderTopWidth: 1, borderTopColor: theme === "dark" ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)", paddingTop: 12 }}>
-                                        {selectedDetailItem.bullet_points.split("\n").filter(b => b.trim() !== "").map((bullet, idx) => (
-                                            <View key={idx} style={{ flexDirection: "row", alignItems: "flex-start", gap: 6, marginBottom: 6 }}>
-                                                <Text style={{ fontSize: 13, color: C.primary, lineHeight: 20 }}>•</Text>
-                                                <Text style={{ fontSize: 13, color: C.muted, lineHeight: 20, flex: 1 }}>{bullet.replace(/^[•\s*-]+/, "")}</Text>
-                                            </View>
-                                        ))}
-                                    </View>
-                                )}
-                            </ScrollView>
-
-                            <TouchableOpacity
-                                style={{ width: "100%", paddingVertical: 14, borderRadius: 16, backgroundColor: C.primary, alignItems: "center", shadowColor: C.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 }}
-                                onPress={() => {
-                                    const item = selectedDetailItem;
-                                    setSelectedDetailItem(null);
-                                    if (item) {
-                                        const cat = (item.category || "").toLowerCase();
-                                        let pType = "Bespoke Request";
-                                        if (cat.includes("restaurant") || cat.includes("lounge") || cat.includes("dining")) {
-                                            pType = "Private Dining";
-                                        } else if (cat.includes("hotel") || cat.includes("stay") || cat.includes("accommodation")) {
-                                            pType = "Stays & Accommodations";
-                                        }
-                                        router.push({
-                                            pathname: "/services/lifestyle-travel",
-                                            params: {
-                                                prefillType: pType,
-                                                prefillCity: item.city || undefined,
-                                                prefillVenue: item.title
-                                            }
-                                        });
-                                    }
-                                }}
-                            >
-                                <Text style={{ fontSize: 14, fontWeight: "800", color: "#000", letterSpacing: 0.5 }}>Let LAPEQ Plan This For Me</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
+                item={selectedDetailItem}
+                onClose={() => setSelectedDetailItem(null)}
+            />
 
             {/* Quick Actions FAB */}
             {showDropdown && (
@@ -996,6 +1074,53 @@ export default function HomeScreen() {
                     <Plus size={20} color={C.background} strokeWidth={2.5} />
                 </Animated.View>
             </TouchableOpacity>
+
+            {/* Unpaid ride fare — deliberately not dismissible (no X, no backdrop tap).
+                An outstanding fare shouldn't be something you can just ignore in a
+                header icon; you have to actually go pay it. */}
+            <Modal
+                transparent
+                visible={isFocused && activeRideDriverStatus === "unpaid" && !!unpaidRideId}
+                animationType="fade"
+                onRequestClose={() => {}}
+            >
+                <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.65)", alignItems: "center", justifyContent: "center", padding: 28 }}>
+                    <View
+                        style={{
+                            width: "100%",
+                            maxWidth: 380,
+                            backgroundColor: theme === "dark" ? "#161616" : "#fff",
+                            borderRadius: 24,
+                            padding: 26,
+                            alignItems: "center",
+                            borderWidth: 1,
+                            borderColor: "rgba(239,83,80,0.3)",
+                            shadowColor: "#000",
+                            shadowOffset: { width: 0, height: 12 },
+                            shadowOpacity: 0.35,
+                            shadowRadius: 30,
+                            elevation: 16,
+                        }}
+                    >
+                        <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: "rgba(239,83,80,0.12)", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                            <Car size={26} color="#ef5350" />
+                        </View>
+                        <Text style={{ fontFamily: "PlayfairDisplay_700Bold", fontSize: 19, color: C.text, textAlign: "center", marginBottom: 8 }}>
+                            Ride Fare Due
+                        </Text>
+                        <Text style={{ fontFamily: "Jost_400Regular", fontSize: 14, color: C.muted, textAlign: "center", lineHeight: 21, marginBottom: 22 }}>
+                            You have a completed trip with an outstanding fare. Please settle it to continue using Lapeq.
+                        </Text>
+                        <TouchableOpacity
+                            activeOpacity={0.85}
+                            onPress={() => router.push(`/requests/${unpaidRideId}`)}
+                            style={{ backgroundColor: "#ef5350", borderRadius: 14, paddingVertical: 14, width: "100%", alignItems: "center" }}
+                        >
+                            <Text style={{ fontFamily: "Jost_700Bold", fontSize: 14, color: "#fff" }}>Pay Now</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }
@@ -1027,8 +1152,9 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
         textAlign: "center"
     },
     crownBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: "transparent", borderWidth: 1, borderColor: C.border, alignItems: "center", justifyContent: "center" },
+    activeRideBtn: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
+    activeRidePulse: { position: "absolute", width: 30, height: 30, borderRadius: 15, backgroundColor: "rgba(229,72,77,0.35)" },
     greetSub: { fontSize: 18, color: C.muted },
-    greetName: { fontSize: 28, fontWeight: "700", color: C.text },
     quickGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 28 },
     diasporaCard: { height: 110, borderRadius: 18, overflow: "hidden", marginBottom: 12, flexDirection: "row", alignItems: "center" },
     diasporaImg: { ...StyleSheet.absoluteFillObject as any, width: "100%", height: "100%" },
