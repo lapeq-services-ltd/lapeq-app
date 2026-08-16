@@ -1,6 +1,6 @@
 import { showToast } from "@/lib/toast";
 import { cleanErr } from "@/lib/cleanErr";
-﻿import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
     View, Text, FlatList, TouchableOpacity, Dimensions,
     StyleSheet, Animated, Alert, Image, ScrollView, Modal,
@@ -223,7 +223,7 @@ const TIERS = [
                     "Access to exquisite bookings and services",
                     "Seamless events coordination",
                     "Dedicated professional concierge manager (9am–6pm; extended hours attract additional fees)",
-                    "Medical concierge — priority specialist access",
+                    "Medical concierge, priority specialist access",
                     "Legal support / Consultation",
                     "Private Security Attached",
                     "Airport and flight coordination",
@@ -371,7 +371,7 @@ function PaymentSheet({ tier, userName, userEmail, onClose, onSuccess }: any) {
                                 amount,
                                 currency: "NGN",
                                 payment_options: "card,banktransfer,ussd",
-                                customization: {
+                                customizations: {
                                     title: `Lapeq ${tier.name} Membership`,
                                     description: `${selectedDuration?.label ?? ""} · Unlimited concierge access`,
                                     logo: "https://iwedpnipbuurohaqibag.supabase.co/storage/v1/object/public/avatars/lapeq-logo.png",
@@ -596,10 +596,13 @@ export default function MembershipScreen() {
     const [cardRequested, setCardRequested] = useState(false);
     const [cardLoading, setCardLoading] = useState(false);
     const [paymentTier, setPaymentTier] = useState<typeof TIERS[0] | null>(null);
+    const [welcomeTier, setWelcomeTier] = useState<typeof TIERS[0] | null>(null);
 
     const currentTier = TIERS[activeIndex];
 
     useEffect(() => {
+        let channel: any = null;
+
         supabase.auth.getUser().then(async ({ data: { user } }) => {
             if (!user) return;
             setUserId(user.id);
@@ -619,7 +622,31 @@ export default function MembershipScreen() {
             setTimeout(() => {
                 listRef.current?.scrollToIndex({ index: idx, animated: false });
             }, 100);
+
+            // Listen for admin tier changes in real time
+            channel = supabase
+                .channel(`profile-tier-${user.id}`)
+                .on("postgres_changes", {
+                    event: "UPDATE",
+                    schema: "public",
+                    table: "profiles",
+                    filter: `id=eq.${user.id}`,
+                }, (payload: any) => {
+                    const newTier = payload.new?.tier;
+                    const oldTier = payload.old?.tier;
+                    if (newTier && newTier !== oldTier && newTier !== "free") {
+                        setUserTier(newTier);
+                        const newIdx = TIER_INDEX[newTier] ?? 1;
+                        setActiveIndex(newIdx);
+                        setTimeout(() => listRef.current?.scrollToIndex({ index: newIdx, animated: true }), 200);
+                        const upgraded = TIERS.find(t => t.id === newTier) ?? null;
+                        setWelcomeTier(upgraded);
+                    }
+                })
+                .subscribe();
         });
+
+        return () => { if (channel) supabase.removeChannel(channel); };
     }, []);
 
     const handleRequestCard = async () => {
@@ -642,20 +669,52 @@ export default function MembershipScreen() {
 
     const handlePaymentSuccess = async (tierId: string, txRef: string, duration: any) => {
         if (!userId) return;
-        await supabase.from("profiles").update({ tier: tierId }).eq("id", userId);
-        await supabase.from("requests").insert({
-            user_id: userId,
-            reference: txRef,
-            service_type: "tier-purchase",
-            status: "completed",
-            title: `${tierId.charAt(0).toUpperCase() + tierId.slice(1)} Membership`,
-            details: { tier: tierId, duration: duration?.label, amount: duration?.amount },
-        });
+
+        // Verified server-side (Flutterwave transaction check + tier update via
+        // service role) instead of the client setting its own tier directly —
+        // that path was silently blocked for real members by a protection
+        // trigger, and had no server-side proof the payment actually happened.
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const res = await fetch(
+                `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/verify-membership-payment`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${session?.access_token}`,
+                    },
+                    body: JSON.stringify({
+                        tx_ref: txRef,
+                        tier_id: tierId,
+                        expected_amount: duration?.amount ?? 0,
+                        duration_label: duration?.label,
+                        duration_months: duration?.months,
+                    }),
+                }
+            );
+            const result = await res.json();
+            if (!res.ok || !result.success) {
+                Alert.alert(
+                    "Verification Failed",
+                    "Your payment was received but could not be verified automatically. Please contact support with your reference number and we will confirm it shortly."
+                );
+                return;
+            }
+        } catch {
+            Alert.alert(
+                "Verification Error",
+                "Could not reach our server to verify your payment. Please contact support, as your payment may still have gone through."
+            );
+            return;
+        }
+
         setUserTier(tierId);
         setPaymentTier(null);
         const idx = TIER_INDEX[tierId] ?? activeIndex;
         setActiveIndex(idx);
-        Alert.alert("Welcome!", `You're now a Lapeq ${tierId.charAt(0).toUpperCase() + tierId.slice(1)} member. 🎉`);
+        const upgraded = TIERS.find(t => t.id === tierId) ?? null;
+        setWelcomeTier(upgraded);
     };
 
     const handleJoin = (tier: typeof TIERS[0]) => {
@@ -761,6 +820,48 @@ export default function MembershipScreen() {
                     onClose={() => setPaymentTier(null)}
                     onSuccess={handlePaymentSuccess}
                 />
+            )}
+
+            {welcomeTier && (
+                <Modal visible transparent animationType="fade">
+                    <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.75)", padding: 28 }}>
+                        <View style={{ width: "100%", backgroundColor: welcomeTier.accentBg, borderRadius: 28, padding: 28, borderWidth: 1, borderColor: `${welcomeTier.accent}30` }}>
+                            <Text style={{ fontSize: 10, fontWeight: "800", letterSpacing: 3, color: welcomeTier.accent, marginBottom: 10 }}>
+                                LAPEQ {welcomeTier.name.toUpperCase()}
+                            </Text>
+                            <Text style={{ fontSize: 28, fontWeight: "800", color: "#fff", marginBottom: 6 }}>
+                                You're in.
+                            </Text>
+                            <Text style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", marginBottom: 24, lineHeight: 20 }}>
+                                Your membership is active. Here's what you now have access to.
+                            </Text>
+
+                            <View style={{ gap: 10, marginBottom: 28 }}>
+                                {welcomeTier.categories.flatMap(c => c.perks).slice(0, 6).map((perk, i) => (
+                                    <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
+                                        <View style={{ width: 18, height: 18, borderRadius: 5, backgroundColor: `${welcomeTier.accent}24`, alignItems: "center", justifyContent: "center", marginTop: 1 }}>
+                                            <Check size={10} color={welcomeTier.accent} strokeWidth={3} />
+                                        </View>
+                                        <Text style={{ flex: 1, fontSize: 13.5, color: "rgba(255,255,255,0.8)", lineHeight: 19 }}>{perk}</Text>
+                                    </View>
+                                ))}
+                                {welcomeTier.categories.flatMap(c => c.perks).length > 6 && (
+                                    <Text style={{ fontSize: 12, color: welcomeTier.accent, marginLeft: 30 }}>
+                                        + {welcomeTier.categories.flatMap(c => c.perks).length - 6} more benefits
+                                    </Text>
+                                )}
+                            </View>
+
+                            <TouchableOpacity
+                                style={{ backgroundColor: welcomeTier.accent, borderRadius: 16, paddingVertical: 16, alignItems: "center" }}
+                                onPress={() => setWelcomeTier(null)}
+                                activeOpacity={0.85}
+                            >
+                                <Text style={{ fontSize: 15, fontWeight: "800", color: "#0a0a0a" }}>Start Exploring</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </Modal>
             )}
         </View>
     );
