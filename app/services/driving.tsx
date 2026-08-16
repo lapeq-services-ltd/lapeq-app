@@ -3,7 +3,7 @@ import { cleanErr } from "@/lib/cleanErr";
 import { useState, useMemo, useRef, useEffect } from "react";
 import {
     View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
-    Platform, Keyboard, KeyboardAvoidingView, Image, ActivityIndicator,
+    Platform, Keyboard, Image, ActivityIndicator,
     Modal, Animated, Alert, Switch, ImageBackground
 } from "react-native";
 import LocationSearch, { reverseGeocodeWithMapbox } from "@/components/LocationSearch";
@@ -12,6 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import * as Location from "expo-location";
 import { supabase } from "@/lib/supabase";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { useTheme } from "@/context/ThemeContext";
 import { MapPin, Clock, Users, Car, Minus, Plus, Navigation, Check, Plane, ChevronLeft } from "lucide-react-native";
 import VoiceInput from "@/components/VoiceInput";
@@ -103,7 +104,7 @@ export default function DrivingServiceScreen() {
     const [newRequestId, setNewRequestId] = useState<string | null>(null);
     const alertOpacity = useRef(new Animated.Value(0)).current;
     const alertScale = useRef(new Animated.Value(0.9)).current;
-    const scrollRef = useRef<ScrollView>(null);
+    const scrollRef = useRef<any>(null);
     const dropoffY = useRef(0);
 
     const [userTier, setUserTier] = useState<string | null>(null);
@@ -225,6 +226,24 @@ export default function DrivingServiceScreen() {
                     return;
                 }
 
+                // Multiple queued/scheduled requests are fine (they show under Upcoming) —
+                // the only real conflict is a driver already en route or physically with
+                // her, since she can't be picked up in two places at once.
+                const { data: existingActive } = await supabase
+                    .from("requests")
+                    .select("id")
+                    .eq("user_id", user.id)
+                    .in("service_type", ["driving", "driving-service", "logistics"])
+                    .not("status", "in", '("completed","cancelled")')
+                    .in("driver_status", ["en_route", "arrived", "in_progress"])
+                    .limit(1);
+
+                if (existingActive && existingActive.length > 0) {
+                    Alert.alert("Chauffeur En Route", "You already have a chauffeur en route or with you right now. Please wait until that trip is done before booking another.");
+                    setLoading(false);
+                    return;
+                }
+
                 const combined = new Date(dateObj);
                 combined.setHours(timeObj.getHours(), timeObj.getMinutes());
 
@@ -328,8 +347,7 @@ export default function DrivingServiceScreen() {
 
     return (
         <SafeAreaView style={[s.root, { backgroundColor: C.background }]} edges={["top"]}>
-            <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
-                <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={{ paddingBottom: 60 }}>
+            <KeyboardAwareScrollView ref={scrollRef} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={{ paddingBottom: 60 }} enableOnAndroid extraScrollHeight={20} keyboardOpeningTime={0}>
                     {/* Header */}
                     <View style={s.header}>
                         <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
@@ -339,6 +357,13 @@ export default function DrivingServiceScreen() {
                             <Text style={[s.eyebrow, { color: GOLD }]}>MOBILITY & LOGISTICS</Text>
                             <Text style={[s.title, { color: C.text }]}>Elite Transit & Aviation</Text>
                         </View>
+                        <TouchableOpacity
+                            onPress={() => router.push("/(main)/coordination")}
+                            style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: GOLD, alignItems: "center", justifyContent: "center" }}
+                            activeOpacity={0.8}
+                        >
+                            <Car size={18} color="#000" />
+                        </TouchableOpacity>
                     </View>
 
                     {!!eventTag && (
@@ -921,8 +946,7 @@ export default function DrivingServiceScreen() {
                             </Text>
                         )}
                     </View>
-                </ScrollView>
-            </KeyboardAvoidingView>
+            </KeyboardAwareScrollView>
 
             {/* Success Modal */}
             <Modal visible={showSuccess} transparent animationType="none">
