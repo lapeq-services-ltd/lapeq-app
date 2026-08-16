@@ -4,9 +4,10 @@
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web"
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@expo-google-fonts/jost": "^0.4.2",
@@ -14,8 +15,7 @@
     "@expo/ngrok": "^4.1.0",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-native-community/datetimepicker": "^8.4.4",
-    "@react-native-google-signin/google-signin": "^16.1.2",
-    "@rnmapbox/maps": "^10.2.10",
+    "@shopify/flash-list": "2.0.2",
     "@shopify/react-native-skia": "^2.2.12",
     "@supabase/supabase-js": "^2.98.0",
     "dotenv": "^17.3.1",
@@ -24,6 +24,7 @@
     "expo-auth-session": "~7.0.11",
     "expo-av": "~16.0.8",
     "expo-blur": "~15.0.8",
+    "expo-build-properties": "~1.0.10",
     "expo-constants": "~18.0.13",
     "expo-crypto": "~15.0.9",
     "expo-device": "~8.0.10",
@@ -39,6 +40,7 @@
     "expo-sensors": "~15.0.8",
     "expo-splash-screen": "~31.0.13",
     "expo-status-bar": "~3.0.9",
+    "expo-video": "~3.0.16",
     "expo-web-browser": "~15.0.11",
     "flutterwave-react-native": "^1.0.4",
     "lucide-react-native": "^0.577.0",
@@ -46,6 +48,7 @@
     "react-native": "^0.81.5",
     "react-native-google-places-autocomplete": "^2.6.4",
     "react-native-keyboard-aware-scroll-view": "^0.9.5",
+    "react-native-maps": "1.20.1",
     "react-native-qrcode-svg": "^6.3.21",
     "react-native-reanimated": "~4.1.1",
     "react-native-safe-area-context": "~5.6.0",
@@ -56,6 +59,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.1.10",
+    "patch-package": "^8.0.1",
     "typescript": "~5.9.2"
   },
   "private": true
