@@ -27,7 +27,7 @@ function getSystemTheme(): ThemeType {
 }
 
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
-    const [themeMode, setThemeModeState] = useState<ThemeMode>("light");
+    const [themeMode, setThemeModeState] = useState<ThemeMode>("auto");
     const [systemTheme, setSystemTheme] = useState<ThemeType>(getSystemTheme());
 
     // Listen for OS appearance changes

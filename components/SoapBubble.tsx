@@ -1,4 +1,4 @@
-﻿/**
+/**
  * SoapBubble.tsx
  *
  * ⚠️  Requires a custom dev build or EAS build.
