@@ -1,7 +1,7 @@
 import { useMemo, useState, useRef } from "react";
 import {
     View, Text, TouchableOpacity, StyleSheet,
-    TextInput, Image, Animated, Platform,
+    TextInput, Image, Animated, Platform, Alert,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -30,6 +30,11 @@ export default function ReportScreen() {
     const toastAnim = useRef(new Animated.Value(-80)).current;
 
     const pickImage = async () => {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== "granted") {
+            Alert.alert("Permission Required", "Please allow access to your photo library to attach a screenshot.");
+            return;
+        }
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ["images"],
             quality: 0.75,

@@ -32,23 +32,22 @@ const AIRCRAFT = [
 ];
 
 const SERVICE_TYPES = [
-    { id: "Curated Itinerary",      label: "Curated Itinerary", emoji: "✦", desc: "A full trip planned end-to-end for you",           img: require("@/assets/images/lagos-hotel.jpg") },
-    { id: "Stays & Accommodations", label: "Stays",             emoji: "⌂", desc: "Hotels, villas, and private residences",           img: require("@/assets/images/lagos-rooftop.jpg") },
-    { id: "Private Dining",         label: "Private & Fine Dining", emoji: "◈", desc: "Exclusive tables, private chef, and fine dining experiences", img: require("@/assets/images/lagos-restaurant.jpg") },
-    { id: "VIP Protocol",           label: "VIP Protocol",      emoji: "◆", desc: "Airport arrivals, security, and event access",     img: require("@/assets/images/lagos-beach.jpg") },
-    { id: "Flights & Jets",         label: "Private Jets",      emoji: "✈", desc: "Book private charters, jets & helicopters",        img: require("@/assets/images/exterior-luxury.jpg") },
-    { id: "Legal Advisory",         label: "Legal Advisory",    emoji: "⚖", desc: "Consultations, document support & trusted referrals", img: require("@/assets/images/onboarding-trust.png") },
-    { id: "Gift & Florals",         label: "Gift & Florals",    emoji: "◈", desc: "Bouquets, luxury gifts & occasion curation",        img: require("@/assets/images/lagos-restaurant.jpg") },
-    { id: "Recreational Activities",label: "Recreation",        emoji: "◎", desc: "Golf, tennis, water sports & leisure bookings",    img: require("@/assets/images/lagos-beach.jpg") },
-    { id: "Medical Concierge",      label: "Medical Concierge", emoji: "✦", desc: "Doctor appointments & specialist referrals",        img: require("@/assets/images/onboarding-lifestyle.png") },
-    { id: "Home & Property",        label: "Home & Property",   emoji: "⌂", desc: "Interior design, sourcing & management",           img: require("@/assets/images/lagos-hotel.jpg") },
-    { id: "Financial Advisory",     label: "Financial Advisory",emoji: "◆", desc: "Wealth management, tax & investment planning",       img: require("@/assets/images/lagos-rooftop.jpg") },
-    { id: "Photography & Content",  label: "Photography",       emoji: "□", desc: "Photographers, portrait sessions & content creators", img: require("@/assets/images/onboarding-driving.png") },
-    { id: "Childcare & Family",     label: "Childcare & Family",emoji: "△", desc: "Nanny sourcing, school admissions & childcare",        img: require("@/assets/images/onboarding-lifestyle.png") },
-    { id: "Security & Protocol",    label: "Security",          emoji: "◉", desc: "Personal protection & VIP security arrangements",    img: require("@/assets/images/ikoyi-bridge.jpg") },
-    { id: "Bespoke Request",        label: "Bespoke Request",   emoji: "✦", desc: "Any custom request or premium service not listed",  img: require("@/assets/images/onboarding-lifestyle.png") },
-    { id: "Passport Renewal",       label: "Passport Renewal",  emoji: "◈", desc: "End-to-end passport renewal & document processing",  img: require("@/assets/images/onboarding-trust.png") },
-    { id: "Bank Account Opening",   label: "Bank Account",      emoji: "◆", desc: "Open a Nigerian bank account remotely",              img: require("@/assets/images/lagos-rooftop.jpg") },
+    { id: "Curated Itinerary",      label: "Curated Itinerary", emoji: "✦", desc: "A full trip planned end-to-end for you",           img: require("@/assets/make-a-request/iteneries.jpg") },
+    { id: "Stays & Accommodations", label: "Stays",             emoji: "⌂", desc: "Hotels, villas, and private residences",           img: require("@/assets/make-a-request/stay.jpg") },
+    { id: "Private Dining",         label: "Private & Fine Dining", emoji: "◈", desc: "Exclusive tables, private chef, and fine dining experiences", img: require("@/assets/make-a-request/private-dining.jpg") },
+    { id: "VIP Protocol",           label: "VIP Protocol",      emoji: "◆", desc: "Airport arrivals, security, and event access",     img: require("@/assets/make-a-request/vip-protocol.jpg") },
+    { id: "Flights & Jets",         label: "Private Jets",      emoji: "✈", desc: "Book private charters, jets & helicopters",        img: require("@/assets/make-a-request/airplane.jpg") },
+    { id: "Legal Advisory",         label: "Legal Advisory",    emoji: "⚖", desc: "Consultations, document support & trusted referrals", img: require("@/assets/make-a-request/legal.jpg") },
+    { id: "Gift & Florals",         label: "Gift & Florals",    emoji: "◈", desc: "Bouquets, luxury gifts & occasion curation",        img: require("@/assets/make-a-request/gifts.jpg") },
+    { id: "Recreational Activities",label: "Recreation",        emoji: "◎", desc: "Golf, tennis, water sports & leisure bookings",    img: require("@/assets/make-a-request/recreation.jpg") },
+    { id: "Medical Concierge",      label: "Medical Concierge", emoji: "✦", desc: "Doctor appointments & specialist referrals",        img: require("@/assets/make-a-request/medical.jpg") },
+    { id: "Home & Property",        label: "Home & Property",   emoji: "⌂", desc: "Interior design, sourcing & management",           img: require("@/assets/make-a-request/home-property.jpg") },
+    { id: "Financial Advisory",     label: "Financial Advisory",emoji: "◆", desc: "Wealth management, tax & investment planning",       img: require("@/assets/make-a-request/financia.jpg") },
+    { id: "Photography & Content",  label: "Photography",       emoji: "□", desc: "Photographers, portrait sessions & content creators", img: require("@/assets/make-a-request/photography.jpg") },
+    { id: "Childcare & Family",     label: "Childcare & Family",emoji: "△", desc: "Nanny sourcing, school admissions & childcare",        img: require("@/assets/make-a-request/childcare.jpg") },
+    { id: "Security & Protocol",    label: "Security",          emoji: "◉", desc: "Personal protection & VIP security arrangements",    img: require("@/assets/make-a-request/security.jpg") },
+    { id: "Passport Renewal",       label: "Passport Renewal",  emoji: "◈", desc: "End-to-end passport renewal & document processing",  img: require("@/assets/make-a-request/passport.jpg") },
+    { id: "Bank Account Opening",   label: "Bank Account",      emoji: "◆", desc: "Open a Nigerian bank account remotely",              img: require("@/assets/make-a-request/bank.jpg") },
 ];
 
 // Cycled across the service arches so neighbours read as visually distinct,
@@ -66,8 +65,8 @@ const CUISINES        = ["Nigerian", "Continental", "Asian", "Mediterranean", "C
 const DINING_SETUP    = ["Floral Decor", "Candlelight", "Live Music", "Photography", "Surprise Element", "Custom Menu"];
 const PROTOCOL_TYPES  = ["Airport Reception", "Event Access", "Security Detail", "Port Protocol", "Diplomatic Escort"];
 
-function BudgetStepper({ value, onChange, min, step, label, C, theme, accentColor }: {
-    value: number; onChange: (v: number) => void; min: number; step: number; label?: string; C: any; theme: string; accentColor?: string;
+function BudgetStepper({ value, onChange, min, max = 1_000_000_000, step, label, C, theme, accentColor }: {
+    value: number; onChange: (v: number) => void; min: number; max?: number; step: number; label?: string; C: any; theme: string; accentColor?: string;
 }) {
     const isDark = theme === "dark";
     const accent = accentColor ?? GOLD;
@@ -76,6 +75,11 @@ function BudgetStepper({ value, onChange, min, step, label, C, theme, accentColo
     const fmt = (v: number) => v >= 1_000_000
         ? `₦${(v / 1_000_000 % 1 === 0 ? v / 1_000_000 : (v / 1_000_000).toFixed(1))}M`
         : `₦${(v / 1000).toFixed(0)}k`;
+    // Comma-grouped so you can gauge the size of the number at a glance while
+    // typing (e.g. "10,000,000") instead of a wall of digits — this raw
+    // wall-of-digits display is exactly what made the runaway-value bug hard
+    // to notice in the first place.
+    const fmtDraft = (digits: string) => digits ? Number(digits).toLocaleString("en-US") : "";
 
     const startEditing = () => {
         setDraft(String(value));
@@ -84,7 +88,7 @@ function BudgetStepper({ value, onChange, min, step, label, C, theme, accentColo
 
     const commitEditing = () => {
         const parsed = parseInt(draft.replace(/[^0-9]/g, ""), 10);
-        onChange(Number.isFinite(parsed) ? Math.max(min, parsed) : value);
+        onChange(Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : value);
         setEditing(false);
     };
 
@@ -101,8 +105,8 @@ function BudgetStepper({ value, onChange, min, step, label, C, theme, accentColo
                 {label && <Text style={{ fontSize: 9, fontWeight: "800", color: C.muted, letterSpacing: 2, marginBottom: 6 }}>{label}</Text>}
                 {editing ? (
                     <TextInput
-                        style={{ fontSize: 28, fontWeight: "800", color: accent, textAlign: "center", minWidth: 100, padding: 0 }}
-                        value={draft}
+                        style={{ fontSize: 28, fontWeight: "800", color: accent, textAlign: "center", minWidth: 140, padding: 0 }}
+                        value={fmtDraft(draft)}
                         onChangeText={(t) => setDraft(t.replace(/[^0-9]/g, ""))}
                         keyboardType="number-pad"
                         autoFocus
@@ -119,7 +123,7 @@ function BudgetStepper({ value, onChange, min, step, label, C, theme, accentColo
             </View>
             <TouchableOpacity
                 style={{ width: 48, height: 48, borderRadius: 12, borderWidth: 1, borderColor: isDark ? "#2a2a2a" : "#e0dbd2", backgroundColor: isDark ? "#1a1a1a" : "#fff", alignItems: "center", justifyContent: "center" }}
-                onPress={() => onChange(value + step)}
+                onPress={() => onChange(Math.min(max, value + step))}
                 activeOpacity={0.8}
             >
                 <Plus size={18} color={C.text} />
@@ -156,6 +160,13 @@ export default function LifestyleTravelScreen() {
     const [financeStrategy, setFinanceStrategy] = useState("Balanced");
 
     const [legalMatterType, setLegalMatterType] = useState("");
+
+    const [propertyServiceType, setPropertyServiceType] = useState("");
+    const [photographyType, setPhotographyType] = useState("");
+    const [childcareType, setChildcareType] = useState("");
+    const [securityType, setSecurityType] = useState("");
+    const [passportServiceType, setPassportServiceType] = useState("");
+    const [bankAccountType, setBankAccountType] = useState("");
 
     const startOfToday = useMemo(() => {
         const d = new Date();
@@ -296,9 +307,17 @@ export default function LifestyleTravelScreen() {
         setServiceType(SERVICE_TYPES[nextIdx].id);
     }, [serviceType]);
 
+    // This is attached to the whole screen (see SafeAreaView below) so you can
+    // swipe anywhere to change service category. It must use the non-capture
+    // variant: onMoveShouldSetPanResponderCapture runs on the way DOWN the
+    // tree and always wins the race, stealing every fast horizontal swipe
+    // away from inner horizontal ScrollViews (Aircraft Type, dining lists,
+    // etc.) before they ever get a chance to scroll. The plain (bubble-phase)
+    // version lets those inner lists claim the gesture first — this only
+    // fires when nothing inside actually wanted the swipe.
     const swipePanResponder = useRef(
         PanResponder.create({
-            onMoveShouldSetPanResponderCapture: (_evt, gestureState) =>
+            onMoveShouldSetPanResponder: (_evt, gestureState) =>
                 Math.abs(gestureState.dx) > 20 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 2,
             onPanResponderRelease: (_evt, gestureState) => {
                 if (gestureState.dx <= -50) goToService(1);
@@ -330,7 +349,6 @@ export default function LifestyleTravelScreen() {
         "Photography & Content",
         "Childcare & Family",
         "Security & Protocol",
-        "Bespoke Request",
         "Passport Renewal",
         "Bank Account Opening",
     ].includes(serviceType);
@@ -397,6 +415,12 @@ export default function LifestyleTravelScreen() {
             if (serviceType === "Medical Concierge" && !medicalCareType) { Alert.alert("Select Care Type", "Please choose a care type."); return null; }
             if (serviceType === "Financial Advisory" && !financeGoal) { Alert.alert("Select Goal", "Please choose a goal."); return null; }
             if (serviceType === "Legal Advisory" && !legalMatterType) { Alert.alert("Select Matter Type", "Please choose a matter type."); return null; }
+            if (serviceType === "Home & Property" && !propertyServiceType) { Alert.alert("Select Service Type", "Please choose a type of service."); return null; }
+            if (serviceType === "Photography & Content" && !photographyType) { Alert.alert("Select Shoot Type", "Please choose a type of shoot."); return null; }
+            if (serviceType === "Childcare & Family" && !childcareType) { Alert.alert("Select Support Type", "Please choose a type of support."); return null; }
+            if (serviceType === "Security & Protocol" && !securityType) { Alert.alert("Select Security Type", "Please choose a type of security."); return null; }
+            if (serviceType === "Passport Renewal" && !passportServiceType) { Alert.alert("Select Service", "Please choose the service you need."); return null; }
+            if (serviceType === "Bank Account Opening" && !bankAccountType) { Alert.alert("Select Account Type", "Please choose an account type."); return null; }
             if (preferences.trim().length === 0) { Alert.alert("Add Details", "Please describe what you need."); return null; }
         } else {
             if (!destination && preferences.trim().length === 0) { Alert.alert("Add Details", "Please enter a destination or describe your experience."); return null; }
@@ -426,7 +450,13 @@ export default function LifestyleTravelScreen() {
                         ...(serviceType === "Recreational Activities" ? { recreationActivity, recreationLevel, recreationGroupSize } : {}),
                         ...(serviceType === "Medical Concierge" ? { medicalCareType, medicalUrgency } : {}),
                         ...(serviceType === "Financial Advisory" ? { financeGoal, financeStrategy } : {}),
-                        ...(serviceType === "Legal Advisory" ? { legalMatterType } : {})
+                        ...(serviceType === "Legal Advisory" ? { legalMatterType } : {}),
+                        ...(serviceType === "Home & Property" ? { propertyServiceType } : {}),
+                        ...(serviceType === "Photography & Content" ? { photographyType } : {}),
+                        ...(serviceType === "Childcare & Family" ? { childcareType } : {}),
+                        ...(serviceType === "Security & Protocol" ? { securityType } : {}),
+                        ...(serviceType === "Passport Renewal" ? { passportServiceType } : {}),
+                        ...(serviceType === "Bank Account Opening" ? { bankAccountType } : {})
                       }
                     : { serviceType, mood, destination, dateFrom: fmtDate(dateFromObj), dateTo: fmtDate(dateToObj), budget: curatedBudget, preferences }),
                 targetVenue: params.prefillVenue || null
@@ -453,11 +483,15 @@ export default function LifestyleTravelScreen() {
     };
 
     return (
-        <SafeAreaView style={s.root} edges={["top"]} {...swipePanResponder.panHandlers}>
+        <SafeAreaView style={s.root} edges={["top"]}>
             {/* Faint wash of the active service's own color instead of one flat black/gold everywhere */}
             <View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { backgroundColor: `${activeColor}0F` }]} />
 
-            <View style={s.slimHeader}>
+            {/* Swipe-to-change-category is scoped to just this header row, not the
+                whole screen — attaching it to the full body kept stealing fast
+                swipes away from horizontal lists inside the form (Aircraft Type,
+                dining lists, etc.) no matter how the responder priority was tuned. */}
+            <View style={s.slimHeader} {...swipePanResponder.panHandlers}>
                 <TouchableOpacity style={s.backBtnSlim} onPress={() => router.back()}>
                     <ChevronLeft size={20} color={C.text} />
                 </TouchableOpacity>
@@ -1251,6 +1285,132 @@ export default function LifestyleTravelScreen() {
                                     <Text style={s.lockBannerText}>NDA Protection Active • Encrypted Client Briefing Channel</Text>
                                 </View>
                             </>
+                        ) : serviceType === "Home & Property" ? (
+                            /* ── HOME & PROPERTY INLINE ── */
+                            <View style={s.section}>
+                                <Text style={s.sectionLabel}>Type of Service</Text>
+                                <View style={s.wrapRow}>
+                                    {[
+                                        "Interior Design", "Property Sourcing", "Renovation & Refresh",
+                                        "Furniture Sourcing", "Property Management", "Real Estate Advisory", "Other"
+                                    ].map(t => (
+                                        <TouchableOpacity
+                                            key={t}
+                                            style={[s.chip, propertyServiceType === t && s.chipActive]}
+                                            onPress={() => setPropertyServiceType(t)}
+                                            activeOpacity={0.8}
+                                        >
+                                            <Text style={[s.chipText, propertyServiceType === t && s.chipTextActive]}>{t}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            </View>
+                        ) : serviceType === "Photography & Content" ? (
+                            /* ── PHOTOGRAPHY INLINE ── */
+                            <View style={s.section}>
+                                <Text style={s.sectionLabel}>Type of Shoot</Text>
+                                <View style={s.wrapRow}>
+                                    {[
+                                        "Portrait Session", "Event Coverage", "Product Photography",
+                                        "Real Estate Photography", "Fashion & Editorial", "Video Content", "Other"
+                                    ].map(t => (
+                                        <TouchableOpacity
+                                            key={t}
+                                            style={[s.chip, photographyType === t && s.chipActive]}
+                                            onPress={() => setPhotographyType(t)}
+                                            activeOpacity={0.8}
+                                        >
+                                            <Text style={[s.chipText, photographyType === t && s.chipTextActive]}>{t}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            </View>
+                        ) : serviceType === "Childcare & Family" ? (
+                            /* ── CHILDCARE INLINE ── */
+                            <View style={s.section}>
+                                <Text style={s.sectionLabel}>Type of Support</Text>
+                                <View style={s.wrapRow}>
+                                    {[
+                                        "Nanny Sourcing", "School Admissions", "Tutoring",
+                                        "Family Planning Support", "Short-term Childcare", "Other"
+                                    ].map(t => (
+                                        <TouchableOpacity
+                                            key={t}
+                                            style={[s.chip, childcareType === t && s.chipActive]}
+                                            onPress={() => setChildcareType(t)}
+                                            activeOpacity={0.8}
+                                        >
+                                            <Text style={[s.chipText, childcareType === t && s.chipTextActive]}>{t}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            </View>
+                        ) : serviceType === "Security & Protocol" ? (
+                            /* ── SECURITY INLINE ── */
+                            <>
+                                <View style={s.section}>
+                                    <Text style={s.sectionLabel}>Type of Security</Text>
+                                    <View style={s.wrapRow}>
+                                        {[
+                                            "Personal Protection", "Event Security", "Residential Security",
+                                            "Travel Security Detail", "Risk Assessment", "Other"
+                                        ].map(t => (
+                                            <TouchableOpacity
+                                                key={t}
+                                                style={[s.chip, securityType === t && s.chipActive]}
+                                                onPress={() => setSecurityType(t)}
+                                                activeOpacity={0.8}
+                                            >
+                                                <Text style={[s.chipText, securityType === t && s.chipTextActive]}>{t}</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                </View>
+                                <View style={s.lockBanner}>
+                                    <Lock size={14} color={activeColor} />
+                                    <Text style={s.lockBannerText}>NDA Protection Active • Encrypted Client Briefing Channel</Text>
+                                </View>
+                            </>
+                        ) : serviceType === "Passport Renewal" ? (
+                            /* ── PASSPORT INLINE ── */
+                            <View style={s.section}>
+                                <Text style={s.sectionLabel}>Service Needed</Text>
+                                <View style={s.wrapRow}>
+                                    {[
+                                        "New Application", "Renewal", "Expedited Processing",
+                                        "Document Verification", "Visa Support", "Other"
+                                    ].map(t => (
+                                        <TouchableOpacity
+                                            key={t}
+                                            style={[s.chip, passportServiceType === t && s.chipActive]}
+                                            onPress={() => setPassportServiceType(t)}
+                                            activeOpacity={0.8}
+                                        >
+                                            <Text style={[s.chipText, passportServiceType === t && s.chipTextActive]}>{t}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            </View>
+                        ) : serviceType === "Bank Account Opening" ? (
+                            /* ── BANK ACCOUNT INLINE ── */
+                            <View style={s.section}>
+                                <Text style={s.sectionLabel}>Account Type</Text>
+                                <View style={s.wrapRow}>
+                                    {[
+                                        "Personal Savings", "Personal Current", "Business Account",
+                                        "Domiciliary (FX) Account", "Other"
+                                    ].map(t => (
+                                        <TouchableOpacity
+                                            key={t}
+                                            style={[s.chip, bankAccountType === t && s.chipActive]}
+                                            onPress={() => setBankAccountType(t)}
+                                            activeOpacity={0.8}
+                                        >
+                                            <Text style={[s.chipText, bankAccountType === t && s.chipTextActive]}>{t}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            </View>
                         ) : null}
 
                         {/* Fallback budget step for non-special services */}
@@ -1281,7 +1441,7 @@ export default function LifestyleTravelScreen() {
                     /* ── CURATED ITINERARY ── */
                     <>
                         <View style={s.section}>
-                            <Text style={s.sectionLabel}>Trip Mood</Text>
+                            <Text style={s.sectionLabel}>Mood</Text>
                             <View style={s.wrapRow}>
                                 {MOODS.map(m => (
                                     <TouchableOpacity key={m} style={[s.chip, mood === m && s.chipActive]} onPress={() => setMood(mood === m ? "" : m)} activeOpacity={0.8}>
@@ -1292,7 +1452,7 @@ export default function LifestyleTravelScreen() {
                         </View>
 
                         <View style={s.section}>
-                            <Text style={s.sectionLabel}>Destination</Text>
+                            <Text style={s.sectionLabel}>Location</Text>
                             <View style={params.prefillCity ? { opacity: 0.6 } : null} pointerEvents={params.prefillCity ? "none" : "auto"}>
                                 <LocationSearch value={destination} onChangeText={setDestination} placeholder="City, country, or let us suggest..." onSelect={setDestination} accentColor={activeColor} />
                             </View>

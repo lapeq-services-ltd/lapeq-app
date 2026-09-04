@@ -1,13 +1,105 @@
 diff --git a/node_modules/flutterwave-react-native/dist/FlutterwaveCheckout.js b/node_modules/flutterwave-react-native/dist/FlutterwaveCheckout.js
-index 952c75c..a384be2 100644
+index 952c75c..748cd83 100644
 --- a/node_modules/flutterwave-react-native/dist/FlutterwaveCheckout.js
 +++ b/node_modules/flutterwave-react-native/dist/FlutterwaveCheckout.js
-@@ -114,7 +114,7 @@ var FlutterwaveCheckout = function FlutterwaveCheckout(props) {
+@@ -25,6 +25,7 @@ var getRedirectParams = function (url) {
+ var FlutterwaveCheckout = function FlutterwaveCheckout(props) {
+     var link = props.link, visible = props.visible, onRedirect = props.onRedirect, onAbort = props.onAbort;
+     var _a = React.useState(false), show = _a[0], setShow = _a[1];
++    var _b = React.useState(null), errorInfo = _b[0], setErrorInfo = _b[1];
+     var webviewRef = React.useRef(null);
+     var animation = React.useRef(new Animated.Value(0));
+     var animateIn = React.useCallback(function () {
+@@ -49,10 +50,21 @@ var FlutterwaveCheckout = function FlutterwaveCheckout(props) {
+         });
+     }, []);
+     var handleReload = React.useCallback(function () {
++        setErrorInfo(null);
+         if (webviewRef.current) {
+             webviewRef.current.reload();
+         }
+     }, []);
++    var handleWebViewError = React.useCallback(function (source) {
++        return function (e) {
++            var detail = e && e.nativeEvent ? e.nativeEvent : e;
++            var code = detail && (detail.code !== undefined ? detail.code : detail.statusCode);
++            var description = detail && (detail.description || detail.statusText || detail.url || 'Unknown error');
++            var info = { source: source, code: code, description: description };
++            setErrorInfo(info);
++            Alert.alert('Payment checkout failed to load', source + ' — code ' + code + ': ' + description);
++        };
++    }, []);
+     var handleAbort = React.useCallback(function (confirmed) {
+         if (confirmed === void 0) { confirmed = false; }
+         if (!confirmed) {
+@@ -114,7 +126,7 @@ var FlutterwaveCheckout = function FlutterwaveCheckout(props) {
              opacity: opacity
          }
      ]} testID='flw-checkout-dialog'>
 -        <WebView ref={webviewRef} source={{ uri: link || '' }} style={styles.webview} startInLoadingState={true} scalesPageToFit={true} javaScriptEnabled={true} onShouldStartLoadWithRequest={handleNavigationStateChange} renderError={function () { return <FlutterwaveCheckoutError hasLink={!!link} onTryAgain={handleReload}/>; }} renderLoading={function () { return <FlutterwaveCheckoutLoader />; }}/>
-+        <WebView ref={webviewRef} source={{ uri: link || '' }} style={styles.webview} startInLoadingState={true} scalesPageToFit={true} javaScriptEnabled={true} domStorageEnabled={true} thirdPartyCookiesEnabled={true} sharedCookiesEnabled={true} originWhitelist={['*']} mixedContentMode="never" setSupportMultipleWindows={false} onShouldStartLoadWithRequest={handleNavigationStateChange} renderError={function () { return <FlutterwaveCheckoutError hasLink={!!link} onTryAgain={handleReload}/>; }} renderLoading={function () { return <FlutterwaveCheckoutLoader />; }}/>
++        {!link ? (<FlutterwaveCheckoutError hasLink={false} onTryAgain={handleReload} errorInfo={{ source: 'no-link', code: 'EMPTY_LINK', description: 'No checkout link was received from Flutterwave — the payment could not be initialized (check tx_ref/authorization/amount passed to PayWithFlutterwave).' }}/>) : (<WebView ref={webviewRef} source={{ uri: link }} style={styles.webview} startInLoadingState={true} scalesPageToFit={true} javaScriptEnabled={true} domStorageEnabled={true} thirdPartyCookiesEnabled={true} sharedCookiesEnabled={true} originWhitelist={['*']} mixedContentMode="never" setSupportMultipleWindows={false} onShouldStartLoadWithRequest={handleNavigationStateChange} onError={handleWebViewError('onError')} onHttpError={handleWebViewError('onHttpError')} onRenderProcessGone={handleWebViewError('onRenderProcessGone')} renderError={function () { return <FlutterwaveCheckoutError hasLink={!!link} onTryAgain={handleReload} errorInfo={errorInfo}/>; }} renderLoading={function () { return <FlutterwaveCheckoutLoader />; }}/>)}
        </Animated.View>
      </Modal>);
  };
+@@ -130,18 +142,20 @@ var FlutterwaveCheckoutBackdrop = function FlutterwaveCheckoutBackdrop(_a) {
+     </TouchableWithoutFeedback>);
+ };
+ export var FlutterwaveCheckoutError = function (_a) {
+-    var hasLink = _a.hasLink, onTryAgain = _a.onTryAgain;
++    var hasLink = _a.hasLink, onTryAgain = _a.onTryAgain, errorInfo = _a.errorInfo;
+     return (<View style={styles.error} testID="flw-checkout-error">
+-      {hasLink ? (<>
+-          <Text style={styles.errorText}>
+-            An error occurred, please tab below to try again.
+-          </Text>
+-          <TouchableOpacity style={styles.errorActionButton} onPress={onTryAgain}>
+-            <Text style={styles.errorActionButtonText}>Try Again</Text>
+-          </TouchableOpacity>
+-        </>) : (<Text style={styles.errorText}>
+-          An error occurred, please close the checkout dialog and try again.
+-        </Text>)}
++      <Text style={styles.errorText}>
++        {hasLink ? 'An error occurred, please tap below to try again.' : 'An error occurred, please close the checkout dialog and try again.'}
++      </Text>
++      {errorInfo ? (<View style={styles.debugBox} testID="flw-checkout-debug">
++          <Text style={styles.debugLabel}>DIAGNOSTIC INFO (for support)</Text>
++          <Text style={styles.debugText}>source: {String(errorInfo.source)}</Text>
++          <Text style={styles.debugText}>code: {String(errorInfo.code)}</Text>
++          <Text style={styles.debugText}>description: {String(errorInfo.description)}</Text>
++        </View>) : null}
++      {hasLink ? (<TouchableOpacity style={styles.errorActionButton} onPress={onTryAgain}>
++          <Text style={styles.errorActionButtonText}>Try Again</Text>
++        </TouchableOpacity>) : null}
+     </View>);
+ };
+ var FlutterwaveCheckoutLoader = function () {
+@@ -162,9 +176,28 @@ var styles = StyleSheet.create({
+     errorText: {
+         color: colors.secondary,
+         textAlign: 'center',
+-        marginBottom: 32,
++        marginBottom: 16,
+         fontSize: 18
+     },
++    debugBox: {
++        width: '100%',
++        backgroundColor: '#f4f4f4',
++        borderRadius: 8,
++        padding: 12,
++        marginBottom: 16
++    },
++    debugLabel: {
++        color: '#888',
++        fontSize: 10,
++        fontWeight: 'bold',
++        letterSpacing: 0.5,
++        marginBottom: 6
++    },
++    debugText: {
++        color: '#333',
++        fontSize: 12,
++        marginBottom: 2
++    },
+     error: {
+         position: 'absolute',
+         left: 0,

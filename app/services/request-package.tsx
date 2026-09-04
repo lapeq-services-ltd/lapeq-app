@@ -86,6 +86,7 @@ export default function RequestPackageScreen() {
     const { C, theme } = useTheme();
     const s = useMemo(() => getStyles(C, theme), [C, theme]);
 
+    const [locationScope, setLocationScope] = useState<"in-state" | "elsewhere" | "">("");
     const [city, setCity] = useState("");
     const [citySelected, setCitySelected] = useState(false);
     const [startDate, setStartDate] = useState<Date | null>(null);
@@ -141,8 +142,11 @@ export default function RequestPackageScreen() {
     };
 
     const handleSubmit = async () => {
-        if (!city.trim()) { Alert.alert("Please search and select a destination."); return; }
-        if (!citySelected) { Alert.alert("Please select a location from the search recommendations."); return; }
+        if (!locationScope) { Alert.alert("Please let us know if this is within your state or elsewhere."); return; }
+        if (locationScope === "elsewhere") {
+            if (!city.trim()) { Alert.alert("Please search and select a destination."); return; }
+            if (!citySelected) { Alert.alert("Please select a location from the search recommendations."); return; }
+        }
         if (!type) { Alert.alert("Please choose an experience type."); return; }
 
         const { data: { user } } = await supabase.auth.getUser();
@@ -158,9 +162,10 @@ export default function RequestPackageScreen() {
             service_type: "experience",
             status: "pending",
             reference: ref,
-            title: `Experience Package - ${city.trim()}`,
+            title: `Experience Package - ${locationScope === "elsewhere" ? city.trim() : "Within State"}`,
             details: {
-                city: city.trim(),
+                location_scope: locationScope,
+                city: locationScope === "elsewhere" ? city.trim() : null,
                 type,
                 start_date: toISO(startDate),
                 end_date: toISO(endDate),
@@ -193,21 +198,49 @@ export default function RequestPackageScreen() {
 
             <KeyboardAwareScrollView contentContainerStyle={s.form} keyboardShouldPersistTaps="handled" enableOnAndroid extraScrollHeight={20} keyboardOpeningTime={0}>
 
-                {/* City / Location Autocomplete */}
-                <Text style={s.label}>Where are you going?</Text>
-                <LocationSearch
-                    value={city}
-                    onChangeText={(text) => {
-                        setCity(text);
-                        setCitySelected(false);
-                    }}
-                    placeholder="e.g. Lagos, Abuja, Dubai, London"
-                    onSelect={(place) => {
-                        setCity(place);
-                        setCitySelected(true);
-                    }}
-                    style={{ marginBottom: 28 }}
-                />
+                {/* Location scope — ask this first, only reveal the destination search if it's outside their state */}
+                <Text style={s.label}>Is this within your state, or elsewhere?</Text>
+                <View style={{ flexDirection: "row", gap: 12, marginBottom: locationScope === "elsewhere" ? 16 : 28 }}>
+                    <TouchableOpacity
+                        style={[
+                            s.dateBtn, { flex: 1, borderColor: locationScope === "in-state" ? C.primary : borderCol },
+                            locationScope === "in-state" && { backgroundColor: `${C.primary}18`, borderWidth: 1.5 },
+                        ]}
+                        onPress={() => { setLocationScope("in-state"); setCity(""); setCitySelected(false); }}
+                        activeOpacity={0.8}
+                    >
+                        <Text style={[s.dateBtnText, locationScope === "in-state" && { color: C.primary, fontWeight: "700" }]}>Within My State</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[
+                            s.dateBtn, { flex: 1, borderColor: locationScope === "elsewhere" ? C.primary : borderCol },
+                            locationScope === "elsewhere" && { backgroundColor: `${C.primary}18`, borderWidth: 1.5 },
+                        ]}
+                        onPress={() => setLocationScope("elsewhere")}
+                        activeOpacity={0.8}
+                    >
+                        <Text style={[s.dateBtnText, locationScope === "elsewhere" && { color: C.primary, fontWeight: "700" }]}>Somewhere Else</Text>
+                    </TouchableOpacity>
+                </View>
+
+                {locationScope === "elsewhere" && (
+                    <>
+                        <Text style={s.label}>Where are you going?</Text>
+                        <LocationSearch
+                            value={city}
+                            onChangeText={(text) => {
+                                setCity(text);
+                                setCitySelected(false);
+                            }}
+                            placeholder="e.g. Lagos, Abuja, Dubai, London"
+                            onSelect={(place) => {
+                                setCity(place);
+                                setCitySelected(true);
+                            }}
+                            style={{ marginBottom: 28 }}
+                        />
+                    </>
+                )}
 
                 {/* Dates */}
                 <Text style={s.label}>When?</Text>

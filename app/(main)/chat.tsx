@@ -4,7 +4,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { ChevronLeft, Send, MessageCircle, X, ChevronDown, ChevronUp } from "lucide-react-native";
+import { ChevronLeft, Send, MessageCircle, X, ChevronDown, ChevronUp, Paperclip } from "lucide-react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { supabase } from "@/lib/supabase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -88,6 +88,7 @@ export default function ConciergeChatScreen() {
     const listRef = useRef<FlatList>(null);
     const [faqs, setFaqs] = useState<{ question: string; answer: string; keywords: string[] }[]>([]);
     const [showQuickQuestions, setShowQuickQuestions] = useState(false);
+    const [showRequestPicker, setShowRequestPicker] = useState(false);
     const [userRequests, setUserRequests] = useState<{ id: string; reference: string; title: string }[]>([]);
 
     useEffect(() => {
@@ -387,12 +388,14 @@ export default function ConciergeChatScreen() {
                     style={{ width: 36, height: 36, opacity: 0.95 }}
                     resizeMode="contain"
                 />
-            {userRequests.length > 0 && (
-                <View style={{ backgroundColor: isDark ? "#141414" : "#f5f5f5", borderBottomWidth: 1, borderBottomColor: C.border }}>
-                    <Text style={{ fontSize: 9, color: C.muted, fontWeight: "700", letterSpacing: 0.5, textTransform: "uppercase", paddingHorizontal: 16, paddingTop: 8, paddingBottom: 2 }}>
-                        Discuss a Request:
+            </View>
+
+            {showRequestPicker && userRequests.length > 0 && (
+                <View style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: C.border }}>
+                    <Text style={{ fontSize: 12, color: C.muted, marginBottom: 9, fontFamily: "Jost_400Regular" }}>
+                        Which request?
                     </Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 16, paddingBottom: 10, paddingTop: 4 }}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 20 }}>
                         {userRequests.map(req => {
                             const active = refPackage?.reference === req.reference;
                             return (
@@ -407,18 +410,12 @@ export default function ConciergeChatScreen() {
                                                 title: req.title || "Request detail"
                                             });
                                         }
+                                        setShowRequestPicker(false);
                                     }}
-                                    style={{
-                                        paddingHorizontal: 12,
-                                        paddingVertical: 6,
-                                        borderRadius: 20,
-                                        backgroundColor: active ? C.primary : (isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)"),
-                                        borderWidth: 1,
-                                        borderColor: active ? C.primary : C.border,
-                                    }}
-                                    activeOpacity={0.8}
+                                    style={{ paddingBottom: 4, borderBottomWidth: active ? 1.5 : 0, borderColor: C.primary }}
+                                    activeOpacity={0.6}
                                 >
-                                    <Text style={{ fontSize: 11, fontWeight: "600", color: active ? "#000" : C.text }}>
+                                    <Text style={{ fontSize: 13, fontWeight: active ? "700" : "500", color: active ? C.primary : C.muted }}>
                                         #{req.reference}
                                     </Text>
                                 </TouchableOpacity>
@@ -427,7 +424,6 @@ export default function ConciergeChatScreen() {
                     </ScrollView>
                 </View>
             )}
-            </View>
 
             {refPackage && (
                 <View style={{
@@ -546,6 +542,16 @@ export default function ConciergeChatScreen() {
                 {/* Text input â€” only for concierge and request modes */}
                 {mode !== "question" && (
                     <View style={s.inputContainer}>
+                        {userRequests.length > 0 && (
+                            <TouchableOpacity
+                                onPress={() => setShowRequestPicker(v => !v)}
+                                style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
+                                accessibilityRole="button"
+                                accessibilityLabel="Attach a request to this message"
+                            >
+                                <Paperclip size={19} color={refPackage || showRequestPicker ? C.primary : C.muted} />
+                            </TouchableOpacity>
+                        )}
                         <TextInput
                             style={s.input}
                             placeholder={getPlaceholder()}

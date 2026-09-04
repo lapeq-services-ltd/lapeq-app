@@ -10,7 +10,7 @@ import {
     MapPin, BedDouble, Utensils, Star, Plane,
     Scale, Gift, Dumbbell, Heart, Home,
     TrendingUp, Camera, Users, ShieldCheck,
-    Sparkles, CreditCard, Landmark, Check,
+    CreditCard, Landmark, Check,
 } from "lucide-react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { setPendingService } from "@/lib/serviceStore";
@@ -34,7 +34,6 @@ const SERVICES = [
     { id: "Photography & Content",   label: "Photography",          desc: "Photographers & content creators",        icon: Camera },
     { id: "Childcare & Family",      label: "Childcare & Family",   desc: "Nanny sourcing & school admissions",      icon: Users },
     { id: "Security & Protocol",     label: "Security",             desc: "Personal protection & VIP security",      icon: ShieldCheck },
-    { id: "Bespoke Request",         label: "Bespoke Request",      desc: "Any custom premium service",              icon: Sparkles },
     { id: "Passport Renewal",        label: "Passport Renewal",     desc: "End-to-end passport & docs",              icon: CreditCard },
     { id: "Bank Account Opening",    label: "Bank Account",         desc: "Open a Nigerian account remotely",        icon: Landmark },
 ];

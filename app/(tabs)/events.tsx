@@ -801,13 +801,15 @@ function EventModal({ event, onClose, C, theme, eventsList }: { event: Event; on
                                 <Text style={{ fontSize: 12, fontFamily: "Jost_600SemiBold", color: C.text }}>@{(event as any).instagram}</Text>
                             </TouchableOpacity>
                         )}
-                        <TouchableOpacity
-                            onPress={() => Linking.openURL(event.website)}
-                            style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 13, borderRadius: 12, backgroundColor: surface, borderWidth: 1, borderColor: border }}
-                        >
-                            <Globe size={15} color={GOLD} />
-                            <Text style={{ fontSize: 12, fontFamily: "Jost_600SemiBold", color: C.text }}>Website</Text>
-                        </TouchableOpacity>
+                        {event.website && (
+                            <TouchableOpacity
+                                onPress={() => Linking.openURL(event.website).catch(() => Alert.alert("Couldn't open link", "This website link appears to be invalid."))}
+                                style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 13, borderRadius: 12, backgroundColor: surface, borderWidth: 1, borderColor: border }}
+                            >
+                                <Globe size={15} color={GOLD} />
+                                <Text style={{ fontSize: 12, fontFamily: "Jost_600SemiBold", color: C.text }}>Website</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
 
                     {/* ── Categories ── */}

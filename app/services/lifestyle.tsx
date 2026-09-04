@@ -219,7 +219,7 @@ export default function LapeqCoBrandScreen() {
                 Animated.spring(alertScale, { toValue: 1, friction: 8, tension: 40, useNativeDriver: true }),
             ]).start();
         } else {
-            Alert.alert("Submission Failed", error.message || "Something went wrong. Please try again.");
+            Alert.alert("Submission Failed", cleanErr(error, "We couldn't submit your request. Please try again."));
         }
     };
 

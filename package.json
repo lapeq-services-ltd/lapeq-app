@@ -19,7 +19,7 @@
     "@shopify/react-native-skia": "^2.2.12",
     "@supabase/supabase-js": "^2.98.0",
     "dotenv": "^17.3.1",
-    "expo": "~54.0.35",
+    "expo": "~54.0.37",
     "expo-apple-authentication": "~8.0.8",
     "expo-auth-session": "~7.0.11",
     "expo-av": "~16.0.8",
@@ -55,6 +55,7 @@
     "react-native-screens": "~4.16.0",
     "react-native-svg": "15.12.1",
     "react-native-view-shot": "4.0.3",
+    "react-native-webview": "13.15.0",
     "react-native-worklets": "0.5.1"
   },
   "devDependencies": {

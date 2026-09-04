@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useCallback } from "react";
 import Reanimated, { useSharedValue, withTiming, withDelay, useAnimatedStyle, runOnJS, Easing as ReanimatedEasing } from "react-native-reanimated";
 import { Canvas, Path as SkiaPath, Skia, Group } from "@shopify/react-native-skia";
 import { LOGO_PATHS } from "@/assets/logo/logoPaths";
@@ -131,7 +131,11 @@ function NotificationBanner() {
                     router.push("/(main)/notifications");
                 }
             });
-        } catch {}
+        } catch (e) {
+            // If this throws, notification-driven navigation silently never
+            // initializes for the session — log it so it isn't invisible.
+            console.error("[notifications] listener setup failed:", e);
+        }
 
         return () => {
             try { sub?.remove(); } catch {}
@@ -244,6 +248,12 @@ const BASE_INDICES = new Set([
 ]);
 
 function AppSplash({ onDone }: { onDone: () => void }) {
+    // Native pre-JS splash always shows light (see app.config.js) — this is
+    // the one place we actually know the member's chosen theme, so match it:
+    // light by default, black only if they've set the app to dark.
+    const { theme } = useTheme();
+    const splashBg = theme === "dark" ? "#000000" : "#f7f4ee";
+
     // === All shared values start at guaranteed initial states ===
     // drawProgress: 0 = no stroke drawn, 1 = full stroke drawn
     const drawProgress = useSharedValue(0);
@@ -296,7 +306,7 @@ function AppSplash({ onDone }: { onDone: () => void }) {
     return (
         <Reanimated.View style={[{
             position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
-            backgroundColor: "#000000", alignItems: "center", justifyContent: "center",
+            backgroundColor: splashBg, alignItems: "center", justifyContent: "center",
             zIndex: 999,
         }, animatedOverlayStyle]}>
             <Reanimated.View style={animatedLogoStyle}>
@@ -354,7 +364,7 @@ function AppSplash({ onDone }: { onDone: () => void }) {
 }
 
 
-function RootContent() {
+function RootContent({ onLayout }: { onLayout?: () => void }) {
     const [session, setSession] = useState<Session | null>(null);
     const [loading, setLoading] = useState(true);
     const [showSplash, setShowSplash] = useState(true);
@@ -397,19 +407,40 @@ function RootContent() {
     }, []);
 
 
-    // Handle auth deep links (magic links, password reset, email confirmation)
+    // Handle auth deep links (magic links, password reset, email confirmation).
+    // Scoped to the specific callback paths Supabase actually redirects to —
+    // NOT any URL with a hash fragment — so a crafted lapeq://<anything>#access_token=...
+    // link can't be used to silently swap a victim's session for an attacker's.
+    const AUTH_CALLBACK_PATHS = new Set(["reset-password", "(auth)/reset-password", "auth/callback"]);
     useEffect(() => {
         const handleAuthUrl = async (url: string) => {
-            if (!url.includes("#")) return;
-            const hash = url.split("#")[1];
+            const { path } = Linking.parse(url);
+            const hashIndex = url.indexOf("#");
+            if (!path || !AUTH_CALLBACK_PATHS.has(path) || hashIndex === -1) return;
+
+            const hash = url.slice(hashIndex + 1);
             const params: Record<string, string> = {};
             hash.split("&").forEach(part => {
                 const [k, v] = part.split("=");
                 if (k) params[decodeURIComponent(k)] = decodeURIComponent(v ?? "");
             });
-            const { access_token, refresh_token } = params;
-            if (!access_token || !refresh_token) return;
-            await supabase.auth.setSession({ access_token, refresh_token });
+
+            if (params.error) {
+                router.replace({
+                    pathname: "/(auth)/reset-password" as any,
+                    params: { linkError: params.error_description || "This link has expired. Please request a new one." },
+                });
+                return;
+            }
+
+            const { access_token, refresh_token, type } = params;
+            if (!access_token || !refresh_token || (type && type !== "recovery" && type !== "magiclink")) return;
+
+            try {
+                await supabase.auth.setSession({ access_token, refresh_token });
+            } catch (e) {
+                console.error("[auth-deeplink] setSession failed:", e);
+            }
         };
 
         Linking.getInitialURL().then(url => { if (url) handleAuthUrl(url); });
@@ -447,7 +478,9 @@ function RootContent() {
                     if (match) showTierPopup(match[1].toLowerCase());
                 }
             });
-        } catch {}
+        } catch (e) {
+            console.error("[tier-popup] listener setup failed:", e);
+        }
         return () => { try { sub?.remove(); } catch {} };
     }, []);
 
@@ -504,7 +537,7 @@ function RootContent() {
     }, [loading, showSplash, lastNotifResponse]);
 
     return (
-        <View style={{ flex: 1, backgroundColor: C.background }}>
+        <View style={{ flex: 1, backgroundColor: C.background }} onLayout={onLayout}>
             <StatusBar style={theme === "dark" ? "light" : "dark"} />
             <NotificationBanner />
             <ShakeReport />
@@ -624,7 +657,14 @@ export default function RootLayout() {
         Jost_800ExtraBold,
     });
 
-    useEffect(() => {
+    // Don't hide the native splash until RootContent's own root view has
+    // actually painted a frame. Calling hideAsync() straight off a useEffect
+    // races the very first render — on a real device that gap shows up as a
+    // flash of the default white window background between the native splash
+    // image and our animated one. onLayout only fires once that view has
+    // committed (with its correct theme-matched background already applied),
+    // so there's no gap for the wrong color to show through.
+    const onRootLayout = useCallback(() => {
         if (fontsLoaded) {
             SplashScreen.hideAsync().catch(() => {});
         }
@@ -635,7 +675,7 @@ export default function RootLayout() {
     return (
         <ThemeProvider>
             <ErrorBoundary>
-                <RootContent />
+                <RootContent onLayout={onRootLayout} />
             </ErrorBoundary>
         </ThemeProvider>
     );

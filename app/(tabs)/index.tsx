@@ -19,13 +19,14 @@ import AppTour from "@/components/AppTour";
 import Skeleton from "@/components/Skeleton";
 import GoldShimmerText from "@/components/GoldShimmerText";
 import DetailQuickRequestModal from "@/components/DetailQuickRequestModal";
+import AccountDrawer from "@/components/AccountDrawer";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
 
 let trialPopupShown = false;
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Bell, Crown, ChevronRight, Calendar, Plane, Car, HelpCircle, MessageCircle, LayoutGrid, Plus, Headphones, ClipboardList, Sparkles, Settings, FileText, X, Sun, Moon } from "lucide-react-native";
+import { Bell, ChevronRight, Calendar, Plane, Car, HelpCircle, MessageCircle, LayoutGrid, Plus, Headphones, ClipboardList, Sparkles, Settings, FileText, X, Sun, Moon } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
 // Staff-only alert types (e.g. a superadmin's own profile matching the staff
@@ -39,9 +40,21 @@ const CARD_GAP = 12;
 const GREETING_PROMPTS = [
     "What can we help you with?",
     "Need a chauffeur today?",
+    "Do you need dining today?",
     "Ready for your next request?",
     "What can Lapeq do for you?",
+    "Discretion, always.",
+    "Protected by NDA.",
 ];
+
+function shuffle<T>(arr: T[]): T[] {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+}
 
 // Isolated so the per-character state updates only re-render this tiny
 // component, not the entire (expensive) home screen tree.
@@ -50,7 +63,7 @@ function GreetingTypewriter({ userName, color }: { userName: string; color: stri
     const cursorOpacity = useRef(new Animated.Value(1)).current;
 
     useEffect(() => {
-        const rotation = userName ? [userName, ...GREETING_PROMPTS] : GREETING_PROMPTS;
+        let rotation = userName ? [userName, ...shuffle(GREETING_PROMPTS)] : shuffle(GREETING_PROMPTS);
         let wordIndex = 0;
         let charIndex = 0;
         let deleting = false;
@@ -66,17 +79,29 @@ function GreetingTypewriter({ userName, color }: { userName: string; color: stri
                     timer = setTimeout(tick, full === userName ? 6500 : 4200);
                     return;
                 }
-                timer = setTimeout(tick, 42);
+                timer = setTimeout(tick, 36);
             } else {
                 charIndex--;
                 setTypedPrompt(full.slice(0, charIndex));
                 if (charIndex === 0) {
                     deleting = false;
-                    wordIndex = (wordIndex + 1) % rotation.length;
+                    wordIndex++;
+                    if (wordIndex >= rotation.length) {
+                        // Full cycle done — reshuffle so the next round isn't in the
+                        // same order, and swap the first pick if it'd repeat whatever
+                        // we just showed, so there's never a back-to-back repeat.
+                        const lastShown = rotation[rotation.length - 1];
+                        const nextOrder = shuffle(GREETING_PROMPTS);
+                        if (nextOrder[0] === lastShown) {
+                            [nextOrder[0], nextOrder[1]] = [nextOrder[1], nextOrder[0]];
+                        }
+                        rotation = userName ? [userName, ...nextOrder] : nextOrder;
+                        wordIndex = 0;
+                    }
                     timer = setTimeout(tick, 300);
                     return;
                 }
-                timer = setTimeout(tick, 22);
+                timer = setTimeout(tick, 18);
             }
         };
         timer = setTimeout(tick, 600);
@@ -163,6 +188,9 @@ export default function HomeScreen() {
     const { C, theme, toggleTheme } = useTheme();
     const s = useMemo(() => getStyles(C, theme), [C, theme]);
     const [userName, setUserName] = useState("");
+    const [avatarUri, setAvatarUri] = useState<string | null>(null);
+    const [memberTier, setMemberTier] = useState<string | undefined>(undefined);
+    const [showAccountDrawer, setShowAccountDrawer] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
     const [unreadMessages, setUnreadMessages] = useState(0);
     const [userId, setUserId] = useState<string | null>(null);
@@ -176,6 +204,11 @@ export default function HomeScreen() {
     const [unpaidRideId, setUnpaidRideId] = useState<string | null>(null);
     const isFocused = useIsFocused();
     const [showTour, setShowTour] = useState(false);
+    const tourBellRef = useRef<View>(null);
+    const tourAvatarRef = useRef<View>(null);
+    const tourGridRef = useRef<View>(null);
+    const tourConciergeRef = useRef<View>(null);
+    const tourFabRef = useRef<View>(null);
     const [profileLoaded, setProfileLoaded] = useState(false);
     const [monthlyRequestsCount, setMonthlyRequestsCount] = useState(0);
     const [selectedDetailItem, setSelectedDetailItem] = useState<{
@@ -365,7 +398,7 @@ export default function HomeScreen() {
             // Run profile, notifications, and AsyncStorage reads all in parallel
             const [tourSeen, profileResult, notifResult, lastChatOpen] = await Promise.all([
                 AsyncStorage.getItem("lapeq_tour_seen"),
-                supabase.from("profiles").select("full_name, tier").eq("id", user.id).single(),
+                supabase.from("profiles").select("full_name, tier, avatar_url").eq("id", user.id).single(),
                 supabase.from("notifications").select("*", { count: "exact", head: true }).eq("user_id", user.id).eq("read", false).not("type", "in", STAFF_ALERT_TYPES_SQL),
                 AsyncStorage.getItem(`lapeq_chat_last_open_${user.id}`),
             ]);
@@ -398,6 +431,14 @@ export default function HomeScreen() {
             setUserName(name);
             if (name) AsyncStorage.setItem("lapeq_cached_name", name);
             setProfileLoaded(true);
+            setMemberTier(profileResult.data?.tier);
+            if (profileResult.data?.avatar_url) {
+                const path = `${user.id}/avatar.jpg`;
+                const { data: signed } = await supabase.storage
+                    .from("avatars")
+                    .createSignedUrl(path, 60 * 60 * 24 * 365);
+                setAvatarUri(signed?.signedUrl ?? profileResult.data.avatar_url);
+            }
 
             setUnreadCount(notifResult.count ?? 0);
 
@@ -657,6 +698,8 @@ export default function HomeScreen() {
                             style={s.activeRideBtn}
                             onPress={() => unpaidRideId ? router.push(`/requests/${unpaidRideId}`) : router.push("/(main)/coordination")}
                             activeOpacity={0.75}
+                            accessibilityRole="button"
+                            accessibilityLabel={unpaidRideId ? "View unpaid ride details" : "View active ride"}
                         >
                             <Animated.View
                                 pointerEvents="none"
@@ -673,7 +716,13 @@ export default function HomeScreen() {
                             </Animated.View>
                         </TouchableOpacity>
                     )}
-                    <TouchableOpacity style={s.iconBtn} onPress={() => router.push("/notifications")}>
+                    <TouchableOpacity
+                        ref={tourBellRef}
+                        style={s.iconBtn}
+                        onPress={() => router.push("/notifications")}
+                        accessibilityRole="button"
+                        accessibilityLabel={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
+                    >
                         <Bell size={24} color={C.text} />
                         {unreadCount > 0 && (
                             <View style={s.notifBadge}>
@@ -681,8 +730,22 @@ export default function HomeScreen() {
                             </View>
                         )}
                     </TouchableOpacity>
-                    <TouchableOpacity style={s.crownBtn} onPress={() => router.push("/membership")}>
-                        <Crown size={24} color={C.primary} />
+                    <TouchableOpacity
+                        ref={tourAvatarRef}
+                        style={s.avatarBtn}
+                        onPress={() => setShowAccountDrawer(true)}
+                        accessibilityRole="button"
+                        accessibilityLabel="Account menu"
+                    >
+                        {avatarUri ? (
+                            <Image source={{ uri: avatarUri }} style={s.avatarBtnImg} />
+                        ) : (
+                            <View style={[s.avatarBtnImg, s.avatarBtnFallback, { backgroundColor: `${C.primary}20` }]}>
+                                <Text style={{ color: C.primary, fontWeight: "700", fontSize: 13 }}>
+                                    {(userName || "?").charAt(0).toUpperCase()}
+                                </Text>
+                            </View>
+                        )}
                     </TouchableOpacity>
                 </View>
             </View>
@@ -690,7 +753,13 @@ export default function HomeScreen() {
             <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 80 }}>
                 <View style={{ marginBottom: 20 }}>
                     <Text style={s.greetSub}>{(() => { const h = new Date().getHours(); return h < 12 ? "Good morning" + (userName ? "," : ".") : h < 17 ? "Good afternoon" + (userName ? "," : ".") : "Good evening" + (userName ? "," : "."); })()}</Text>
-                    <GreetingTypewriter userName={userName} color={C.text} />
+                    {/* Fixed to one line's height — every prompt is kept short enough
+                        to fit on one line (see GREETING_PROMPTS), so this only needs
+                        to cover that, not a 2-line wrap. Keeps this box from growing/
+                        shrinking and shifting the diaspora card below as it rotates. */}
+                    <View style={{ height: 40, justifyContent: "flex-start" }}>
+                        <GreetingTypewriter userName={userName} color={C.text} />
+                    </View>
                 </View>
 
                 <TouchableOpacity style={s.diasporaCard} onPress={() => router.push("/services/diaspora-support" as any)} activeOpacity={0.88}>
@@ -707,11 +776,11 @@ export default function HomeScreen() {
                     </View>
                 </TouchableOpacity>
 
-                <View style={s.quickGrid}>
+                <View ref={tourGridRef} style={s.quickGrid} collapsable={false}>
                     {[
-                        { label: "Lifestyle", sub: "Curated itineraries", img: require("@/assets/icons/clink.png"), route: "/(main)/experiences" as const },
-                        { label: "Make a Request", sub: "Bespoke activity & travel plans", img: require("@/assets/icons/request.png"), route: "/services/lifestyle-travel" as const },
-                        { label: "Elite Transit", sub: "Drive & Flights/Jets", img: require("@/assets/icons/elite.png"), route: "/services/driving" as const },
+                        { label: "Lifestyle", sub: "Designed exclusively for you.", img: require("@/assets/icons/clink.png"), route: "/(main)/experiences" as const },
+                        { label: "Make a Request", sub: "Let's plan and curate your activities.", img: require("@/assets/icons/request.png"), route: "/services/lifestyle-travel" as const },
+                        { label: "Elite Transit", sub: "Effortless mobility, anywhere.", img: require("@/assets/icons/elite.png"), route: "/services/driving" as const },
                         { label: "Customize Lapeq", sub: "Brand your experience", img: require("@/assets/icons/cobrand.png"), route: "/services/lifestyle" as const, isCustomSize: true },
                     ].map(({ label, sub, img, route, isCustomSize }) => (
                         <TouchableOpacity
@@ -737,61 +806,32 @@ export default function HomeScreen() {
                 </View>
 
                 {/* Concierge quick-access */}
-                <View style={{ marginTop: 4, marginBottom: 24, gap: 10 }}>
+                <View ref={tourConciergeRef} collapsable={false} style={{ marginTop: 4, marginBottom: 28, borderTopWidth: StyleSheet.hairlineWidth, borderColor: C.border }}>
                     <TouchableOpacity
                         onPress={() => router.push({ pathname: "/(main)/chat", params: { mode: "concierge" } } as any)}
-                        activeOpacity={0.8}
-                        style={{
-                            flexDirection: "row", alignItems: "center", gap: 14,
-                            padding: 16,
-                            borderRadius: 18,
-                            borderWidth: 1,
-                            borderColor: `${C.primary}40`,
-                            backgroundColor: `${C.primary}0d`,
-                        }}
+                        activeOpacity={0.6}
+                        style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", paddingTop: 18, paddingBottom: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: C.border }}
                     >
-                        <View style={{ position: "relative" }}>
-                            <View style={{
-                                width: 48, height: 48, borderRadius: 24,
-                                backgroundColor: `${C.primary}20`,
-                                alignItems: "center", justifyContent: "center",
-                            }}>
-                                <MessageCircle size={22} color={C.primary} />
-                            </View>
-                            {unreadMessages > 0 && (
-                                <View style={{
-                                    position: "absolute", top: -4, right: -4,
-                                    minWidth: 20, height: 20, borderRadius: 10,
-                                    backgroundColor: C.red,
-                                    alignItems: "center", justifyContent: "center",
-                                    paddingHorizontal: 4,
-                                    borderWidth: 1.5, borderColor: C.background,
-                                }}>
-                                    <Text style={{ fontSize: 11, fontWeight: "800", color: "#fff" }}>{unreadMessages}</Text>
-                                </View>
-                            )}
-                        </View>
                         <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 16, fontWeight: "700", color: C.text, fontFamily: "Jost_700Bold" }}>My Concierge</Text>
-                            <Text style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                <Text style={{ fontSize: 20, color: C.text, fontFamily: "PlayfairDisplay_400Regular_Italic" }}>My Concierge</Text>
+                                {unreadMessages > 0 && (
+                                    <View style={{ width: 9, height: 9, borderRadius: 4.5, backgroundColor: C.red, borderWidth: 1.5, borderColor: C.background }} />
+                                )}
+                            </View>
+                            <Text style={{ fontSize: 12.5, color: unreadMessages > 0 ? C.red : C.muted, fontWeight: unreadMessages > 0 ? "600" : "400", marginTop: 4, fontFamily: "Jost_400Regular" }}>
                                 {unreadMessages > 0 ? `${unreadMessages} new message${unreadMessages > 1 ? "s" : ""}` : "Chat with your concierge team"}
                             </Text>
                         </View>
-                        <ChevronRight size={20} color={C.primary} />
+                        <MessageCircle size={19} color={unreadMessages > 0 ? C.red : C.muted} style={{ marginBottom: 3 }} />
                     </TouchableOpacity>
 
                     <TouchableOpacity
                         onPress={() => router.push({ pathname: "/(main)/chat", params: { mode: "question" } } as any)}
-                        activeOpacity={0.75}
-                        style={{
-                            flexDirection: "row", alignItems: "center", gap: 10,
-                            paddingVertical: 12, paddingHorizontal: 16,
-                            borderRadius: 14,
-                            backgroundColor: C.surface,
-                        }}
+                        activeOpacity={0.6}
+                        style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 14 }}
                     >
-                        <HelpCircle size={17} color={C.muted} />
-                        <Text style={{ flex: 1, fontSize: 13, fontWeight: "600", color: C.text, fontFamily: "Jost_600SemiBold" }}>Ask a Question</Text>
+                        <Text style={{ fontSize: 14, fontWeight: "500", color: C.muted, fontFamily: "Jost_400Regular" }}>Ask a quick question</Text>
                         <ChevronRight size={16} color={C.muted} />
                     </TouchableOpacity>
                 </View>
@@ -996,6 +1036,13 @@ export default function HomeScreen() {
 
             <AppTour
                 visible={showTour}
+                targetRefs={{
+                    bell: tourBellRef,
+                    avatar: tourAvatarRef,
+                    grid: tourGridRef,
+                    concierge: tourConciergeRef,
+                    fab: tourFabRef,
+                }}
                 onFinish={() => {
                     setShowTour(false);
                     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -1009,6 +1056,14 @@ export default function HomeScreen() {
                 visible={selectedDetailItem !== null}
                 item={selectedDetailItem}
                 onClose={() => setSelectedDetailItem(null)}
+            />
+
+            <AccountDrawer
+                visible={showAccountDrawer}
+                onClose={() => setShowAccountDrawer(false)}
+                avatarUri={avatarUri}
+                name={userName}
+                tier={memberTier}
             />
 
             {/* Quick Actions FAB */}
@@ -1066,9 +1121,13 @@ export default function HomeScreen() {
                 </>
             )}
             <TouchableOpacity
+                ref={tourFabRef}
                 style={[s.fab, { backgroundColor: C.primary }]}
                 onPress={showDropdown ? closeDropdown : openDropdown}
                 activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel="Quick actions"
+                accessibilityState={{ expanded: showDropdown }}
             >
                 <Animated.View style={{ transform: [{ rotate: fabRotate.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "45deg"] }) }] }}>
                     <Plus size={20} color={C.background} strokeWidth={2.5} />
@@ -1130,7 +1189,7 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12 },
     logoImg: { width: 36, height: 36 },
     headerTitle: { fontSize: 24, fontWeight: "700", color: C.text, letterSpacing: -0.3 },
-    iconBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" },
+    iconBtn: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
     notifBadge: {
         position: "absolute",
         top: -4,
@@ -1151,7 +1210,9 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
         fontWeight: "800",
         textAlign: "center"
     },
-    crownBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: "transparent", borderWidth: 1, borderColor: C.border, alignItems: "center", justifyContent: "center" },
+    avatarBtn: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
+    avatarBtnImg: { width: 32, height: 32, borderRadius: 16 },
+    avatarBtnFallback: { alignItems: "center", justifyContent: "center" },
     activeRideBtn: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
     activeRidePulse: { position: "absolute", width: 30, height: 30, borderRadius: 15, backgroundColor: "rgba(229,72,77,0.35)" },
     greetSub: { fontSize: 18, color: C.muted },

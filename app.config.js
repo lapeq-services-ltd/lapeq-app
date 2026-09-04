@@ -8,17 +8,24 @@ module.exports = {
     version: "1.0.0",
     orientation: "portrait",
     icon: "./assets/logo/logo-bg.png",
-    userInterfaceStyle: "light",
+    userInterfaceStyle: "automatic",
     splash: {
-      image: "./assets/logo/logo-bg.png",
+      image: "./assets/logo/blank.png",
       resizeMode: "contain",
-      backgroundColor: "#000000",
+      backgroundColor: "#f7f4ee",
+      dark: {
+        image: "./assets/logo/blank.png",
+        backgroundColor: "#0a0a0a",
+      },
     },
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.lapeq.app",
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
+        NSLocationWhenInUseUsageDescription: "Lapeq uses your location to arrange chauffeur pickups and nearby concierge services.",
+        NSMicrophoneUsageDescription: "Lapeq uses your microphone so you can send voice requests to your concierge.",
+        NSPhotoLibraryUsageDescription: "Lapeq accesses your photos so you can attach images to bug reports and requests.",
       },
     },
     android: {
@@ -43,6 +50,14 @@ module.exports = {
       "expo-router",
       "expo-font",
       "expo-video",
+      "expo-location",
+      "expo-image-picker",
+      [
+        "expo-av",
+        {
+          microphonePermission: "Lapeq uses your microphone so you can send voice requests to your concierge.",
+        },
+      ],
       [
         "expo-build-properties",
         {

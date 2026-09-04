@@ -6,7 +6,7 @@ import { ChevronLeft, MapPin, Shield, Clock, Star, Compass } from "lucide-react-
 import { useTheme } from "@/context/ThemeContext";
 
 const STATS = [
-    { value: "2023", label: "Founded in Abuja" },
+    { value: "2025", label: "Founded in Abuja" },
     { value: "5", label: "Nigerian Cities" },
     { value: "100%", label: "Discretion Guarantee" },
     { value: "48h", label: "Max Response Time" },

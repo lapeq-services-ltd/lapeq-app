@@ -15,6 +15,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { supabase } from "@/lib/supabase";
 import VoiceInput from "@/components/VoiceInput";
+import LocationSearch from "@/components/LocationSearch";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -24,8 +25,11 @@ type ChipField  = { kind: "chips";   label: string; options: string[]; multi?: b
 type DateField  = { kind: "date";    label: string };
 type CounterField = { kind: "counter"; label: string; min: number; max: number; step: number; unit?: string; zeroLabel?: string };
 type NotesField = { kind: "notes";   label: string; placeholder: string };
+// Only rendered once the field named `showWhen.field` has one of `showWhen.oneOf`
+// as its value — e.g. only ask for an address once "Come to Me" is picked.
+type LocationField = { kind: "location"; label: string; placeholder: string; showWhen: { field: string; oneOf: string[] } };
 
-type Field = ChipField | DateField | CounterField | NotesField;
+type Field = ChipField | DateField | CounterField | NotesField | LocationField;
 
 type Service = {
     tab: Tab;
@@ -51,6 +55,7 @@ const SERVICES: Service[] = [
         fields: [
             { kind: "chips", label: "SERVICE", options: ["Haircut", "Beard Trim", "Full Groom", "Hot Towel Shave", "Other"] },
             { kind: "chips", label: "LOCATION", options: ["At Salon", "Come to Me"] },
+            { kind: "location", label: "ADDRESS", placeholder: "Search and select your address...", showWhen: { field: "LOCATION", oneOf: ["Come to Me"] } },
             { kind: "notes", label: "NOTES", placeholder: "Any preferences, styles, or special requests..." },
         ],
     },
@@ -64,6 +69,7 @@ const SERVICES: Service[] = [
         fields: [
             { kind: "chips", label: "TREATMENT", options: ["Classic Facial", "Deep Cleanse", "Anti-Aging", "Brightening", "Bespoke"] },
             { kind: "chips", label: "LOCATION", options: ["At Spa", "Come to Me"] },
+            { kind: "location", label: "ADDRESS", placeholder: "Search and select your address...", showWhen: { field: "LOCATION", oneOf: ["Come to Me"] } },
             { kind: "notes", label: "NOTES", placeholder: "Skin concerns, allergies, or preferences..." },
         ],
     },
@@ -78,6 +84,7 @@ const SERVICES: Service[] = [
             { kind: "chips", label: "TYPE", options: ["Swedish", "Deep Tissue", "Hot Stone", "Sports", "Custom"] },
             { kind: "chips", label: "DURATION", options: ["60 Min", "90 Min", "2 Hours"] },
             { kind: "chips", label: "LOCATION", options: ["At Spa", "Come to Me", "Hotel Room"] },
+            { kind: "location", label: "ADDRESS", placeholder: "Search and select address or hotel...", showWhen: { field: "LOCATION", oneOf: ["Come to Me", "Hotel Room"] } },
             { kind: "notes", label: "NOTES", placeholder: "Pressure preference, areas to focus, any injuries..." },
         ],
     },
@@ -91,6 +98,7 @@ const SERVICES: Service[] = [
         fields: [
             { kind: "chips", label: "SERVICE", options: ["Manicure", "Pedicure", "Both", "Buff & Polish"] },
             { kind: "chips", label: "LOCATION", options: ["At Salon", "Come to Me"] },
+            { kind: "location", label: "ADDRESS", placeholder: "Search and select your address...", showWhen: { field: "LOCATION", oneOf: ["Come to Me"] } },
             { kind: "notes", label: "NOTES", placeholder: "Any additional requests..." },
         ],
     },
@@ -269,6 +277,7 @@ function initFieldState(fields: Field[]): Record<string, any> {
         if (f.kind === "date")    s[f.label] = "";
         if (f.kind === "counter") s[f.label] = f.min;
         if (f.kind === "notes")   s[f.label] = "";
+        if (f.kind === "location") s[f.label] = "";
     }
     return s;
 }
@@ -441,6 +450,21 @@ export default function GentlemensConciergeScreen() {
                             {fieldState[f.label] || "Select a date"}
                         </Text>
                     </TouchableOpacity>
+                </View>
+            );
+        }
+
+        if (f.kind === "location") {
+            if (!f.showWhen.oneOf.includes(fieldState[f.showWhen.field])) return null;
+            return (
+                <View key={f.label} style={s.fieldGroup}>
+                    <Text style={s.fieldLabel}>{f.label}</Text>
+                    <LocationSearch
+                        value={fieldState[f.label] ?? ""}
+                        onChangeText={v => setField(f.label, v)}
+                        placeholder={f.placeholder}
+                        accentColor={BLUE}
+                    />
                 </View>
             );
         }

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
     View, Text, Modal, TextInput, TouchableOpacity, Image,
     StyleSheet, Platform, KeyboardAvoidingView,
-    Keyboard, TouchableWithoutFeedback, ScrollView,
+    Keyboard, TouchableWithoutFeedback, ScrollView, Alert,
 } from "react-native";
 import { Accelerometer } from "expo-sensors";
 import { captureScreen } from "react-native-view-shot";
@@ -100,6 +100,11 @@ export default function ShakeReport() {
     };
 
     const pickImage = async () => {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== "granted") {
+            Alert.alert("Permission Required", "Please allow access to your photo library to attach a screenshot.");
+            return;
+        }
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ["images"],
             quality: 0.75,

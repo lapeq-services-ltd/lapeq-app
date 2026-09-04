@@ -1,8 +1,8 @@
 import { useMemo } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Linking } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ChevronLeft, MessageCircle, Mail, HelpCircle, BookOpen } from "lucide-react-native";
+import { ChevronLeft, MessageCircle, HelpCircle, BookOpen } from "lucide-react-native";
 import { useTheme } from "@/context/ThemeContext";
 
 export default function HelpScreen() {
@@ -24,13 +24,6 @@ export default function HelpScreen() {
             desc: "Your dedicated concierge is available 24/7 for anything you need.",
             action: () => router.push("/chat"),
             cta: "Open Chat",
-        },
-        {
-            icon: Mail,
-            title: "Email Support",
-            desc: "Reach our support team at lapeqconceirge@gmail.com for account or billing queries.",
-            action: () => Linking.openURL("mailto:lapeqconceirge@gmail.com"),
-            cta: "Send Email",
         },
         {
             icon: HelpCircle,

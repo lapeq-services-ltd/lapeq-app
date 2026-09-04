@@ -40,6 +40,7 @@ export default function RequestsScreen() {
     const [cancelledRequests, setCancelledRequests] = useState<RequestType[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const [userId, setUserId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState(0); // 0 = Active, 1 = Cancelled
     const [showFilterSheet, setShowFilterSheet] = useState(false);
@@ -59,15 +60,25 @@ export default function RequestsScreen() {
         const resolvedId = uid ?? userId;
         if (!resolvedId) return;
 
-        const [activeRes, cancelledRes] = await Promise.all([
-            supabase.from("requests").select("*").eq("user_id", resolvedId).neq("status", "cancelled").order("created_at", { ascending: false }),
-            supabase.from("requests").select("*").eq("user_id", resolvedId).eq("status", "cancelled").order("created_at", { ascending: false }),
-        ]);
+        try {
+            const [activeRes, cancelledRes] = await Promise.all([
+                supabase.from("requests").select("*").eq("user_id", resolvedId).neq("status", "cancelled").order("created_at", { ascending: false }),
+                supabase.from("requests").select("*").eq("user_id", resolvedId).eq("status", "cancelled").order("created_at", { ascending: false }),
+            ]);
 
-        if (activeRes.data) setActiveRequests(activeRes.data as RequestType[]);
-        if (cancelledRes.data) setCancelledRequests(cancelledRes.data as RequestType[]);
-        loading && setLoading(false);
-        setRefreshing(false);
+            if (activeRes.error) throw activeRes.error;
+            if (cancelledRes.error) throw cancelledRes.error;
+
+            setActiveRequests((activeRes.data as RequestType[]) ?? []);
+            setCancelledRequests((cancelledRes.data as RequestType[]) ?? []);
+            setError(null);
+        } catch (err) {
+            console.error("[requests] fetch failed:", err);
+            setError("We couldn't load your requests. Check your connection and try again.");
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
     };
 
     useEffect(() => {
@@ -232,6 +243,19 @@ export default function RequestsScreen() {
 
             {loading ? (
                 <View style={s.center}><ActivityIndicator size="large" color={C.primary} /></View>
+            ) : error ? (
+                <View style={s.emptyState}>
+                    <Clock size={48} color={C.muted} style={{ marginBottom: 16 }} strokeWidth={1.5} />
+                    <Text style={s.emptyTitle}>Couldn't load requests</Text>
+                    <Text style={s.emptySub}>{error}</Text>
+                    <TouchableOpacity
+                        style={{ marginTop: 20, backgroundColor: C.primary, borderRadius: 14, paddingHorizontal: 28, paddingVertical: 12 }}
+                        activeOpacity={0.85}
+                        onPress={() => { setLoading(true); fetchRequests(); }}
+                    >
+                        <Text style={{ color: C.background, fontWeight: "700", fontSize: 14 }}>Try Again</Text>
+                    </TouchableOpacity>
+                </View>
             ) : (
                 <ScrollView
                     ref={pagerRef}

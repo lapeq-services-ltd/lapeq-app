@@ -10,6 +10,7 @@ import MapView, { Marker, Polyline } from "react-native-maps";
 
 import { useTheme } from "@/context/ThemeContext";
 import { supabase } from "@/lib/supabase";
+import { cleanErr } from "@/lib/cleanErr";
 
 const GOLD = "#C9A84C";
 
@@ -695,7 +696,7 @@ export default function CoordinationScreen() {
             .eq("id", activeTrip.id);
         setCancelling(false);
         if (error) {
-            Alert.alert("Couldn't Cancel", error.message);
+            Alert.alert("Couldn't Cancel", cleanErr(error, "We couldn't cancel this ride. Please try again."));
             return;
         }
         setShowCancelModal(false);
@@ -737,7 +738,7 @@ export default function CoordinationScreen() {
             .eq("id", rateTrip.id);
         setSubmittingRating(false);
         if (error) {
-            Alert.alert("Couldn't Submit Rating", error.message);
+            Alert.alert("Couldn't Submit Rating", cleanErr(error, "We couldn't submit your rating. Please try again."));
             return;
         }
         setRateTrip(null);

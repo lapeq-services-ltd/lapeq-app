@@ -310,6 +310,8 @@ function PaymentSheet({ tier, userName, userEmail, onClose, onSuccess }: any) {
     const [selectedDuration, setSelectedDuration] = useState<typeof SILVER_DURATIONS[0] | null>(
         tier.id === "silver" ? null : { label: "1 Year", months: 12, amount: 2500000, display: "₦2,500,000" }
     );
+    const [managerType, setManagerType] = useState<"physical" | "virtual" | "">("");
+    const needsManagerChoice = tier.id === "gold" || tier.id === "black";
     const txRef = useRef(`LPQ-${Date.now().toString(36).toUpperCase()}`).current;
     const amount = selectedDuration?.amount ?? 0;
 
@@ -358,6 +360,31 @@ function PaymentSheet({ tier, userName, userEmail, onClose, onSuccess }: any) {
                         </View>
                     )}
 
+                    {needsManagerChoice && (
+                        <View style={{ marginBottom: 20 }}>
+                            <Text style={{ fontSize: 13, fontWeight: "700", color: "#fff", marginBottom: 10 }}>
+                                Physical or virtual concierge manager?
+                            </Text>
+                            <View style={{ flexDirection: "row", gap: 10 }}>
+                                {(["physical", "virtual"] as const).map(opt => (
+                                    <TouchableOpacity
+                                        key={opt}
+                                        style={[
+                                            ps.durationCard, { flex: 1, justifyContent: "center" },
+                                            managerType === opt && { borderColor: tier.accent, backgroundColor: `${tier.accent}10` },
+                                        ]}
+                                        onPress={() => setManagerType(opt)}
+                                        activeOpacity={0.8}
+                                    >
+                                        <Text style={[ps.durationLabel, { color: managerType === opt ? tier.accent : "#fff", textAlign: "center" }]}>
+                                            {opt === "physical" ? "Physical" : "Virtual"}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+                    )}
+
                     <View style={ps.payNote}>
                         <Text style={ps.payNoteText}>Secure payment via Flutterwave · Card, Bank Transfer, USSD</Text>
                     </View>
@@ -379,9 +406,9 @@ function PaymentSheet({ tier, userName, userEmail, onClose, onSuccess }: any) {
                             }}
                             customButton={(props: any) => (
                                 <TouchableOpacity
-                                    style={[ps.payBtn, { backgroundColor: tier.accent }, (props.disabled || !selectedDuration) && { opacity: 0.5 }]}
+                                    style={[ps.payBtn, { backgroundColor: tier.accent }, (props.disabled || !selectedDuration || (needsManagerChoice && !managerType)) && { opacity: 0.5 }]}
                                     onPress={props.onPress}
-                                    disabled={props.disabled || !selectedDuration}
+                                    disabled={props.disabled || !selectedDuration || (needsManagerChoice && !managerType)}
                                     activeOpacity={0.85}
                                 >
                                     <Text style={ps.payBtnText}>Pay {selectedDuration?.display ?? ""}</Text>
@@ -389,7 +416,7 @@ function PaymentSheet({ tier, userName, userEmail, onClose, onSuccess }: any) {
                             )}
                             onRedirect={async (data: any) => {
                                 if (data.status === "successful" || data.status === "completed") {
-                                    await onSuccess(tier.id, txRef, selectedDuration);
+                                    await onSuccess(tier.id, txRef, selectedDuration, managerType);
                                 } else if (data.status === "cancelled") {
                                     onClose();
                                 }
@@ -667,7 +694,7 @@ export default function MembershipScreen() {
         Alert.alert("Request Sent", "Your physical card request has been received.");
     };
 
-    const handlePaymentSuccess = async (tierId: string, txRef: string, duration: any) => {
+    const handlePaymentSuccess = async (tierId: string, txRef: string, duration: any, managerType?: "physical" | "virtual" | "") => {
         if (!userId) return;
 
         // Verified server-side (Flutterwave transaction check + tier update via
@@ -707,6 +734,27 @@ export default function MembershipScreen() {
                 "Could not reach our server to verify your payment. Please contact support, as your payment may still have gone through."
             );
             return;
+        }
+
+        // Log the manager-type preference as a request so staff see it in
+        // their normal queue and can actually assign a physical or virtual
+        // manager — this isn't a profile field, it's an action item for them.
+        if (managerType) {
+            const ref = "LPQ-" + Date.now().toString(36).toUpperCase().slice(-5);
+            supabase.from("requests").insert({
+                user_id: userId,
+                service_type: "concierge-request",
+                status: "pending",
+                reference: ref,
+                title: `${managerType === "physical" ? "Physical" : "Virtual"} Concierge Manager Preference`,
+                details: {
+                    tier: tierId,
+                    manager_type: managerType,
+                    notes: `New ${tierId} member requested a ${managerType} concierge manager.`,
+                },
+            }).then(({ error }) => {
+                if (error) console.error("[membership] failed to log manager preference:", error);
+            });
         }
 
         setUserTier(tierId);

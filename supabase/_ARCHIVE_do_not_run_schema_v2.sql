@@ -1,26 +1,37 @@
 -- =============================================
--- LAPEQ - Supabase Schema (v2 - Admin Ready)
--- Run this in: Supabase Dashboard > SQL Editor
--- WARNING: This drops and recreates all tables.
+-- ARCHIVED — DO NOT RUN THIS FILE
+-- =============================================
+-- This is the original from-scratch schema (v2), superseded by the 42
+-- numbered incremental migrations in this folder. It predates the driver
+-- dispatch system, the tier/role system, payments, and every RLS hardening
+-- fix from 20_secure_rls_and_triggers.sql onward — its `profiles.is_admin`
+-- boolean column doesn't even exist anymore (replaced by `profiles.role`).
+--
+-- Running this against production would DROP CASCADE every core table —
+-- profiles, requests, notifications, messages, events — destroying all
+-- live user, request, and message data. Flagged in the 2026-08-17
+-- production readiness audit (Critical finding #10). The DROP statements
+-- below have been commented out so this file is inert even if someone
+-- runs it by mistake; kept for historical reference only.
 -- =============================================
 
 -- =============================================
--- CLEANUP
+-- CLEANUP (neutralized — see warning above)
 -- =============================================
-drop trigger if exists on_auth_user_created on auth.users;
-drop function if exists public.handle_new_user cascade;
-drop trigger if exists on_request_updated on public.requests;
-drop function if exists public.handle_updated_at cascade;
-drop function if exists public.is_admin cascade;
-
-drop table if exists public.push_subscriptions cascade;
-drop table if exists public.explore_items cascade;
-drop table if exists public.events cascade;
-drop table if exists public.messages cascade;
-drop table if exists public.notifications cascade;
-drop table if exists public.reports cascade;
-drop table if exists public.requests cascade;
-drop table if exists public.profiles cascade;
+-- drop trigger if exists on_auth_user_created on auth.users;
+-- drop function if exists public.handle_new_user cascade;
+-- drop trigger if exists on_request_updated on public.requests;
+-- drop function if exists public.handle_updated_at cascade;
+-- drop function if exists public.is_admin cascade;
+--
+-- drop table if exists public.push_subscriptions cascade;
+-- drop table if exists public.explore_items cascade;
+-- drop table if exists public.events cascade;
+-- drop table if exists public.messages cascade;
+-- drop table if exists public.notifications cascade;
+-- drop table if exists public.reports cascade;
+-- drop table if exists public.requests cascade;
+-- drop table if exists public.profiles cascade;
 
 create table public.profiles (
   id uuid references auth.users on delete cascade primary key,

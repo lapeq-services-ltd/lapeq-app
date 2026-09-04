@@ -17,6 +17,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import Svg, { Path } from "react-native-svg";
 import * as WebBrowser from "expo-web-browser";
 import { makeRedirectUri } from "expo-auth-session";
+import * as AppleAuthentication from "expo-apple-authentication";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -119,6 +120,11 @@ export default function RegisterScreen() {
 
     const [showAlert, setShowAlert] = useState(false);
     const [errorMsg, setErrorMsg] = useState("");
+    const [appleAuthAvailable, setAppleAuthAvailable] = useState(false);
+
+    useEffect(() => {
+        AppleAuthentication.isAvailableAsync().then(setAppleAuthAvailable);
+    }, []);
     const alertOpacity = useRef(new Animated.Value(0)).current;
     const alertScale = useRef(new Animated.Value(0.95)).current;
     const opacity = useRef(new Animated.Value(0)).current;
@@ -173,14 +179,52 @@ export default function RegisterScreen() {
                 }
             }
         } catch (e: any) {
-            Alert.alert("Google Sign-In", e.message || "Something went wrong.");
+            Alert.alert("Google Sign-In", cleanErr(e, "Google Sign-In failed. Please try again."));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Requires the Apple provider to be configured in the Supabase dashboard
+    // (Service ID + private key from the Apple Developer portal) — see the
+    // "before submission" checklist. Until that's done, this fails with a
+    // clear "provider not enabled" error instead of doing nothing, which is
+    // the difference between "broken" and "not finished yet" during review.
+    const handleAppleSignIn = async () => {
+        setLoading(true);
+        try {
+            const credential = await AppleAuthentication.signInAsync({
+                requestedScopes: [
+                    AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+                    AppleAuthentication.AppleAuthenticationScope.EMAIL,
+                ],
+            });
+
+            if (credential.identityToken) {
+                const { error } = await supabase.auth.signInWithIdToken({
+                    provider: "apple",
+                    token: credential.identityToken,
+                });
+                if (error) {
+                    Alert.alert("Apple Sign-In", cleanErr(error, "Apple Sign-In failed. Please try again."));
+                }
+            } else {
+                throw new Error("No identity token received from Apple.");
+            }
+        } catch (e: any) {
+            if (e.code !== "ERR_REQUEST_CANCELED") {
+                Alert.alert("Apple Sign-In failed", cleanErr(e, "Apple Sign-In failed. Please try again."));
+            }
         } finally {
             setLoading(false);
         }
     };
 
     const handleRegister = async () => {
-        if (!firstName || !email || !password) return;
+        if (!firstName || !email || !password) {
+            triggerModal(true, "Please fill in your first name, email, and password to continue.");
+            return;
+        }
         if (password.length < 8) { triggerModal(true, "Password must be at least 8 characters long."); return; }
         if (password !== confirmPassword) { triggerModal(true, "Passwords do not match. Please check and try again."); return; }
         const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
@@ -273,10 +317,12 @@ export default function RegisterScreen() {
                             </View>
 
                             <View style={s.socialRow}>
-                                <TouchableOpacity style={s.socialBtn} onPress={() => {}} activeOpacity={0.8}>
-                                    <AppleIcon size={19} />
-                                    <Text style={s.socialText}>Apple</Text>
-                                </TouchableOpacity>
+                                {appleAuthAvailable && (
+                                    <TouchableOpacity style={s.socialBtn} onPress={handleAppleSignIn} activeOpacity={0.8}>
+                                        <AppleIcon size={19} />
+                                        <Text style={s.socialText}>Apple</Text>
+                                    </TouchableOpacity>
+                                )}
                                 <TouchableOpacity style={s.socialBtn} onPress={handleGoogleSignIn} activeOpacity={0.8}>
                                     <GoogleIcon size={19} />
                                     <Text style={s.socialText}>Google</Text>

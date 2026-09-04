@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
-    View, Text, TouchableOpacity, TextInput, Modal, Alert, Keyboard, Platform, StyleSheet
+    View, Text, TouchableOpacity, TextInput, Modal, Alert, Keyboard, Platform, StyleSheet, AppState
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Audio } from "expo-av";
@@ -35,6 +35,9 @@ export default function VoiceInput({
     const [isPlaying, setIsPlaying] = useState(false);
     const [duration, setDuration] = useState(0);
     const [showRecordModal, setShowRecordModal] = useState(false);
+    // Remembers whether the Notes modal was open when recording started, so
+    // we can put it back afterward — see startRecording/stopRecording/cancelRecording.
+    const [reopenNotesAfter, setReopenNotesAfter] = useState(false);
 
     const [uploading, setUploading] = useState(false);
     const [voiceUri, setVoiceUri] = useState<string | null>(null);
@@ -61,6 +64,20 @@ export default function VoiceInput({
         };
     }, [sound]);
 
+    // Cleanup an in-progress recording on unmount. Without this, closing the
+    // screen mid-recording leaves expo-av's native recording session running
+    // orphaned in the background — and since it only allows one Recording
+    // object globally, every future attempt to record fails with "Only one
+    // Recording object can be prepared at a given time" until the app is
+    // fully restarted.
+    useEffect(() => {
+        return () => {
+            if (recording) {
+                recording.stopAndUnloadAsync().catch(() => {});
+            }
+        };
+    }, [recording]);
+
     // Extract voice note URL from notes value if it exists
     const voiceNoteUrlMatch = value ? value.match(/\[Voice Note: (https:\/\/.*?)\]/) : null;
     const voiceNoteUrl = voiceNoteUrlMatch ? voiceNoteUrlMatch[1] : null;
@@ -73,29 +90,131 @@ export default function VoiceInput({
     }, [voiceNoteUrl]);
 
     async function startRecording() {
+        // expo-av only allows one Audio.Recording prepared at a time — this
+        // component has two mic buttons (collapsed input + expanded modal)
+        // that both call startRecording, so guard against either firing again
+        // while a recording is already in progress.
+        if (recording || isRecording) return;
         try {
             Keyboard.dismiss();
             const permission = await Audio.requestPermissionsAsync();
             if (permission.status !== "granted") {
-                Alert.alert("Permission Denied", "Please allow microphone access to record voice notes.");
+                Alert.alert("Permission Required", "Please allow microphone access in your device Settings to record voice notes.");
                 return;
+            }
+
+            // If the app is transitioning from the iOS permission dialog, wait until UIKit marks it active
+            if (AppState.currentState !== "active") {
+                await new Promise<void>((resolve) => {
+                    const sub = AppState.addEventListener("change", (nextState) => {
+                        if (nextState === "active") {
+                            sub.remove();
+                            resolve();
+                        }
+                    });
+                    setTimeout(() => {
+                        sub.remove();
+                        resolve();
+                    }, 1200);
+                });
+            }
+
+            // Give iOS a moment to finish dismissing the permission dialog and restore the audio hardware route
+            await new Promise((resolve) => setTimeout(resolve, 500));
+
+            // Clean up any lingering recording before preparing a new one
+            if (recording) {
+                try {
+                    await (recording as Audio.Recording).stopAndUnloadAsync();
+                } catch (_) {}
+                setRecording(null);
             }
 
             await Audio.setAudioModeAsync({
                 allowsRecordingIOS: true,
                 playsInSilentModeIOS: true,
+                staysActiveInBackground: true, // Prevents "This experience is currently in the background" error
+                interruptionModeIOS: 1, // InterruptionModeIOS.DoNotMix
+                shouldDuckAndroid: true,
+                interruptionModeAndroid: 1,
+                playThroughEarpieceAndroid: false,
             });
 
-            const { recording: newRecording } = await Audio.Recording.createAsync(
-                Audio.RecordingOptionsPresets.HIGH_QUALITY
-            );
+            const recordingOptions = {
+                isMeteringEnabled: true,
+                android: {
+                    extension: ".m4a",
+                    outputFormat: Audio.AndroidOutputFormat.MPEG_4,
+                    audioEncoder: Audio.AndroidAudioEncoder.AAC,
+                    sampleRate: 44100,
+                    numberOfChannels: 1,
+                    bitRate: 128000,
+                },
+                ios: {
+                    extension: ".m4a",
+                    outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
+                    audioQuality: Audio.IOSAudioQuality.HIGH,
+                    sampleRate: 44100,
+                    numberOfChannels: 1,
+                    bitRate: 128000,
+                    linearPCMBitDepth: 16,
+                    linearPCMIsBigEndian: false,
+                    linearPCMIsFloat: false,
+                },
+                web: {
+                    mimeType: "audio/webm",
+                    bitsPerSecond: 128000,
+                },
+            };
 
-            setRecording(newRecording);
+            let preparedRecording: Audio.Recording | null = null;
+            for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                    preparedRecording = new Audio.Recording();
+                    await preparedRecording.prepareToRecordAsync(recordingOptions);
+                    await preparedRecording.startAsync();
+                    break;
+                } catch (prepErr: any) {
+                    if (preparedRecording) {
+                        try { await preparedRecording.stopAndUnloadAsync(); } catch (_) {}
+                        preparedRecording = null;
+                    }
+                    if (attempt < 2 && (prepErr?.message?.includes("background") || prepErr?.message?.includes("Prepare encountered an error"))) {
+                        console.warn(`Audio session busy or backgrounded, retrying in 600ms (attempt ${attempt + 1})...`);
+                        await new Promise((resolve) => setTimeout(resolve, 600));
+                        continue;
+                    }
+                    throw prepErr;
+                }
+            }
+
+            if (!preparedRecording) {
+                throw new Error("Could not initialize audio recorder. Please try again.");
+            }
+
+            // Two sibling <Modal> components don't reliably stack in React
+            // Native — if the Notes modal is already open, close it so the
+            // recording overlay is guaranteed to actually be what's showing,
+            // and remember to reopen Notes once recording finishes.
+            if (expanded) {
+                setReopenNotesAfter(true);
+                setExpanded(false);
+            }
+
+            setRecording(preparedRecording);
             setIsRecording(true);
             setShowRecordModal(true);
-        } catch (err) {
+        } catch (err: any) {
             console.error("Failed to start recording:", err);
-            Alert.alert("Error", "Could not start audio recording.");
+            Alert.alert("Recording Error", err?.message || "Could not start audio recording. Please try again.");
+            if (recording) {
+                try {
+                    await (recording as Audio.Recording).stopAndUnloadAsync();
+                } catch (_) {}
+                setRecording(null);
+            }
+            setIsRecording(false);
+            setShowRecordModal(false);
         }
     }
 
@@ -107,15 +226,24 @@ export default function VoiceInput({
             await recording.stopAndUnloadAsync();
             await Audio.setAudioModeAsync({
                 allowsRecordingIOS: false,
+                playsInSilentModeIOS: true,
+                interruptionModeIOS: 1,
             });
             const uri = recording.getURI();
             setRecording(null);
+            if (reopenNotesAfter) {
+                setReopenNotesAfter(false);
+                setExpanded(true);
+            }
             if (uri) {
                 setVoiceUri(uri);
                 await uploadVoiceNote(uri);
             }
         } catch (err) {
             console.error("Failed to stop recording:", err);
+            setRecording(null);
+            setIsRecording(false);
+            setShowRecordModal(false);
             Alert.alert("Error", "Could not stop audio recording.");
         }
     }
@@ -128,10 +256,19 @@ export default function VoiceInput({
             await recording.stopAndUnloadAsync();
             await Audio.setAudioModeAsync({
                 allowsRecordingIOS: false,
+                playsInSilentModeIOS: true,
+                interruptionModeIOS: 1,
             });
             setRecording(null);
+            if (reopenNotesAfter) {
+                setReopenNotesAfter(false);
+                setExpanded(true);
+            }
         } catch (err) {
             console.error("Failed to cancel recording:", err);
+            setRecording(null);
+            setIsRecording(false);
+            setShowRecordModal(false);
         }
     }
 
@@ -174,7 +311,13 @@ export default function VoiceInput({
         try {
             if (sound) {
                 await sound.unloadAsync();
+                setSound(null);
             }
+            await Audio.setAudioModeAsync({
+                allowsRecordingIOS: false,
+                playsInSilentModeIOS: true,
+                interruptionModeIOS: 1,
+            });
             const { sound: newSound } = await Audio.Sound.createAsync(
                 { uri: voiceUri },
                 { shouldPlay: true }

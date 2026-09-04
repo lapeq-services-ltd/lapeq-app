@@ -2,7 +2,7 @@ import { showToast } from "@/lib/toast";
 import { cleanErr } from "@/lib/cleanErr";
 import { useState, useEffect } from "react";
 import { Text, TextInput, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, Platform, View, Image, ActivityIndicator } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors } from "@/constants/colors";
 import { supabase } from "@/lib/supabase";
@@ -10,14 +10,16 @@ import { Eye, EyeOff } from "lucide-react-native";
 
 export default function ResetPasswordScreen() {
     const router = useRouter();
+    const { linkError } = useLocalSearchParams<{ linkError?: string }>();
     const [password, setPassword] = useState("");
     const [confirm, setConfirm] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [ready, setReady] = useState(false);
-    const [error, setError] = useState("");
+    const [error, setError] = useState(linkError ?? "");
 
     useEffect(() => {
+        if (linkError) return; // an expired/invalid link was already flagged before we got here
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
             if (event === "PASSWORD_RECOVERY" || session) {
                 setReady(true);
@@ -28,7 +30,7 @@ export default function ResetPasswordScreen() {
             if (session) setReady(true);
         });
         return () => subscription.unsubscribe();
-    }, []);
+    }, [linkError]);
 
     const handleUpdate = async () => {
         if (!password || password.length < 8) {

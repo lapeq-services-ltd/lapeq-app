@@ -124,14 +124,14 @@ export default function LoginScreen() {
                     token: credential.identityToken,
                 });
                 if (error) {
-                    Alert.alert("Apple Sign-In", cleanErr(error));
+                    Alert.alert("Apple Sign-In", cleanErr(error, "Apple Sign-In failed. Please try again."));
                 }
             } else {
                 throw new Error("No identity token received from Apple.");
             }
         } catch (e: any) {
             if (e.code !== "ERR_REQUEST_CANCELED") {
-                Alert.alert("Apple Sign-In failed", e.message || "An unknown error occurred.");
+                Alert.alert("Apple Sign-In failed", cleanErr(e, "Apple Sign-In failed. Please try again."));
             }
         } finally {
             setLoading(false);
@@ -160,7 +160,7 @@ export default function LoginScreen() {
                 }
             }
         } catch (e: any) {
-            Alert.alert("Google Sign-In", e.message || "Something went wrong.");
+            Alert.alert("Google Sign-In", cleanErr(e, "Google Sign-In failed. Please try again."));
         } finally {
             setLoading(false);
         }

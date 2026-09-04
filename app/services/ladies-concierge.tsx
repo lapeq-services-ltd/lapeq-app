@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import {
     View, Text, ScrollView, TouchableOpacity, StyleSheet,
     TextInput, Modal, Alert, Image, Dimensions, Animated,
-    Platform, Switch, Keyboard,
+    Platform, Switch, Keyboard, AppState,
 } from "react-native";
 import { useSafeAreaInsets, SafeAreaView } from "react-native-safe-area-context";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -14,6 +14,7 @@ import { ChevronLeft, CheckCircle2, X, Plus, Minus, Mic, Maximize2, Play, Pause,
 import { useTheme } from "@/context/ThemeContext";
 import { supabase } from "@/lib/supabase";
 import { Audio } from "expo-av";
+import LocationSearch from "@/components/LocationSearch";
 
 const { width: W } = Dimensions.get("window");
 const archWidth = (W - 48 - 24) / 3; // 24px side padding, 12px gaps, ~3 visible per screen
@@ -23,10 +24,10 @@ const OCCASIONS = [
     { id: "spa",           label: "Spa Day",        emoji: "✿", color: "#4A7A6A", desc: "Your body deserves the finest care", img: require("@/assets/images/ladies-spa.png") },
     { id: "shopping",      label: "Shopping",       emoji: "✤", color: "#8C6844", desc: "Curated fashion, personal styling", img: require("@/assets/images/ladies-shopping.png") },
     { id: "event",         label: "Event Prep",     emoji: "❋", color: "#6A3F72", desc: "Arrive flawless, always", img: require("@/assets/images/lagos-beach.jpg") },
-    { id: "wellness",      label: "Wellness",       emoji: "◈", color: "#5A6A9E", desc: "Mind, body and soul, restored", img: require("@/assets/images/onboarding-lifestyle.png") },
-    { id: "home",          label: "Home",           emoji: "⌂", color: "#8A5C40", desc: "Your household, perfectly managed", img: require("@/assets/images/lagos-hotel.jpg") },
-    { id: "business",      label: "Business",       emoji: "✦", color: "#3E5068", desc: "Corporate dining, workspace & executive travel", img: require("@/assets/images/onboarding-trust.png") },
-    { id: "entertainment", label: "Entertainment",  emoji: "◎", color: "#2E6655", desc: "VIP events & private experiences", img: require("@/assets/images/lagos-rooftop.jpg") },
+    { id: "wellness",      label: "Wellness",       emoji: "◈", color: "#5A6A9E", desc: "Mind, body and soul, restored", img: require("@/assets/ladies-concierge-req/wellness.jpg") },
+    { id: "home",          label: "Home",           emoji: "⌂", color: "#8A5C40", desc: "Your household, perfectly managed", img: require("@/assets/ladies-concierge-req/home.jpg") },
+    { id: "business",      label: "Business",       emoji: "✦", color: "#3E5068", desc: "Corporate dining, workspace & executive travel", img: require("@/assets/ladies-concierge-req/business.jpg") },
+    { id: "entertainment", label: "Entertainment",  emoji: "◎", color: "#2E6655", desc: "VIP events & private experiences", img: require("@/assets/ladies-concierge-req/entertainment.jpg") },
 ];
 
 // ── Reusable form primitives ─────────────────────────────────────────────────
@@ -125,29 +126,118 @@ function VoiceInput({ value, onChange, voiceUri, onVoiceChange, placeholder, bg,
     }, [sound]);
 
     async function startRecording() {
+        if (recording || isRecording) return;
         try {
             Keyboard.dismiss();
             const permission = await Audio.requestPermissionsAsync();
             if (permission.status !== "granted") {
-                Alert.alert("Permission Denied", "Please allow microphone access to record voice notes.");
+                Alert.alert("Permission Required", "Please allow microphone access in your device Settings to record voice notes.");
                 return;
+            }
+
+            // If the app is transitioning from the iOS permission dialog, wait until UIKit marks it active
+            if (AppState.currentState !== "active") {
+                await new Promise<void>((resolve) => {
+                    const sub = AppState.addEventListener("change", (nextState) => {
+                        if (nextState === "active") {
+                            sub.remove();
+                            resolve();
+                        }
+                    });
+                    setTimeout(() => {
+                        sub.remove();
+                        resolve();
+                    }, 1200);
+                });
+            }
+
+            // Give iOS a moment to finish dismissing the permission dialog and restore the audio hardware route
+            await new Promise((resolve) => setTimeout(resolve, 500));
+
+            // Clean up any lingering recording before preparing a new one
+            if (recording) {
+                try {
+                    await (recording as Audio.Recording).stopAndUnloadAsync();
+                } catch (_) {}
+                setRecording(null);
             }
 
             await Audio.setAudioModeAsync({
                 allowsRecordingIOS: true,
                 playsInSilentModeIOS: true,
+                staysActiveInBackground: true, // Prevents "This experience is currently in the background" error
+                interruptionModeIOS: 1, // InterruptionModeIOS.DoNotMix
+                shouldDuckAndroid: true,
+                interruptionModeAndroid: 1,
+                playThroughEarpieceAndroid: false,
             });
 
-            const { recording: newRecording } = await Audio.Recording.createAsync(
-                Audio.RecordingOptionsPresets.HIGH_QUALITY
-            );
+            const recordingOptions = {
+                isMeteringEnabled: true,
+                android: {
+                    extension: ".m4a",
+                    outputFormat: Audio.AndroidOutputFormat.MPEG_4,
+                    audioEncoder: Audio.AndroidAudioEncoder.AAC,
+                    sampleRate: 44100,
+                    numberOfChannels: 1,
+                    bitRate: 128000,
+                },
+                ios: {
+                    extension: ".m4a",
+                    outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
+                    audioQuality: Audio.IOSAudioQuality.HIGH,
+                    sampleRate: 44100,
+                    numberOfChannels: 1,
+                    bitRate: 128000,
+                    linearPCMBitDepth: 16,
+                    linearPCMIsBigEndian: false,
+                    linearPCMIsFloat: false,
+                },
+                web: {
+                    mimeType: "audio/webm",
+                    bitsPerSecond: 128000,
+                },
+            };
 
-            setRecording(newRecording);
+            let preparedRecording: Audio.Recording | null = null;
+            for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                    preparedRecording = new Audio.Recording();
+                    await preparedRecording.prepareToRecordAsync(recordingOptions);
+                    await preparedRecording.startAsync();
+                    break;
+                } catch (prepErr: any) {
+                    if (preparedRecording) {
+                        try { await preparedRecording.stopAndUnloadAsync(); } catch (_) {}
+                        preparedRecording = null;
+                    }
+                    if (attempt < 2 && (prepErr?.message?.includes("background") || prepErr?.message?.includes("Prepare encountered an error"))) {
+                        console.warn(`Audio session busy or backgrounded, retrying in 600ms (attempt ${attempt + 1})...`);
+                        await new Promise((resolve) => setTimeout(resolve, 600));
+                        continue;
+                    }
+                    throw prepErr;
+                }
+            }
+
+            if (!preparedRecording) {
+                throw new Error("Could not initialize audio recorder. Please try again.");
+            }
+
+            setRecording(preparedRecording);
             setIsRecording(true);
             setShowRecordModal(true);
-        } catch (err) {
+        } catch (err: any) {
             console.error("Failed to start recording:", err);
-            Alert.alert("Error", "Could not start audio recording.");
+            Alert.alert("Recording Error", err?.message || "Could not start audio recording. Please try again.");
+            if (recording) {
+                try {
+                    await (recording as Audio.Recording).stopAndUnloadAsync();
+                } catch (_) {}
+                setRecording(null);
+            }
+            setIsRecording(false);
+            setShowRecordModal(false);
         }
     }
 
@@ -159,12 +249,17 @@ function VoiceInput({ value, onChange, voiceUri, onVoiceChange, placeholder, bg,
             await recording.stopAndUnloadAsync();
             await Audio.setAudioModeAsync({
                 allowsRecordingIOS: false,
+                playsInSilentModeIOS: true,
+                interruptionModeIOS: 1,
             });
             const uri = recording.getURI();
             if (onVoiceChange) onVoiceChange(uri);
             setRecording(null);
         } catch (err) {
             console.error("Failed to stop recording:", err);
+            setRecording(null);
+            setIsRecording(false);
+            setShowRecordModal(false);
             Alert.alert("Error", "Could not stop audio recording.");
         }
     }
@@ -177,10 +272,15 @@ function VoiceInput({ value, onChange, voiceUri, onVoiceChange, placeholder, bg,
             await recording.stopAndUnloadAsync();
             await Audio.setAudioModeAsync({
                 allowsRecordingIOS: false,
+                playsInSilentModeIOS: true,
+                interruptionModeIOS: 1,
             });
             setRecording(null);
         } catch (err) {
             console.error("Failed to cancel recording:", err);
+            setRecording(null);
+            setIsRecording(false);
+            setShowRecordModal(false);
         }
     }
 
@@ -189,7 +289,13 @@ function VoiceInput({ value, onChange, voiceUri, onVoiceChange, placeholder, bg,
         try {
             if (sound) {
                 await sound.unloadAsync();
+                setSound(null);
             }
+            await Audio.setAudioModeAsync({
+                allowsRecordingIOS: false,
+                playsInSilentModeIOS: true,
+                interruptionModeIOS: 1,
+            });
             const { sound: newSound } = await Audio.Sound.createAsync(
                 { uri: voiceUri },
                 { shouldPlay: true }
@@ -203,6 +309,7 @@ function VoiceInput({ value, onChange, voiceUri, onVoiceChange, placeholder, bg,
             });
         } catch (err) {
             console.error("Failed to play sound:", err);
+            setIsPlaying(false);
             Alert.alert("Error", "Could not play the recorded audio.");
         }
     }
@@ -449,23 +556,29 @@ function DateNightForm({ accent, muted, textColor, cardBg, border, onData, onDat
 function SpaDayForm({ accent, muted, textColor, cardBg, border, onData }: any) {
     const [treatments, setTreatments] = useState<string[]>([]);
     const [duration, setDuration] = useState("");
+    const [location, setLocation] = useState("");
+    const [address, setAddress] = useState("");
     const [allergies, setAllergies] = useState("");
     const [voiceUri, setVoiceUri] = useState<string | null>(null);
 
     const toggle = (v: string) => {
         const next = treatments.includes(v) ? treatments.filter((x: string) => x !== v) : [...treatments, v];
-        setTreatments(next); onData({ treatments: next, duration, allergies, allergies_voice_note_uri: voiceUri });
+        setTreatments(next); onData({ treatments: next, duration, location, address, allergies, allergies_voice_note_uri: voiceUri });
     };
     const update = (key: string, val: string) => {
         let dur = duration;
+        let loc = location;
+        let addr = address;
         let allg = allergies;
         if (key === "duration") { dur = val; setDuration(val); }
+        if (key === "location") { loc = val; setLocation(val); if (val === "At Spa") { addr = ""; setAddress(""); } }
+        if (key === "address") { addr = val; setAddress(val); }
         if (key === "allergies") { allg = val; setAllergies(val); }
-        onData({ treatments, duration: dur, allergies: allg, allergies_voice_note_uri: voiceUri });
+        onData({ treatments, duration: dur, location: loc, address: addr, allergies: allg, allergies_voice_note_uri: voiceUri });
     };
     const handleVoiceChange = (uri: string | null) => {
         setVoiceUri(uri);
-        onData({ treatments, duration, allergies, allergies_voice_note_uri: uri });
+        onData({ treatments, duration, location, address, allergies, allergies_voice_note_uri: uri });
     };
 
 
@@ -476,11 +589,22 @@ function SpaDayForm({ accent, muted, textColor, cardBg, border, onData }: any) {
                 <Text style={fl.formBannerText}>Restore. Renew. Refresh.</Text>
             </View>
             <View style={fl.formBody}>
-                <Text style={[fl.formDesc, { color: muted }]}>Your perfect spa day, curated at our finest partner spa. Select what you'd love.</Text>
+                <Text style={[fl.formDesc, { color: muted }]}>Your perfect spa day, curated at our finest partner spa, or brought to you. Select what you'd love.</Text>
                 <SectionLabel text="WHICH TREATMENTS?" muted={muted} />
                 <MultiPill options={["Massage", "Facial", "Manicure & Pedicure", "Hair Treatment", "Body Scrub", "Full Spa Day"]} selected={treatments} onToggle={toggle} accent={accent} textColor={textColor} />
                 <SectionLabel text="HOW LONG?" muted={muted} />
                 <RadioPill options={["Half Day", "Full Day", "Evening Session"]} selected={duration} onSelect={(v: string) => update("duration", v)} accent={accent} textColor={textColor} />
+                <SectionLabel text="WHERE?" muted={muted} />
+                <RadioPill options={["At Spa", "Come to Me", "Hotel Room"]} selected={location} onSelect={(v: string) => update("location", v)} accent={accent} textColor={textColor} />
+                {(location === "Come to Me" || location === "Hotel Room") && (
+                    <LocationSearch
+                        value={address}
+                        onChangeText={(v: string) => update("address", v)}
+                        placeholder={location === "Hotel Room" ? "Search and select hotel..." : "Search and select your address..."}
+                        accentColor={accent}
+                        style={{ marginTop: 10 }}
+                    />
+                )}
                 <SectionLabel text="ALLERGIES OR SENSITIVITIES?" muted={muted} />
                 <VoiceInput value={allergies} onChange={(v: string) => update("allergies", v)} voiceUri={voiceUri} onVoiceChange={handleVoiceChange} placeholder="Tell us so we ensure a safe, comfortable experience..." bg={cardBg} border={border} textColor={textColor} accent={accent} />
             </View>
@@ -603,7 +727,7 @@ function WellnessForm({ accent, muted, textColor, cardBg, border, onData }: any)
 
     return (
         <View>
-            <Image source={require("@/assets/images/onboarding-lifestyle.png")} style={fl.formBanner} resizeMode="cover" />
+            <Image source={require("@/assets/ladies-concierge-req/wellness.jpg")} style={fl.formBanner} resizeMode="cover" />
             <View style={[fl.formBannerOverlay, { backgroundColor: "rgba(40,30,60,0.5)" }]}>
                 <Text style={fl.formBannerText}>Designed around you, entirely</Text>
             </View>
@@ -644,7 +768,7 @@ function HomeForm({ accent, muted, textColor, cardBg, border, onData }: any) {
 
     return (
         <View>
-            <Image source={require("@/assets/images/lagos-hotel.jpg")} style={fl.formBanner} resizeMode="cover" />
+            <Image source={require("@/assets/ladies-concierge-req/home.jpg")} style={fl.formBanner} resizeMode="cover" />
             <View style={[fl.formBannerOverlay, { backgroundColor: "rgba(10,30,20,0.5)" }]}>
                 <Text style={fl.formBannerText}>Your home, seamlessly managed</Text>
             </View>
@@ -685,7 +809,7 @@ function BusinessForm({ accent, muted, textColor, cardBg, border, onData, onDate
 
     return (
         <View>
-            <Image source={require("@/assets/images/onboarding-trust.png")} style={fl.formBanner} resizeMode="cover" />
+            <Image source={require("@/assets/ladies-concierge-req/business.jpg")} style={fl.formBanner} resizeMode="cover" />
             <View style={[fl.formBannerOverlay, { backgroundColor: "rgba(5,10,20,0.58)" }]}>
                 <Text style={fl.formBannerText}>Business handled with precision</Text>
             </View>
@@ -729,7 +853,7 @@ function EntertainmentForm({ accent, muted, textColor, cardBg, border, onData, o
 
     return (
         <View>
-            <Image source={require("@/assets/images/lagos-rooftop.jpg")} style={fl.formBanner} resizeMode="cover" />
+            <Image source={require("@/assets/ladies-concierge-req/entertainment.jpg")} style={fl.formBanner} resizeMode="cover" />
             <View style={[fl.formBannerOverlay, { backgroundColor: "rgba(5,10,5,0.55)" }]}>
                 <Text style={fl.formBannerText}>Experiences worth talking about</Text>
             </View>
