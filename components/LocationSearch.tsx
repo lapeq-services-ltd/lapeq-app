@@ -16,7 +16,7 @@ interface Props {
 }
 
 const GOOGLE_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY;
-const MAP_SEARCH_DISABLED = true;
+const MAP_SEARCH_DISABLED = false;
 
 // Reverse-geocode coords → street address using Google
 export async function reverseGeocodeWithMapbox(lat: number, lng: number): Promise<string | null> {
