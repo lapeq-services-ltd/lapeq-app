@@ -119,12 +119,28 @@ export default function LoginScreen() {
             });
 
             if (credential.identityToken) {
-                const { error } = await supabase.auth.signInWithIdToken({
+                const { data, error } = await supabase.auth.signInWithIdToken({
                     provider: "apple",
                     token: credential.identityToken,
                 });
                 if (error) {
                     Alert.alert("Apple Sign-In", cleanErr(error, "Apple Sign-In failed. Please try again."));
+                } else if (data?.user) {
+                    const givenName = credential.fullName?.givenName;
+                    const familyName = credential.fullName?.familyName;
+                    const fullName = [givenName, familyName].filter(Boolean).join(" ").trim();
+                    if (fullName) {
+                        try {
+                            await supabase.auth.updateUser({
+                                data: {
+                                    full_name: fullName,
+                                    first_name: givenName || "",
+                                    last_name: familyName || "",
+                                },
+                            });
+                            await supabase.from("profiles").update({ full_name: fullName }).eq("id", data.user.id);
+                        } catch {}
+                    }
                 }
             } else {
                 throw new Error("No identity token received from Apple.");

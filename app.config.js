@@ -21,6 +21,7 @@ module.exports = {
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.lapeq.app",
+      usesAppleSignIn: true,
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
         NSLocationWhenInUseUsageDescription: "Lapeq uses your location to arrange chauffeur pickups and nearby concierge services.",
@@ -52,6 +53,7 @@ module.exports = {
       "expo-video",
       "expo-location",
       "expo-image-picker",
+      "expo-apple-authentication",
       [
         "expo-av",
         {
