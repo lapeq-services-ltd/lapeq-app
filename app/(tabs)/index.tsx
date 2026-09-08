@@ -58,11 +58,21 @@ function shuffle<T>(arr: T[]): T[] {
 
 // Isolated so the per-character state updates only re-render this tiny
 // component, not the entire (expensive) home screen tree.
-function GreetingTypewriter({ userName, color }: { userName: string; color: string }) {
+function GreetingTypewriter({ userName, color, ready = true }: { userName: string; color: string; ready?: boolean }) {
     const [typedPrompt, setTypedPrompt] = useState("");
     const cursorOpacity = useRef(new Animated.Value(1)).current;
+    const [timedOutReady, setTimedOutReady] = useState(false);
 
     useEffect(() => {
+        const fallbackTimer = setTimeout(() => setTimedOutReady(true), 1500);
+        return () => clearTimeout(fallbackTimer);
+    }, []);
+
+    const isReady = ready || timedOutReady || !!userName;
+
+    useEffect(() => {
+        if (!isReady) return;
+
         let rotation = userName ? [userName, ...shuffle(GREETING_PROMPTS)] : shuffle(GREETING_PROMPTS);
         let wordIndex = 0;
         let charIndex = 0;
@@ -104,7 +114,7 @@ function GreetingTypewriter({ userName, color }: { userName: string; color: stri
                 timer = setTimeout(tick, 18);
             }
         };
-        timer = setTimeout(tick, 600);
+        timer = setTimeout(tick, 350);
 
         const cursorLoop = Animated.loop(
             Animated.sequence([
@@ -115,7 +125,7 @@ function GreetingTypewriter({ userName, color }: { userName: string; color: stri
         cursorLoop.start();
 
         return () => { clearTimeout(timer); cursorLoop.stop(); };
-    }, [userName]);
+    }, [userName, isReady]);
 
     const lapeqIdx = typedPrompt.indexOf("Lapeq");
     const lapeqFullyTyped = lapeqIdx !== -1 && typedPrompt.length >= lapeqIdx + "Lapeq".length;
@@ -758,7 +768,7 @@ export default function HomeScreen() {
                         to cover that, not a 2-line wrap. Keeps this box from growing/
                         shrinking and shifting the diaspora card below as it rotates. */}
                     <View style={{ height: 40, justifyContent: "flex-start" }}>
-                        <GreetingTypewriter userName={userName} color={C.text} />
+                        <GreetingTypewriter userName={userName} color={C.text} ready={profileLoaded} />
                     </View>
                 </View>
 
