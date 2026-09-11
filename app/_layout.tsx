@@ -47,8 +47,15 @@ function useProtectedRoute(session: Session | null, loading: boolean) {
         if (loading) return;
         const inAuthGroup = segments[0] === "(auth)";
         if (!session && !inAuthGroup) {
-            router.replace("/(auth)/onboarding");
+            AsyncStorage.getItem("onboarding_done").then(done => {
+                if (done) {
+                    router.replace("/(auth)/login");
+                } else {
+                    router.replace("/(auth)/onboarding");
+                }
+            });
         } else if (session && inAuthGroup) {
+            AsyncStorage.setItem("onboarding_done", "1");
             // Check if this user has seen the welcome screen yet
             AsyncStorage.getItem("lapeq_welcome_seen").then(seen => {
                 if (!seen) {

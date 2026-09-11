@@ -251,7 +251,10 @@ export default function OnboardingScreen() {
         }
     };
 
-    const skip = () => { setStage("questions"); setQIndex(0); };
+    const skip = async () => {
+        await AsyncStorage.setItem("onboarding_done", "1");
+        setStage("done");
+    };
 
     const skipQuestions = async () => {
         await AsyncStorage.setItem("onboarding_done", "1");
@@ -376,9 +379,14 @@ export default function OnboardingScreen() {
                     <TouchableOpacity onPress={goBackQ} style={s.backBtn}>
                         <ChevronLeft size={22} color="#fff" />
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={skipQuestions}>
-                        <Text style={s.skip}>Skip</Text>
-                    </TouchableOpacity>
+                    <View style={s.topActions}>
+                        <TouchableOpacity onPress={() => router.replace("/(auth)/login")} style={s.topSignInBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                            <Text style={s.topSignInText}>Sign In</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={skipQuestions} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                            <Text style={s.skip}>Skip</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
                 <View style={s.progressTrack}>
@@ -444,9 +452,14 @@ export default function OnboardingScreen() {
                         resizeMode="contain"
                     />
                 )}
-                <TouchableOpacity onPress={skip}>
-                    <Text style={s.skip}>Skip</Text>
-                </TouchableOpacity>
+                <View style={s.topActions}>
+                    <TouchableOpacity onPress={() => router.replace("/(auth)/login")} style={s.topSignInBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                        <Text style={s.topSignInText}>Sign In</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={skip} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                        <Text style={s.skip}>Skip</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
 
             <FlatList
@@ -514,6 +527,9 @@ export default function OnboardingScreen() {
                     </Text>
                 </TouchableOpacity>
 
+                <TouchableOpacity onPress={() => router.replace("/(auth)/login")} style={s.loginRow}>
+                    <Text style={s.loginText}>Already a member? <Text style={s.loginLink}>Sign in</Text></Text>
+                </TouchableOpacity>
             </View>
         </SafeAreaView>
     );
@@ -525,6 +541,25 @@ const s = StyleSheet.create({
     topRow: {
         flexDirection: "row", justifyContent: "space-between", alignItems: "center",
         paddingHorizontal: 24, paddingTop: 8, paddingBottom: 4,
+    },
+    topActions: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 16,
+    },
+    topSignInBtn: {
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 14,
+        backgroundColor: "rgba(201,168,76,0.15)",
+        borderWidth: 1,
+        borderColor: "rgba(201,168,76,0.3)",
+    },
+    topSignInText: {
+        fontSize: 12,
+        fontWeight: "700",
+        letterSpacing: 0.3,
+        color: GOLD,
     },
     backBtn: {
         width: 36, height: 36, borderRadius: 18,
