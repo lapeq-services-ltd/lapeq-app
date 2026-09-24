@@ -72,10 +72,20 @@ export default function ExploreScreen() {
         setLoading(true);
         supabase
             .from("venue_images")
-            .select("id, venue_id, url, media_type, caption, sort_order, venues(id, name, category, city)")
+            .select("id, venue_id, url, media_type, caption, sort_order, venues!inner(id, name, category, city, deleted_at, active)")
+            .is("venues.deleted_at", null)
+            .eq("venues.active", true)
             .limit(150)
-            .then(({ data }) => {
-                setMedia(shuffle((data as any as VenueMediaWithVenue[]) ?? []));
+            .then(({ data, error }) => {
+                if (error) {
+                    console.error("Explore fetch error:", error);
+                    setLoading(false);
+                    return;
+                }
+                const validMedia = ((data as any as VenueMediaWithVenue[]) ?? []).filter(
+                    item => item.venues && !(item.venues as any).deleted_at && (item.venues as any).active !== false
+                );
+                setMedia(shuffle(validMedia));
                 setLoading(false);
             });
     }, []);

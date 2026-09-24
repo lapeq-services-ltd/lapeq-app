@@ -338,7 +338,24 @@ export default function VenueDetailScreen() {
         </View>
     );
 
-    if (!venue) return null;
+    if (!venue) {
+        return (
+            <SafeAreaView style={{ flex: 1, backgroundColor: C.background, justifyContent: "center", alignItems: "center", padding: 24 }}>
+                <Text style={{ fontSize: 18, fontWeight: "700", color: C.text, marginBottom: 8, textAlign: "center" }}>
+                    Venue Unavailable
+                </Text>
+                <Text style={{ fontSize: 14, color: C.muted, marginBottom: 24, textAlign: "center" }}>
+                    This venue has been removed or is no longer active.
+                </Text>
+                <TouchableOpacity
+                    onPress={() => router.back()}
+                    style={{ paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10, backgroundColor: GOLD }}
+                >
+                    <Text style={{ color: "#000", fontWeight: "700", fontSize: 14 }}>Go Back</Text>
+                </TouchableOpacity>
+            </SafeAreaView>
+        );
+    }
 
     const fallbackSrc = venue.image_url ? { uri: venue.image_url } : PLACEHOLDER_IMAGES[venue.category] ?? PLACEHOLDER_IMAGES.restaurant;
     const slides = venueImages.length > 0
