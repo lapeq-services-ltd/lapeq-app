@@ -98,7 +98,6 @@ export default function RegisterScreen() {
     const [email, setEmail] = useState(prefillEmail ?? "");
     const [phone, setPhone] = useState("");
     const [dialCode, setDialCode] = useState(DIAL_CODES[0]);
-    const [gender, setGender] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
@@ -249,7 +248,7 @@ export default function RegisterScreen() {
             email,
             password,
             options: {
-                data: { first_name: firstName.trim(), last_name: lastName.trim(), country, region, gender },
+                data: { first_name: firstName.trim(), last_name: lastName.trim(), ...(country ? { country, region } : {}) },
             },
         });
         if (error) {
@@ -268,9 +267,8 @@ export default function RegisterScreen() {
                 full_name: fullName,
                 preferred_name: firstName.trim(),
                 email: email.trim().toLowerCase(),
-                country,
-                region,
-                gender,
+                country: country || null,
+                region: region || null,
                 phone: phone.trim() ? `${dialCode.code}${phone.trim()}` : null,
                 ...(onboardingAnswers && { onboarding_answers: onboardingAnswers }),
             }, { onConflict: "id" });
@@ -409,7 +407,9 @@ export default function RegisterScreen() {
 
                                 {/* Phone number */}
                                 <View style={s.fieldWrap}>
-                                    <Text style={s.inputLabel}>PHONE NUMBER</Text>
+                                    <Text style={s.inputLabel}>
+                                        PHONE NUMBER <Text style={s.optionalLabel}>(OPTIONAL)</Text>
+                                    </Text>
                                     <View style={[s.inputBlock, phoneFocused && s.inputBlockFocused]}>
                                         <View style={s.phoneRow}>
                                             <TouchableOpacity style={s.dialBtn} onPress={() => setShowDialModal(true)}>
@@ -438,7 +438,9 @@ export default function RegisterScreen() {
                                 {/* Country + State - side by side */}
                                 <View style={s.twoCol}>
                                     <View style={[s.fieldWrap, s.colHalf]}>
-                                        <Text style={s.inputLabel}>COUNTRY</Text>
+                                        <Text style={s.inputLabel}>
+                                            COUNTRY <Text style={s.optionalLabel}>(OPTIONAL)</Text>
+                                        </Text>
                                         <TouchableOpacity style={s.inputBlock} onPress={() => setShowCountryModal(true)}>
                                             <View style={s.pickerRow}>
                                                 {selectedCountry
@@ -453,7 +455,9 @@ export default function RegisterScreen() {
                                         </TouchableOpacity>
                                     </View>
                                     <View style={[s.fieldWrap, s.colHalf]}>
-                                        <Text style={[s.inputLabel, !country && { opacity: 0.35 }]}>STATE</Text>
+                                        <Text style={[s.inputLabel, !country && { opacity: 0.35 }]}>
+                                            STATE <Text style={s.optionalLabel}>(OPTIONAL)</Text>
+                                        </Text>
                                         <TouchableOpacity
                                             style={[s.inputBlock, !country && { opacity: 0.45 }]}
                                             onPress={() => country ? setShowRegionModal(true) : null}
@@ -466,22 +470,6 @@ export default function RegisterScreen() {
                                                 <ChevronDown size={14} color="rgba(255,255,255,0.3)" />
                                             </View>
                                         </TouchableOpacity>
-                                    </View>
-                                </View>
-
-                                {/* Gender pills */}
-                                <View style={s.fieldWrap}>
-                                    <Text style={s.inputLabel}>GENDER</Text>
-                                    <View style={s.genderRow}>
-                                        {GENDERS.map(g => (
-                                            <TouchableOpacity
-                                                key={g}
-                                                style={[s.genderPill, gender === g && s.genderPillActive]}
-                                                onPress={() => setGender(g)}
-                                            >
-                                                <Text style={[s.genderText, gender === g && s.genderTextActive]}>{g}</Text>
-                                            </TouchableOpacity>
-                                        ))}
                                     </View>
                                 </View>
 
@@ -708,6 +696,7 @@ const s = StyleSheet.create({
     inputBlockFocused: { borderColor: BORDER_ACTIVE, backgroundColor: "rgba(201,168,76,0.06)" },
     inputBlockError: { borderColor: "#ff5555" },
     inputLabel: { fontSize: 10, fontFamily: "Jost_800ExtraBold", color: GOLD, letterSpacing: 2 },
+    optionalLabel: { fontSize: 9, fontFamily: "Jost_500Medium", color: MUTED, letterSpacing: 1 },
     input: { fontSize: isAndroid ? 13 : 15, fontFamily: "Jost_400Regular", color: "#fff", paddingVertical: 0 },
     passwordRow: { flexDirection: "row", alignItems: "center" },
     pickerRow: { flexDirection: "row", alignItems: "center" },
@@ -720,15 +709,6 @@ const s = StyleSheet.create({
     dialFlag: { fontSize: isAndroid ? 16 : 18 },
     dialCodeText: { fontSize: isAndroid ? 12 : 14, fontFamily: "Jost_500Medium", color: "#fff" },
     dialDivider: { width: 1, height: 18, backgroundColor: BORDER },
-    // Gender
-    genderRow: { flexDirection: "row", flexWrap: "wrap", gap: isAndroid ? 7 : 9 },
-    genderPill: {
-        paddingHorizontal: isAndroid ? 13 : 15, paddingVertical: isAndroid ? 8 : 10,
-        borderRadius: 99, borderWidth: 1, borderColor: BORDER, backgroundColor: CARD,
-    },
-    genderPillActive: { borderColor: GOLD, backgroundColor: "rgba(201,168,76,0.12)" },
-    genderText: { fontSize: isAndroid ? 11 : 12, fontFamily: "Jost_500Medium", color: MUTED },
-    genderTextActive: { color: GOLD, fontFamily: "Jost_600SemiBold" },
 
     // Strength
     strengthWrap: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 10 },
