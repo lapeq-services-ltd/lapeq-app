@@ -24,7 +24,7 @@ const IMAGES = {
     hero: require("@/assets/images/gentlemen/hero_gentleman.jpg"),
     bespokeTailoring: require("@/assets/images/gentlemen/bespoke_tailoring.jpg"),
     luxuryWatches: require("@/assets/images/gentlemen/luxury_watches.jpg"),
-    personalStyling: require("@/assets/images/gentlemen/hero_gentleman.jpg"),
+    personalStyling: require("@/assets/images/gentlemen/personal_styling.jpg"),
     barber: require("@/assets/images/gentlemen/private_barber.jpg"),
     sportsRecovery: require("@/assets/images/gentlemen/sports_recovery.jpg"),
     skincare: require("@/assets/images/gentlemen/skincare_facials.jpg"),
