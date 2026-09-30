@@ -20,6 +20,8 @@ import ShakeReport from "@/components/ShakeReport"
 import TermsSheet from "@/components/TermsSheet";
 import LapeqToast from "@/components/LapeqToast";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import * as QuickActions from "expo-quick-actions";
+import { useQuickActionCallback } from "expo-quick-actions/hooks";
 import { View } from "react-native";
 import Skeleton from "@/components/Skeleton";
 import { useFonts } from "expo-font";
@@ -382,6 +384,35 @@ function RootContent({ onLayout }: { onLayout?: () => void }) {
     const router = useRouter();
 
     usePushToken(session?.user?.id ?? null);
+
+    useQuickActionCallback((action) => {
+        if (action?.id === "dont_remove") {
+            router.push("/(main)/chat" as any);
+        } else if (action?.id === "tell_us_whats_wrong") {
+            router.push("/settings/report" as any);
+        }
+    });
+
+    useEffect(() => {
+        QuickActions.setItems([
+            {
+                id: "dont_remove",
+                type: "dont_remove",
+                title: "Don't remove Lapeq 👋",
+                subtitle: "Give it a second chance",
+                icon: "love",
+                params: { href: "/(main)/chat" },
+            },
+            {
+                id: "tell_us_whats_wrong",
+                type: "tell_us_whats_wrong",
+                title: "Tell us what's wrong 💬",
+                subtitle: "Help us improve",
+                icon: "message",
+                params: { href: "/settings/report" },
+            },
+        ]).catch(() => {});
+    }, []);
 
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session }, error }) => {

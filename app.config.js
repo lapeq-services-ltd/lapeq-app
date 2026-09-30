@@ -28,6 +28,20 @@ module.exports = {
         NSLocationWhenInUseUsageDescription: "Lapeq uses your location to arrange chauffeur pickups and nearby concierge services.",
         NSMicrophoneUsageDescription: "Lapeq uses your microphone so you can send voice requests to your concierge.",
         NSPhotoLibraryUsageDescription: "Lapeq accesses your photos so you can attach images to bug reports and requests.",
+        UIApplicationShortcutItems: [
+          {
+            UIApplicationShortcutItemType: "dont_remove",
+            UIApplicationShortcutItemTitle: "Don't remove Lapeq 👋",
+            UIApplicationShortcutItemSubtitle: "Give it a second chance",
+            UIApplicationShortcutItemIconType: "UIApplicationShortcutIconTypeLove",
+          },
+          {
+            UIApplicationShortcutItemType: "tell_us_whats_wrong",
+            UIApplicationShortcutItemTitle: "Tell us what's wrong 💬",
+            UIApplicationShortcutItemSubtitle: "Help us improve",
+            UIApplicationShortcutItemIconType: "UIApplicationShortcutIconTypeMessage",
+          },
+        ],
       },
     },
     android: {
@@ -50,6 +64,7 @@ module.exports = {
     },
     plugins: [
       "expo-router",
+      "expo-quick-actions",
       "expo-font",
       "expo-video",
       "expo-location",
