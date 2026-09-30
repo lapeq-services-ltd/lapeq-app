@@ -1,0 +1,15 @@
+# EAS Ignore
+node_modules/
+.git/
+dist/
+web-build/
+.expo/
+scratch/
+supabase/
+.claude/
+diary.md
+ROADMAP.md
+TODO.md
+*.log
+*.tsbuildinfo
+.env*.local
