@@ -70,6 +70,11 @@ module.exports = {
       "expo-location",
       "expo-image-picker",
       "expo-apple-authentication",
+      "expo-secure-store",
+      "expo-splash-screen",
+      "expo-status-bar",
+      "expo-web-browser",
+      "@react-native-community/datetimepicker",
       [
         "expo-av",
         {
