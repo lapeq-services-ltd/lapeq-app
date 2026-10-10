@@ -35,15 +35,23 @@ serve(async (req) => {
             });
         }
 
+        // Termii requires international format WITHOUT the '+' sign (e.g. 2348012345678)
+        let formattedPhone = phone.replace(/[^\d+]/g, "");
+        if (formattedPhone.startsWith("+")) {
+            formattedPhone = formattedPhone.substring(1);
+        } else if (formattedPhone.startsWith("0") && formattedPhone.length === 11) {
+            formattedPhone = "234" + formattedPhone.substring(1);
+        }
+
         const res = await fetch("https://api.ng.termii.com/api/sms/send", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                to: phone,
+                to: formattedPhone,
                 from: senderId,
                 sms: `Your LAPEQ verification code is: ${otp}. Valid for 10 minutes. Do not share with anyone.`,
                 type: "plain",
-                channel: "generic",
+                channel: "dnd",
                 api_key: apiKey,
             }),
         });

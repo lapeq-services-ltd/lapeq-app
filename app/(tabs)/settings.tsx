@@ -1,7 +1,7 @@
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ChevronLeft, User, Bell, Shield, CreditCard, LifeBuoy, Info, HelpCircle, ChevronRight, Moon, Sun, SunMoon, BookOpen, AlertTriangle } from "lucide-react-native";
+import { ChevronLeft, User, Bell, Shield, CreditCard, LifeBuoy, Info, HelpCircle, ChevronRight, Moon, Sun, SunMoon, BookOpen, AlertTriangle, Trash2 } from "lucide-react-native";
 
 import { useTheme } from "@/context/ThemeContext";
 import { useMemo } from "react";
@@ -18,6 +18,7 @@ export default function SettingsScreen() {
             items: [
                 { icon: User, label: "Personal Information", route: "/settings/personal-info" },
                 { icon: CreditCard, label: "Payment Methods", route: "/settings/payment-methods" },
+                { icon: Trash2, label: "Delete Account", route: "/settings/privacy?action=delete", danger: true },
             ]
         },
         {
@@ -56,17 +57,18 @@ export default function SettingsScreen() {
                         <View style={s.card}>
                             {section.items.map((item, i) => {
                                 const Icon = item.icon;
+                                const isDanger = (item as any).danger;
                                 return (
                                     <TouchableOpacity
                                         key={i}
                                         style={[s.row, s.rowBorder]}
                                         onPress={() => router.push(item.route as any)}
                                     >
-                                        <View style={s.iconBox}>
-                                            <Icon size={22} color={C.primary} />
+                                        <View style={[s.iconBox, isDanger && s.iconBoxDanger]}>
+                                            <Icon size={22} color={isDanger ? "#ef4444" : C.primary} />
                                         </View>
-                                        <Text style={s.rowLabel}>{item.label}</Text>
-                                        <ChevronRight size={20} color={C.muted} />
+                                        <Text style={[s.rowLabel, isDanger && { color: "#ef4444" }]}>{item.label}</Text>
+                                        <ChevronRight size={20} color={isDanger ? "#ef4444" : C.muted} />
                                     </TouchableOpacity>
                                 );
                             })}
@@ -98,6 +100,15 @@ export default function SettingsScreen() {
                 <TouchableOpacity onPress={() => supabase.auth.signOut()} style={s.signOut}>
                     <Text style={s.signOutText}>Sign out</Text>
                 </TouchableOpacity>
+
+                <TouchableOpacity 
+                    onPress={() => router.push("/settings/privacy?action=delete" as any)} 
+                    style={s.deleteAccountBtn}
+                    activeOpacity={0.7}
+                >
+                    <Trash2 size={16} color="#ef4444" style={{ marginRight: 6 }} />
+                    <Text style={s.deleteAccountText}>Delete Account</Text>
+                </TouchableOpacity>
             </ScrollView>
         </SafeAreaView>
     );
@@ -114,9 +125,12 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     row: { flexDirection: "row", alignItems: "center", padding: 16, gap: 16 },
     rowBorder: { borderBottomWidth: 1, borderBottomColor: theme === "dark" ? "#2a2a2a" : "#d8d3ca" },
     iconBox: { width: 44, height: 44, borderRadius: 14, backgroundColor: theme === "dark" ? "#222" : "#e8e4dc", alignItems: "center", justifyContent: "center" },
+    iconBoxDanger: { backgroundColor: theme === "dark" ? "rgba(239, 68, 68, 0.15)" : "#fef2f2" },
     rowLabel: { flex: 1, fontSize: 16, fontWeight: "600", color: C.text },
-    signOut: { marginTop: 8, marginBottom: 16, alignItems: "center", padding: 16 },
+    signOut: { marginTop: 8, marginBottom: 4, alignItems: "center", padding: 12 },
     signOutText: { fontSize: 15, color: C.muted, fontWeight: "500" },
+    deleteAccountBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 12, marginBottom: 20 },
+    deleteAccountText: { fontSize: 14, color: "#ef4444", fontWeight: "600" },
     themePill: { flexDirection: "row", borderRadius: 10, padding: 3, gap: 2 },
     pillBtn: { paddingHorizontal: 11, paddingVertical: 6, borderRadius: 8 },
     pillText: { fontSize: 13, fontWeight: "600" },

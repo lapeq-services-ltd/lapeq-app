@@ -1,9 +1,9 @@
 import { showToast } from "@/lib/toast";
 import { cleanErr } from "@/lib/cleanErr";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, Modal, TextInput, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { ChevronLeft, Lock, Eye, Trash2, ShieldCheck, X } from "lucide-react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { supabase } from "@/lib/supabase";
@@ -20,6 +20,7 @@ const DELETE_REASONS = [
 
 export default function PrivacyScreen() {
     const router = useRouter();
+    const { action } = useLocalSearchParams<{ action?: string }>();
     const { C, theme } = useTheme();
     const s = useMemo(() => getStyles(C, theme), [C, theme]);
 
@@ -30,6 +31,12 @@ export default function PrivacyScreen() {
     const [deleting, setDeleting] = useState(false);
     const [isOAuth, setIsOAuth] = useState(false);
     const [userName, setUserName] = useState("");
+
+    useEffect(() => {
+        if (action === "delete") {
+            openDeleteModal();
+        }
+    }, [action]);
 
     const openDeleteModal = async () => {
         const { data: { user } } = await supabase.auth.getUser();
@@ -64,7 +71,7 @@ export default function PrivacyScreen() {
 
             await supabase.auth.signOut();
             setShowDeleteModal(false);
-            router.replace("/(auth)/sign-in" as any);
+            router.replace("/(auth)/login" as any);
         } catch (err: any) {
             showToast(cleanErr(err), "error");
         } finally {

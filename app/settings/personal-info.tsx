@@ -4,7 +4,7 @@ import { View, Text, TouchableOpacity, StyleSheet, TextInput, Image, Alert, Keyb
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ChevronLeft, Camera, User, Phone, MapPin, Crown, Check, ChevronDown, X, Mail, Lock } from "lucide-react-native";
+import { ChevronLeft, Camera, User, Phone, MapPin, Crown, Check, ChevronDown, X, Mail, Lock, Trash2 } from "lucide-react-native";
 import { useTheme } from "@/context/ThemeContext";
 import * as ImagePicker from "expo-image-picker";
 import { supabase } from "@/lib/supabase";
@@ -267,6 +267,15 @@ export default function PersonalInfoScreen() {
                         <Text style={s.tierBtnText}>Manage Membership</Text>
                     </TouchableOpacity>
 
+                    <TouchableOpacity 
+                        style={s.deleteBtn} 
+                        onPress={() => router.push("/settings/privacy?action=delete" as any)}
+                        activeOpacity={0.7}
+                    >
+                        <Trash2 size={16} color="#ef4444" style={{ marginRight: 6 }} />
+                        <Text style={s.deleteBtnText}>Delete Account</Text>
+                    </TouchableOpacity>
+
             </KeyboardAwareScrollView>
 
             <View style={s.footer}>
@@ -359,6 +368,8 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
 
     tierBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, padding: 16, borderRadius: 14, backgroundColor: C.primary, marginTop: 8 },
     tierBtnText: { fontSize: 15, fontWeight: "700", color: "#0a0a0a" },
+    deleteBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 14, marginTop: 12, marginBottom: 8 },
+    deleteBtnText: { fontSize: 14, fontWeight: "600", color: "#ef4444" },
 
     footer: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 32, backgroundColor: C.background, borderTopWidth: 1, borderTopColor: theme === "dark" ? "#2a2a2a" : "#ece8de" },
     saveBtn: { borderRadius: 14, paddingVertical: 16, backgroundColor: C.primary, alignItems: "center" },

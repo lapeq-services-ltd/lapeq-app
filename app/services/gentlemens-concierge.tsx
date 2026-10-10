@@ -9,7 +9,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import {
     ChevronLeft, ChevronRight, CheckCircle2, X,
-    Plus, Minus, CalendarDays, Sparkles,
+    Plus, Minus, CalendarDays,
+    Shirt, Scissors, Briefcase, Wine,
 } from "lucide-react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useTheme } from "@/context/ThemeContext";
@@ -275,11 +276,11 @@ const SERVICES: Service[] = [
     },
 ];
 
-const TABS: { id: Tab; label: string }[] = [
-    { id: "style", label: "STYLE" },
-    { id: "grooming", label: "GROOMING" },
-    { id: "business", label: "BUSINESS" },
-    { id: "leisure", label: "LEISURE" },
+const TABS: { id: Tab; label: string; icon: any }[] = [
+    { id: "style", label: "Style", icon: Shirt },
+    { id: "grooming", label: "Grooming", icon: Scissors },
+    { id: "business", label: "Business", icon: Briefcase },
+    { id: "leisure", label: "Leisure", icon: Wine },
 ];
 
 // ─── Field state helpers ───────────────────────────────────────────────────────
@@ -406,14 +407,61 @@ export default function GentlemensConciergeScreen() {
         setShowDatePicker(false);
     };
 
+    const getMissingFields = (): string[] => {
+        if (!activeService) return [];
+        const missing: string[] = [];
+        for (const f of activeService.fields) {
+            if (f.kind === "chips") {
+                const val = fieldState[f.label];
+                if (f.multi) {
+                    if (!f.label.toLowerCase().includes("additional") && (!Array.isArray(val) || val.length === 0)) {
+                        missing.push(f.label);
+                    }
+                } else {
+                    if (!val || typeof val !== "string" || !val.trim()) {
+                        missing.push(f.label);
+                    }
+                }
+            } else if (f.kind === "date") {
+                const val = fieldState[f.label];
+                if (!val || typeof val !== "string" || !val.trim()) {
+                    missing.push(f.label);
+                }
+            } else if (f.kind === "location") {
+                const isVisible = f.showWhen.oneOf.includes(fieldState[f.showWhen.field]);
+                if (isVisible) {
+                    const val = fieldState[f.label];
+                    if (!val || typeof val !== "string" || !val.trim()) {
+                        missing.push(f.label);
+                    }
+                }
+            }
+        }
+        return missing;
+    };
+
     const handleSubmit = async () => {
         if (limitReached) {
             Alert.alert("Limit Reached", "You've used all 5 of your monthly requests. Upgrade to Premium to continue.");
             return;
         }
         if (!activeService) return;
+
+        const missing = getMissingFields();
+        if (missing.length > 0) {
+            const formatted = missing.map(m => `• ${m.charAt(0) + m.slice(1).toLowerCase()}`).join("\n");
+            Alert.alert(
+                "Please Complete Your Request",
+                `Please fill in the following details before submitting:\n\n${formatted}`
+            );
+            return;
+        }
+
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        if (!user) {
+            Alert.alert("Sign In Required", "Please sign in to submit a request.");
+            return;
+        }
 
         const notesField = activeService.fields.find(f => f.kind === "notes") as NotesField | undefined;
         const notes = notesField ? (fieldState[notesField.label] ?? "") : "";
@@ -443,11 +491,23 @@ export default function GentlemensConciergeScreen() {
     };
 
     const renderField = (f: Field) => {
+        const isOptional = f.kind === "notes" || (f.kind === "chips" && f.label.toLowerCase().includes("additional"));
+        const labelNode = (
+            <Text style={s.fieldLabel}>
+                {f.label}{" "}
+                {isOptional ? (
+                    <Text style={{ fontSize: 10, fontWeight: "500", color: "rgba(240,236,228,0.4)" }}>(OPTIONAL)</Text>
+                ) : (
+                    <Text style={{ color: BLUE }}>*</Text>
+                )}
+            </Text>
+        );
+
         if (f.kind === "chips") {
             const val = fieldState[f.label];
             return (
                 <View key={f.label} style={s.fieldGroup}>
-                    <Text style={s.fieldLabel}>{f.label}</Text>
+                    {labelNode}
                     <View style={s.chipRow}>
                         {f.options.map(opt => {
                             const active = f.multi
@@ -475,7 +535,7 @@ export default function GentlemensConciergeScreen() {
             const isZero = val === f.min && !!f.zeroLabel;
             return (
                 <View key={f.label} style={s.fieldGroup}>
-                    <Text style={s.fieldLabel}>{f.label}</Text>
+                    {labelNode}
                     <View style={s.counterRow}>
                         <TouchableOpacity style={s.counterBtn} onPress={() => adjustCounter(f.label, f, -1)} disabled={val <= f.min}>
                             <Minus size={16} color={val <= f.min ? C.muted : C.text} />
@@ -493,7 +553,7 @@ export default function GentlemensConciergeScreen() {
             const val = fieldState[f.label];
             return (
                 <View key={f.label} style={s.fieldGroup}>
-                    <Text style={s.fieldLabel}>{f.label}</Text>
+                    {labelNode}
                     <TouchableOpacity
                         style={[s.datePicker, !!val && s.datePickerActive]}
                         onPress={() => openDatePicker(f.label)}
@@ -512,7 +572,7 @@ export default function GentlemensConciergeScreen() {
             if (!f.showWhen.oneOf.includes(fieldState[f.showWhen.field])) return null;
             return (
                 <View key={f.label} style={s.fieldGroup}>
-                    <Text style={s.fieldLabel}>{f.label}</Text>
+                    {labelNode}
                     <LocationSearch
                         value={fieldState[f.label] ?? ""}
                         onChangeText={v => setField(f.label, v)}
@@ -526,7 +586,7 @@ export default function GentlemensConciergeScreen() {
         if (f.kind === "notes") {
             return (
                 <View key={f.label} style={s.fieldGroup}>
-                    <Text style={s.fieldLabel}>{f.label}</Text>
+                    {labelNode}
                     <VoiceInput
                         placeholder={f.placeholder}
                         value={fieldState[f.label] ?? ""}
@@ -553,31 +613,35 @@ export default function GentlemensConciergeScreen() {
                     <ChevronLeft size={22} color="#fff" />
                 </TouchableOpacity>
                 <View style={s.heroContent}>
-                    <View style={s.heroBadge}>
-                        <Sparkles size={11} color={BLUE} />
-                        <Text style={s.heroBadgeText}>PRIVATE BESPOKE CONCIERGE</Text>
-                    </View>
                     <Text style={s.heroTitle}>Gentlemen's{"\n"}Concierge</Text>
                     <Text style={s.heroSubtitle}>Tailoring · Horology · Executive Transit · Fine Living</Text>
                 </View>
             </View>
 
-            {/* Category Tabs */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.tabBar} contentContainerStyle={s.tabBarContent}>
+            {/* Category Squares (No AI pills, No borders, High Contrast) */}
+            <View style={s.categoryContainer}>
                 {TABS.map(t => {
                     const active = activeTab === t.id;
+                    const Icon = t.icon;
                     return (
                         <TouchableOpacity
                             key={t.id}
-                            style={[s.tab, active && s.tabActive]}
+                            style={[s.categorySquare, active && s.categorySquareActive]}
                             onPress={() => setActiveTab(t.id)}
-                            activeOpacity={0.8}
+                            activeOpacity={0.75}
                         >
-                            <Text style={[s.tabText, active && s.tabTextActive]}>{t.label}</Text>
+                            <Icon
+                                size={20}
+                                color={active ? "#090d14" : (theme === "dark" ? "#94a3b8" : "#64748b")}
+                                strokeWidth={active ? 2.4 : 1.8}
+                            />
+                            <Text style={[s.categoryLabel, active && s.categoryLabelActive]}>
+                                {t.label}
+                            </Text>
                         </TouchableOpacity>
                     );
                 })}
-            </ScrollView>
+            </View>
 
             {/* Service List with Luxury Photo Cards */}
             <ScrollView style={{ backgroundColor: C.background }} contentContainerStyle={s.list} showsVerticalScrollIndicator={false}>
@@ -746,7 +810,7 @@ export default function GentlemensConciergeScreen() {
                         <TouchableOpacity style={s.successBtn} onPress={() => { setSuccess(false); router.push("/requests" as any); }} activeOpacity={0.85}>
                             <Text style={s.successBtnText}>View My Requests</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity onPress={() => { setSuccess(false); router.back(); }} style={{ marginTop: 14 }}>
+                        <TouchableOpacity onPress={() => setSuccess(false)} style={{ marginTop: 14 }}>
                             <Text style={{ color: C.muted, fontSize: 14, fontWeight: "600" }}>Done</Text>
                         </TouchableOpacity>
                     </View>
@@ -767,18 +831,40 @@ const getStyles = (C: any, theme: string, BLUE: string) => StyleSheet.create({
     heroOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(10,12,16,0.65)" },
     backBtn: { position: "absolute", top: 52, left: 20, width: 42, height: 42, borderRadius: 21, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.15)" },
     heroContent: { position: "absolute", bottom: 24, left: 20, right: 20 },
-    heroBadge: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", backgroundColor: "rgba(122,158,203,0.18)", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, borderWidth: 1, borderColor: "rgba(122,158,203,0.3)", marginBottom: 10 },
-    heroBadgeText: { fontSize: 10, fontWeight: "800", color: BLUE, letterSpacing: 1.5 },
     heroTitle: { fontSize: 32, fontWeight: "800", color: "#ffffff", lineHeight: 38, letterSpacing: -0.5, marginBottom: 8 },
     heroSubtitle: { fontSize: 13, color: "rgba(255,255,255,0.75)", fontWeight: "500", letterSpacing: 0.2 },
 
-    // Tabs
-    tabBar: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border, flexGrow: 0, backgroundColor: C.background },
-    tabBarContent: { paddingHorizontal: 20, paddingVertical: 14, gap: 10 },
-    tab: { paddingVertical: 9, paddingHorizontal: 20, borderRadius: 10, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface },
-    tabActive: { backgroundColor: BLUE, borderColor: BLUE },
-    tabText: { fontSize: 12, fontWeight: "700", color: C.muted, letterSpacing: 1 },
-    tabTextActive: { color: "#ffffff" },
+    // Category Squares (Clean luxury, no borders, crystal-clear readability)
+    categoryContainer: {
+        flexDirection: "row",
+        paddingHorizontal: 16,
+        paddingTop: 16,
+        paddingBottom: 4,
+        gap: 8,
+        backgroundColor: C.background,
+    },
+    categorySquare: {
+        flex: 1,
+        paddingVertical: 12,
+        borderRadius: 12,
+        backgroundColor: theme === "dark" ? "#16181f" : "#e8e4dc",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 6,
+    },
+    categorySquareActive: {
+        backgroundColor: BLUE,
+    },
+    categoryLabel: {
+        fontSize: 12,
+        fontWeight: "600",
+        color: theme === "dark" ? "#cbd5e1" : "#475569",
+        letterSpacing: 0.2,
+    },
+    categoryLabelActive: {
+        color: "#090d14",
+        fontWeight: "800",
+    },
 
     // List & Cards
     list: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 50, gap: 18 },
@@ -869,9 +955,9 @@ const getStyles = (C: any, theme: string, BLUE: string) => StyleSheet.create({
     fieldGroup: { marginBottom: 20 },
     fieldLabel: { fontSize: 11, fontWeight: "800", color: "rgba(240,236,228,0.5)", letterSpacing: 1.5, marginBottom: 10 },
     chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-    chip: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 100, backgroundColor: "#141414", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)" },
+    chip: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 10, backgroundColor: "#141414", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)" },
     chipActive: { backgroundColor: `${BLUE}25`, borderColor: BLUE },
-    chipText: { fontSize: 13, color: "rgba(240,236,228,0.65)", fontWeight: "500" },
+    chipText: { fontSize: 13, color: "rgba(240,236,228,0.75)", fontWeight: "500" },
     chipTextActive: { color: BLUE, fontWeight: "700" },
     counterRow: { flexDirection: "row", alignItems: "center", gap: 16 },
     counterBtn: { width: 42, height: 42, borderRadius: 12, backgroundColor: "#141414", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.12)" },
