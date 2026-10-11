@@ -48,6 +48,7 @@ const SERVICE_TYPES = [
     { id: "Security & Protocol",    label: "Security",          emoji: "◉", desc: "Personal protection & VIP security arrangements",    img: require("@/assets/make-a-request/security.jpg") },
     { id: "Passport Renewal",       label: "Passport Renewal",  emoji: "◈", desc: "End-to-end passport renewal & document processing",  img: require("@/assets/make-a-request/passport.jpg") },
     { id: "Bank Account Opening",   label: "Bank Account",      emoji: "◆", desc: "Open a Nigerian bank account remotely",              img: require("@/assets/make-a-request/bank.jpg") },
+    { id: "Language Tutoring",      label: "Language Tutoring", emoji: "🗣", desc: "Private language tutors, multilingual lessons & coaching", img: require("@/assets/make-a-request/language.jpg") },
 ];
 
 // Cycled across the service arches so neighbours read as visually distinct,
@@ -160,6 +161,8 @@ export default function LifestyleTravelScreen() {
     const [financeStrategy, setFinanceStrategy] = useState("Balanced");
 
     const [legalMatterType, setLegalMatterType] = useState("");
+    const [legalUrgency, setLegalUrgency] = useState("Standard (2–3 Days)");
+    const [legalConsultMode, setLegalConsultMode] = useState("Virtual (Video Call)");
 
     const [propertyServiceType, setPropertyServiceType] = useState("");
     const [photographyType, setPhotographyType] = useState("");
@@ -167,6 +170,9 @@ export default function LifestyleTravelScreen() {
     const [securityType, setSecurityType] = useState("");
     const [passportServiceType, setPassportServiceType] = useState("");
     const [bankAccountType, setBankAccountType] = useState("");
+    const [targetLanguage, setTargetLanguage] = useState("");
+    const [tutoringLevel, setTutoringLevel] = useState("Beginner / Foundations");
+    const [tutoringMode, setTutoringMode] = useState("Private In-Person Tutor");
 
     const startOfToday = useMemo(() => {
         const d = new Date();
@@ -351,6 +357,7 @@ export default function LifestyleTravelScreen() {
         "Security & Protocol",
         "Passport Renewal",
         "Bank Account Opening",
+        "Language Tutoring",
     ].includes(serviceType);
 
     const isFreeUser = !userTier || !["silver", "gold", "black"].includes(userTier.toLowerCase());
@@ -421,6 +428,7 @@ export default function LifestyleTravelScreen() {
             if (serviceType === "Security & Protocol" && !securityType) { Alert.alert("Select Security Type", "Please choose a type of security."); return null; }
             if (serviceType === "Passport Renewal" && !passportServiceType) { Alert.alert("Select Service", "Please choose the service you need."); return null; }
             if (serviceType === "Bank Account Opening" && !bankAccountType) { Alert.alert("Select Account Type", "Please choose an account type."); return null; }
+            if (serviceType === "Language Tutoring" && !targetLanguage) { Alert.alert("Select Language", "Please choose a language to learn."); return null; }
             if (preferences.trim().length === 0) { Alert.alert("Add Details", "Please describe what you need."); return null; }
         } else {
             if (!destination && preferences.trim().length === 0) { Alert.alert("Add Details", "Please enter a destination or describe your experience."); return null; }
@@ -443,20 +451,21 @@ export default function LifestyleTravelScreen() {
                         serviceType,
                         city: destination,
                         date: fmtDate(dateFromObj),
-                        budget: curatedBudget,
+                        ...(serviceType !== "Legal Advisory" ? { budget: curatedBudget } : {}),
                         description: preferences,
                         // Add serialized details for sub-forms
                         ...(serviceType === "Gift & Florals" ? { giftOccasion, giftType, giftRecipient, giftMessage } : {}),
                         ...(serviceType === "Recreational Activities" ? { recreationActivity, recreationLevel, recreationGroupSize } : {}),
                         ...(serviceType === "Medical Concierge" ? { medicalCareType, medicalUrgency } : {}),
                         ...(serviceType === "Financial Advisory" ? { financeGoal, financeStrategy } : {}),
-                        ...(serviceType === "Legal Advisory" ? { legalMatterType } : {}),
+                        ...(serviceType === "Legal Advisory" ? { legalMatterType, legalUrgency, legalConsultMode } : {}),
                         ...(serviceType === "Home & Property" ? { propertyServiceType } : {}),
                         ...(serviceType === "Photography & Content" ? { photographyType } : {}),
                         ...(serviceType === "Childcare & Family" ? { childcareType } : {}),
                         ...(serviceType === "Security & Protocol" ? { securityType } : {}),
                         ...(serviceType === "Passport Renewal" ? { passportServiceType } : {}),
-                        ...(serviceType === "Bank Account Opening" ? { bankAccountType } : {})
+                        ...(serviceType === "Bank Account Opening" ? { bankAccountType } : {}),
+                        ...(serviceType === "Language Tutoring" ? { targetLanguage, tutoringLevel, tutoringMode } : {})
                       }
                     : { serviceType, mood, destination, dateFrom: fmtDate(dateFromObj), dateTo: fmtDate(dateToObj), budget: curatedBudget, preferences }),
                 targetVenue: params.prefillVenue || null
@@ -783,14 +792,12 @@ export default function LifestyleTravelScreen() {
                         <View style={s.section}>
                             <Text style={s.sectionLabel}>City</Text>
                             <View style={s.wrapRow}>
-                                {CITIES.map(c => {
-                                    const isAvailable = c === "Lagos" || c === "Abuja";
-                                    const displayLabel = isAvailable ? c : `${c} (Coming Soon)`;
+                                {["Lagos", "Abuja"].map(c => {
                                     const isLocked = !!params.prefillCity && params.prefillCity.toLowerCase() !== c.toLowerCase();
                                     return (
                                         <TouchableOpacity 
                                             key={c} 
-                                            disabled={isLocked || !isAvailable}
+                                            disabled={isLocked}
                                             style={[
                                                 s.chip, 
                                                 diningCity === c && s.chipActive,
@@ -804,7 +811,7 @@ export default function LifestyleTravelScreen() {
                                                 diningCity === c && s.chipTextActive,
                                                 isLocked && { color: C.muted }
                                             ]}>
-                                                {displayLabel}
+                                                {c}
                                             </Text>
                                         </TouchableOpacity>
                                     );
@@ -1107,9 +1114,11 @@ export default function LifestyleTravelScreen() {
                                     <Text style={s.sectionLabel}>Choose an Activity</Text>
                                     <View style={s.wrapRow}>
                                         {[
-                                            "Golf", "Tennis", "Swimming", "Water Sports", "Hiking",
-                                            "Horse Riding", "Skydiving", "Boat Cruise", "Cycling",
-                                            "Spa Day", "Clay Shooting", "Other"
+                                            "Nightlife Lounge", "Magic Show", "Fitness & Wellness", "Golf",
+                                            "Tennis / Padel", "Swimming", "Water Sports", "Hiking",
+                                            "Horse Riding", "Skydiving", "Boat Cruise & Yacht", "Cycling",
+                                            "Spa Day", "Clay Shooting", "Paintball & Go-Karting",
+                                            "Private Cinema", "Other"
                                         ].map(act => (
                                             <TouchableOpacity
                                                 key={act}
@@ -1279,6 +1288,60 @@ export default function LifestyleTravelScreen() {
                                     </View>
                                 </View>
 
+                                <View style={s.section}>
+                                    <Text style={s.sectionLabel}>How Urgent?</Text>
+                                    <View style={s.wrapRow}>
+                                        {[
+                                            "⚡ Urgent (Within 24 Hours)",
+                                            "📅 Standard (2–3 Days)",
+                                            "⏳ Flexible / General Advisory"
+                                        ].map(u => (
+                                            <TouchableOpacity
+                                                key={u}
+                                                style={[s.chip, legalUrgency === u && s.chipActive]}
+                                                onPress={() => setLegalUrgency(u)}
+                                                activeOpacity={0.8}
+                                            >
+                                                <Text style={[s.chipText, legalUrgency === u && s.chipTextActive]}>{u}</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                </View>
+
+                                <View style={s.section}>
+                                    <Text style={s.sectionLabel}>Meeting Preference</Text>
+                                    <View style={s.wrapRow}>
+                                        {[
+                                            "👤 Face to Face (In-Person)",
+                                            "🎥 Virtual (Video Call)",
+                                            "📞 Phone Call"
+                                        ].map(m => (
+                                            <TouchableOpacity
+                                                key={m}
+                                                style={[s.chip, legalConsultMode === m && s.chipActive]}
+                                                onPress={() => setLegalConsultMode(m)}
+                                                activeOpacity={0.8}
+                                            >
+                                                <Text style={[s.chipText, legalConsultMode === m && s.chipTextActive]}>{m}</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                </View>
+
+                                {legalConsultMode.includes("Face to Face") && (
+                                    <View style={s.section}>
+                                        <Text style={s.sectionLabel}>Meeting Location</Text>
+                                        <Text style={s.sectionSub}>Where would you like to meet? (e.g. city, office, or residence)</Text>
+                                        <LocationSearch
+                                            value={destination}
+                                            onChangeText={setDestination}
+                                            placeholder="City, law office, or residence address..."
+                                            onSelect={setDestination}
+                                            accentColor={activeColor}
+                                        />
+                                    </View>
+                                )}
+
                                 {/* Encryption Confidentiality Banner */}
                                 <View style={s.lockBanner}>
                                     <Lock size={14} color={activeColor} />
@@ -1411,10 +1474,75 @@ export default function LifestyleTravelScreen() {
                                     ))}
                                 </View>
                             </View>
+                        ) : serviceType === "Language Tutoring" ? (
+                            /* ── LANGUAGE TUTORING INLINE ── */
+                            <>
+                                <View style={s.section}>
+                                    <Text style={s.sectionLabel}>Language to Learn</Text>
+                                    <View style={s.wrapRow}>
+                                        {[
+                                            "French", "Spanish", "Mandarin Chinese", "Yoruba", "Igbo",
+                                            "Hausa", "Arabic", "German", "Italian", "Portuguese", "Russian", "Other"
+                                        ].map(lang => (
+                                            <TouchableOpacity
+                                                key={lang}
+                                                style={[s.chip, targetLanguage === lang && s.chipActive]}
+                                                onPress={() => setTargetLanguage(lang)}
+                                                activeOpacity={0.8}
+                                            >
+                                                <Text style={[s.chipText, targetLanguage === lang && s.chipTextActive]}>{lang}</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                </View>
+
+                                <View style={s.section}>
+                                    <Text style={s.sectionLabel}>Proficiency & Learning Goal</Text>
+                                    <View style={s.wrapRow}>
+                                        {[
+                                            "Beginner / Foundations",
+                                            "Conversational Fluency",
+                                            "Business & Diplomatic",
+                                            "Travel & Relocation",
+                                            "Children & Teens Tutoring",
+                                            "Exam / Certification Prep"
+                                        ].map(lvl => (
+                                            <TouchableOpacity
+                                                key={lvl}
+                                                style={[s.chip, tutoringLevel === lvl && s.chipActive]}
+                                                onPress={() => setTutoringLevel(lvl)}
+                                                activeOpacity={0.8}
+                                            >
+                                                <Text style={[s.chipText, tutoringLevel === lvl && s.chipTextActive]}>{lvl}</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                </View>
+
+                                <View style={s.section}>
+                                    <Text style={s.sectionLabel}>Tutoring Format</Text>
+                                    <View style={s.wrapRow}>
+                                        {[
+                                            "👤 Private In-Person Tutor",
+                                            "🎥 Online 1-on-1 VIP Session",
+                                            "👥 Group / Family Coaching"
+                                        ].map(m => (
+                                            <TouchableOpacity
+                                                key={m}
+                                                style={[s.chip, tutoringMode === m && s.chipActive]}
+                                                onPress={() => setTutoringMode(m)}
+                                                activeOpacity={0.8}
+                                            >
+                                                <Text style={[s.chipText, tutoringMode === m && s.chipTextActive]}>{m}</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                </View>
+                            </>
                         ) : null}
 
                         {/* Fallback budget step for non-special services */}
-                        {serviceType !== "Gift & Florals" && serviceType !== "Recreational Activities" && serviceType !== "Medical Concierge" && serviceType !== "Financial Advisory" && (
+                        {serviceType !== "Gift & Florals" && serviceType !== "Recreational Activities" && serviceType !== "Medical Concierge" && serviceType !== "Financial Advisory" && serviceType !== "Legal Advisory" && (
                             <View style={s.section}>
                                 <Text style={s.sectionLabel}>Budget Limit</Text>
                                 <BudgetStepper value={curatedBudget} onChange={setCuratedBudget} min={10000} step={10000} C={C} theme={theme} accentColor={activeColor} />
@@ -1451,31 +1579,45 @@ export default function LifestyleTravelScreen() {
                             </View>
                         </View>
 
-                        <View style={s.section}>
-                            <Text style={s.sectionLabel}>Location</Text>
-                            <View style={params.prefillCity ? { opacity: 0.6 } : null} pointerEvents={params.prefillCity ? "none" : "auto"}>
-                                <LocationSearch value={destination} onChangeText={setDestination} placeholder="City, country, or let us suggest..." onSelect={setDestination} accentColor={activeColor} />
+                        {serviceType !== "Legal Advisory" && (
+                            <View style={s.section}>
+                                <Text style={s.sectionLabel}>Location</Text>
+                                <View style={params.prefillCity ? { opacity: 0.6 } : null} pointerEvents={params.prefillCity ? "none" : "auto"}>
+                                    <LocationSearch value={destination} onChangeText={setDestination} placeholder="City, country, or let us suggest..." onSelect={setDestination} accentColor={activeColor} />
+                                </View>
                             </View>
-                        </View>
+                        )}
 
                         <View style={s.section}>
-                            <Text style={s.sectionLabel}>When?</Text>
-                            <View style={s.dateRow}>
+                            <Text style={s.sectionLabel}>{serviceType === "Legal Advisory" ? "Preferred Date" : "When?"}</Text>
+                            {serviceType === "Legal Advisory" ? (
                                 <TouchableOpacity style={[s.dateCard, dateFromObj && { borderColor: activeColor }]} onPress={() => setShowDateFrom(true)}>
                                     <Calendar size={16} color={dateFromObj ? activeColor : C.muted} />
-                                    <View><Text style={s.dateCardLabel}>Departure</Text><Text style={[s.dateCardValue, { color: dateFromObj ? C.text : C.muted }]}>{fmtDate(dateFromObj) ?? "Select date"}</Text></View>
+                                    <View>
+                                        <Text style={s.dateCardLabel}>Consultation Date</Text>
+                                        <Text style={[s.dateCardValue, { color: dateFromObj ? C.text : C.muted }]}>{fmtDate(dateFromObj) ?? "Select preferred date"}</Text>
+                                    </View>
                                 </TouchableOpacity>
-                                <TouchableOpacity style={[s.dateCard, dateToObj && { borderColor: activeColor }]} onPress={() => setShowDateTo(true)}>
-                                    <Calendar size={16} color={dateToObj ? activeColor : C.muted} />
-                                    <View><Text style={s.dateCardLabel}>End Date</Text><Text style={[s.dateCardValue, { color: dateToObj ? C.text : C.muted }]}>{fmtDate(dateToObj) ?? "Select date"}</Text></View>
-                                </TouchableOpacity>
-                            </View>
+                            ) : (
+                                <View style={s.dateRow}>
+                                    <TouchableOpacity style={[s.dateCard, dateFromObj && { borderColor: activeColor }]} onPress={() => setShowDateFrom(true)}>
+                                        <Calendar size={16} color={dateFromObj ? activeColor : C.muted} />
+                                        <View><Text style={s.dateCardLabel}>Departure</Text><Text style={[s.dateCardValue, { color: dateFromObj ? C.text : C.muted }]}>{fmtDate(dateFromObj) ?? "Select date"}</Text></View>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={[s.dateCard, dateToObj && { borderColor: activeColor }]} onPress={() => setShowDateTo(true)}>
+                                        <Calendar size={16} color={dateToObj ? activeColor : C.muted} />
+                                        <View><Text style={s.dateCardLabel}>End Date</Text><Text style={[s.dateCardValue, { color: dateToObj ? C.text : C.muted }]}>{fmtDate(dateToObj) ?? "Select date"}</Text></View>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
                         </View>
 
-                        <View style={s.section}>
-                            <Text style={s.sectionLabel}>Budget</Text>
-                            <BudgetStepper value={curatedBudget} onChange={setCuratedBudget} min={50000} step={50000} C={C} theme={theme} accentColor={activeColor} />
-                        </View>
+                        {serviceType !== "Legal Advisory" && (
+                            <View style={s.section}>
+                                <Text style={s.sectionLabel}>Budget</Text>
+                                <BudgetStepper value={curatedBudget} onChange={setCuratedBudget} min={50000} step={50000} C={C} theme={theme} accentColor={activeColor} />
+                            </View>
+                        )}
 
                         <View style={s.section}>
                             <Text style={s.sectionLabel}>Tell us everything</Text>

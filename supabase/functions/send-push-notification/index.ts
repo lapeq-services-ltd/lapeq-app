@@ -69,6 +69,7 @@ serve(async (req) => {
         type: record.type || 'request',
         target_id: record.target_id || null,
         notif_id: record.id || null,
+        ...(record.data && typeof record.data === 'object' ? record.data : {}),
       },
     }))
 

@@ -66,6 +66,7 @@ module.exports = {
       "expo-router",
       "expo-quick-actions",
       "expo-font",
+      "expo-asset",
       "expo-video",
       "expo-location",
       "expo-image-picker",
@@ -76,7 +77,7 @@ module.exports = {
       "expo-web-browser",
       "@react-native-community/datetimepicker",
       [
-        "expo-av",
+        "expo-audio",
         {
           microphonePermission: "Lapeq uses your microphone so you can send voice requests to your concierge.",
         },

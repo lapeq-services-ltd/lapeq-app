@@ -13,7 +13,6 @@ import { ChevronLeft, Calendar, CheckCircle2, ChevronDown, Maximize2, Mic, X, Pl
 import { useTheme } from "@/context/ThemeContext";
 import { supabase } from "@/lib/supabase";
 import LocationSearch from "@/components/LocationSearch";
-import { Audio } from "expo-av";
 import VoiceInput from "@/components/VoiceInput";
 
 const TYPE_ACTIVITIES: Record<string, string[]> = {

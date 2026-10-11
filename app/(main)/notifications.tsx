@@ -17,6 +17,7 @@ type Notif = {
     target_id: string | null;
     read: boolean;
     created_at: string;
+    data?: any;
 };
 
 function timeAgo(dateStr: string) {
@@ -189,9 +190,24 @@ export default function NotificationsScreen() {
                                    }
                                ]}
                                activeOpacity={0.7}
-                               onPress={() => {
+                                onPress={() => {
                                     setNotifications(prev => prev.map(n => n.id === item.id ? { ...n, read: true } : n));
                                     supabase.from("notifications").update({ read: true }).eq("id", item.id);
+
+                                    const data = (item as any).data || {};
+                                    const isExplicitlyNonClickable = data.clickable === false || data.route === "none" || cfg.clickable === false;
+                                    if (isExplicitlyNonClickable) {
+                                        return; // Informational only - mark read without redirecting away!
+                                    }
+
+                                    if (data.route && data.route !== "none") {
+                                        try {
+                                            router.push(data.route as any);
+                                            return;
+                                        } catch (e) {
+                                            console.error("Failed to route notification:", e);
+                                        }
+                                    }
 
                                     if (item.type === "chauffeur_assigned" || item.type === "trip_status") {
                                         router.push("/(main)/coordination");
@@ -203,7 +219,7 @@ export default function NotificationsScreen() {
                                     } else if (item.type === "itinerary") {
                                         router.push({ pathname: "/itinerary-view", params: { notifId: item.id } });
                                     } else {
-                                        router.push("/(tabs)");
+                                        // Broadcast or general update with no destination: stay on notifications screen
                                     }
                                 }}
                             >

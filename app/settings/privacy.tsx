@@ -66,11 +66,20 @@ export default function PrivacyScreen() {
                 if (authErr) { Alert.alert("Wrong password", "Please try again."); setDeleting(false); return; }
             }
 
-            const { error } = await supabase.rpc("delete_user");
-            if (error) throw error;
+            // 1. Invoke dedicated delete-account Edge Function (purges user and cascades safely via service role)
+            const { data: fnData, error: fnError } = await supabase.functions.invoke("delete-account", {
+                body: { reason }
+            });
+
+            if (fnError || fnData?.error) {
+                // Fallback to rpc delete_user if edge function fails
+                const { error: rpcErr } = await supabase.rpc("delete_user");
+                if (rpcErr) throw fnError || new Error(fnData?.error || rpcErr.message);
+            }
 
             await supabase.auth.signOut();
             setShowDeleteModal(false);
+            showToast("Your account has been deleted.", "success");
             router.replace("/(auth)/login" as any);
         } catch (err: any) {
             showToast(cleanErr(err), "error");

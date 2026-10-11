@@ -7,6 +7,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { ChevronLeft, Check, Scale, ChevronDown, Lock } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import VoiceInput from "@/components/VoiceInput";
+import LocationSearch from "@/components/LocationSearch";
 
 const GOLD = "#c9a84c";
 
@@ -15,7 +16,8 @@ const MATTER_TYPES = [
     "📝 Contract Review", "🛡️ Criminal Law", "✈️ Immigration", "⚖️ Other"
 ];
 const NEED_TYPES = ["💬 Consultation", "🔍 Document Review", "📝 Drafting", "🏛️ Representation", "🤝 Referral"];
-const CONSULT_MODES = ["👤 In-Person", "🎥 Video Call", "📞 Phone"];
+const URGENCY_LEVELS = ["⚡ Urgent (24h)", "📅 Standard (2–3 Days)", "⏳ Flexible"];
+const CONSULT_MODES = ["👤 Face to Face", "🎥 Video Call", "📞 Phone Call"];
 
 function DropDown({ value, options, onSelect, placeholder, C, theme }: any) {
     const [open, setOpen] = useState(false);
@@ -55,7 +57,9 @@ export default function LegalAdvisoryScreen() {
 
     const [matterType, setMatterType] = useState("");
     const [needType, setNeedType] = useState("");
-    const [consultMode, setConsultMode] = useState("Video Call");
+    const [urgency, setUrgency] = useState("Standard (2–3 Days)");
+    const [consultMode, setConsultMode] = useState("🎥 Video Call");
+    const [meetingLocation, setMeetingLocation] = useState("");
     const [description, setDescription] = useState("");
     const [loading, setLoading] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
@@ -76,7 +80,7 @@ export default function LegalAdvisoryScreen() {
             status: "pending",
             reference: ref,
             title: `Legal Advisory - ${matterType}`,
-            details: { matterType, needType, consultMode, description },
+            details: { matterType, needType, urgency, consultMode, ...(consultMode.includes("Face to Face") ? { meetingLocation } : {}), description },
         });
         setLoading(false);
         if (!error) {
@@ -158,6 +162,22 @@ export default function LegalAdvisoryScreen() {
                     </View>
 
                     <View style={s.section}>
+                        <Text style={s.label}>How Urgent?</Text>
+                        <View style={{ flexDirection: "row", gap: 10 }}>
+                            {URGENCY_LEVELS.map(u => (
+                                <TouchableOpacity
+                                    key={u}
+                                    style={[s.pill, urgency === u && { backgroundColor: GOLD, borderColor: GOLD }]}
+                                    onPress={() => setUrgency(u)}
+                                    activeOpacity={0.8}
+                                >
+                                    <Text style={[s.pillText, urgency === u && { color: "#0a0a0a", fontWeight: "700" }]}>{u}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </View>
+
+                    <View style={s.section}>
                         <Text style={s.label}>Preferred Consultation</Text>
                         <View style={{ flexDirection: "row", gap: 10 }}>
                             {CONSULT_MODES.map(m => (
@@ -171,6 +191,18 @@ export default function LegalAdvisoryScreen() {
                                 </TouchableOpacity>
                             ))}
                         </View>
+                        {consultMode.includes("Face to Face") && (
+                            <View style={{ marginTop: 14 }}>
+                                <Text style={[s.sublabel, { marginBottom: 8 }]}>Meeting Location</Text>
+                                <LocationSearch
+                                    value={meetingLocation}
+                                    onChangeText={setMeetingLocation}
+                                    placeholder="City, office, or residence address..."
+                                    onSelect={setMeetingLocation}
+                                    accentColor={GOLD}
+                                />
+                            </View>
+                        )}
                     </View>
 
                     <View style={s.feeCard}>

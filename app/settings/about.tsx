@@ -7,13 +7,13 @@ import { useTheme } from "@/context/ThemeContext";
 
 const STATS = [
     { value: "2025", label: "Founded in Abuja" },
-    { value: "5", label: "Nigerian Cities" },
+    { value: "2", label: "Nigerian Cities" },
     { value: "100%", label: "Discretion Guarantee" },
-    { value: "48h", label: "Max Response Time" },
+    { value: "1 hr", label: "Max Response Time" },
 ];
 
 const SERVICES = [
-    { letter: "H", name: "Hospitality & Travel", desc: "Hotels, flights, airport handling, car hire, and executive transport across all five LAPEQ cities and beyond." },
+    { letter: "H", name: "Hospitality & Travel", desc: "Hotels, flights, airport handling, car hire, and executive transport across Abuja, Lagos, and beyond." },
     { letter: "L", name: "Lifestyle & Exclusive Access", desc: "Concert tickets, private event invitations, fashion appointments, premium shopping, and access to experiences not publicly available." },
     { letter: "W", name: "Wellness & Health", desc: "Spa bookings, wellness retreats, private medical appointments, and curated health experiences." },
     { letter: "R", name: "Restaurants & Fine Dining", desc: "Private chefs dispatched to your home, villa, or event. Fine dining reservations with priority access at our curated restaurant network." },
@@ -23,7 +23,7 @@ const SERVICES = [
     { letter: "C", name: "Corporate Pairing", desc: "Intelligent B2B introductions between executives from complementary companies. Warm, curated connections that create lasting business value." },
     { letter: "LC", name: "Ladies Concierge", desc: "Premium concierge built around the realities of all women in Nigeria - styling, transport, social events, and personal arrangements." },
     { letter: "PS", name: "Project Supervision", desc: "Independent weekly site inspections with drone footage and materials verification. Your eyes on the ground." },
-    { letter: "E", name: "Executive Networking Transit", desc: "Vetted, professional drivers available 24/7 across Abuja, Lagos, Port Harcourt, Akwa Ibom, and Kano." },
+    { letter: "E", name: "Executive Networking Transit", desc: "Vetted, professional drivers available 24/7 across Abuja and Lagos." },
     { letter: "DS", name: "Diaspora Support", desc: "Property management, family liaison, construction oversight, and arrival coordination for Nigerians abroad." },
     { letter: "LA", name: "Legal Advisory", desc: "Discreet access to vetted legal professionals for business, property, and personal legal matters across Nigeria." },
     { letter: "SC", name: "Private Security", desc: "Professional, low-profile security arrangements for executives, events, and high-profile individuals." },
@@ -60,7 +60,7 @@ export default function AboutScreen() {
                     </Text>
                     <View style={s.citiesRow}>
                         <MapPin size={14} color={C.muted} />
-                        <Text style={s.citiesText}>Abuja · Lagos · PH (Soon) · Akwa Ibom (Soon) · Kano (Soon)</Text>
+                        <Text style={s.citiesText}>Abuja · Lagos</Text>
                     </View>
                 </View>
 
@@ -135,7 +135,7 @@ export default function AboutScreen() {
                     </View>
                     <View style={s.trustRow}>
                         <Clock size={16} color={C.primary} />
-                        <Text style={s.trustText}>48h maximum response time</Text>
+                        <Text style={s.trustText}>1 hr maximum response time</Text>
                     </View>
                 </View>
 

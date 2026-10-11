@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useCallback } from "react";
 import Reanimated, { useSharedValue, withTiming, withDelay, useAnimatedStyle, runOnJS, Easing as ReanimatedEasing } from "react-native-reanimated";
-import { Canvas, Path as SkiaPath, Skia, Group } from "@shopify/react-native-skia";
+let SkiaPkg: any = null;
+try {
+    SkiaPkg = require("@shopify/react-native-skia");
+} catch (_) {}
+const Canvas = SkiaPkg?.Canvas;
+const SkiaPath = SkiaPkg?.Path;
+const Skia = SkiaPkg?.Skia;
+const Group = SkiaPkg?.Group;
 import { LOGO_PATHS } from "@/assets/logo/logoPaths";
 import * as SplashScreen from "expo-splash-screen";
 import { Stack } from "expo-router";
@@ -11,7 +18,7 @@ import { useState, useRef as useReactRef } from "react";
 import * as Linking from "expo-linking";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
-import { Animated, TouchableOpacity, Text, DeviceEventEmitter, Modal } from "react-native";
+import { Animated, TouchableOpacity, Text, DeviceEventEmitter, Modal, Image } from "react-native";
 import { Car, Calendar, CalendarX, Crown, MessageCircle, Bell, X as XIcon } from "lucide-react-native";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 import { Session } from "@supabase/supabase-js";
@@ -123,8 +130,17 @@ function NotificationBanner() {
                 const reqId = data?.target_id || data?.targetId || data?.request_id || data?.requestId;
                 const notifType = data?.type || data?.notification_type;
                 const notifId = data?.notif_id || data?.notifId;
+                const targetRoute = data?.route || data?.url;
+                const isClickable = data?.clickable !== false && data?.is_clickable !== false && targetRoute !== "none";
 
-                if (notifType === "chauffeur_assigned" || notifType === "trip_status") {
+                if (!isClickable || targetRoute === "none") {
+                    // Informational update only — do not navigate away
+                    return;
+                }
+
+                if (targetRoute) {
+                    router.push(targetRoute as any);
+                } else if (notifType === "chauffeur_assigned" || notifType === "trip_status") {
                     router.push("/(main)/coordination");
                 } else if (notifType === "itinerary") {
                     if (notifId) router.push({ pathname: "/itinerary-view", params: { notifId } } as any);
@@ -134,8 +150,6 @@ function NotificationBanner() {
                     else router.push("/requests");
                 } else if (notifType === "chat") {
                     router.push({ pathname: "/(main)/chat", params: { mode: "concierge" } } as any);
-                } else if (data?.url) {
-                    router.push(data.url);
                 } else {
                     router.push("/(main)/notifications");
                 }
@@ -162,12 +176,18 @@ function NotificationBanner() {
     const isUrgent = NOTIF_URGENT_TYPES.includes(notifType);
     const cfg = NOTIF_TYPE_CONFIG[notifType] ?? { icon: Bell, color: GOLD };
     const Icon = cfg.icon;
+    const targetRoute = data?.route || data?.url;
+    const isClickable = data?.clickable !== false && data?.is_clickable !== false && targetRoute !== "none" && (
+        !!targetRoute || ["chauffeur_assigned", "trip_status", "itinerary", "request", "receipt", "itinerary_cancelled", "chat"].includes(notifType)
+    );
 
     const goToTarget = () => {
         const reqId = data?.target_id || data?.targetId || data?.request_id || data?.requestId;
         const notifId = data?.notif_id || data?.notifId;
 
-        if (notifType === "chauffeur_assigned" || notifType === "trip_status") {
+        if (targetRoute && targetRoute !== "none") {
+            router.push(targetRoute as any);
+        } else if (notifType === "chauffeur_assigned" || notifType === "trip_status") {
             router.push("/(main)/coordination");
         } else if (notifType === "itinerary") {
             if (notifId) router.push({ pathname: "/itinerary-view", params: { notifId } } as any);
@@ -177,10 +197,6 @@ function NotificationBanner() {
             else router.push("/requests");
         } else if (notifType === "chat") {
             router.push({ pathname: "/(main)/chat", params: { mode: "concierge" } } as any);
-        } else if (data?.url) {
-            router.push(data.url);
-        } else {
-            router.push("/(main)/notifications");
         }
     };
 
@@ -227,19 +243,33 @@ function NotificationBanner() {
                     {title && <Text style={{ fontFamily: "PlayfairDisplay_700Bold", fontSize: 19, color: C.text, textAlign: "center", marginBottom: 8 }}>{title}</Text>}
                     {body && <Text style={{ fontFamily: "Jost_400Regular", fontSize: 14, color: C.muted, textAlign: "center", lineHeight: 21, marginBottom: 22 }}>{body}</Text>}
 
-                    <TouchableOpacity
-                        activeOpacity={0.85}
-                        onPress={() => animateOut(goToTarget)}
-                        style={{ backgroundColor: cfg.color, borderRadius: 14, paddingVertical: 14, width: "100%", alignItems: "center" }}
-                    >
-                        <Text style={{ fontFamily: "Jost_700Bold", fontSize: 14, color: "#0a0a0a" }}>
-                            {isUrgent ? "View Details" : "View"}
-                        </Text>
-                    </TouchableOpacity>
+                    {isClickable ? (
+                        <>
+                            <TouchableOpacity
+                                activeOpacity={0.85}
+                                onPress={() => animateOut(goToTarget)}
+                                style={{ backgroundColor: cfg.color, borderRadius: 14, paddingVertical: 14, width: "100%", alignItems: "center" }}
+                            >
+                                <Text style={{ fontFamily: "Jost_700Bold", fontSize: 14, color: "#0a0a0a" }}>
+                                    {isUrgent ? "View Details" : (data?.action_label || "View")}
+                                </Text>
+                            </TouchableOpacity>
 
-                    {!isUrgent && (
-                        <TouchableOpacity onPress={() => animateOut()} style={{ marginTop: 12 }}>
-                            <Text style={{ fontFamily: "Jost_400Regular", fontSize: 13, color: C.muted }}>Dismiss</Text>
+                            {!isUrgent && (
+                                <TouchableOpacity onPress={() => animateOut()} style={{ marginTop: 12 }}>
+                                    <Text style={{ fontFamily: "Jost_400Regular", fontSize: 13, color: C.muted }}>Dismiss</Text>
+                                </TouchableOpacity>
+                            )}
+                        </>
+                    ) : (
+                        <TouchableOpacity
+                            activeOpacity={0.85}
+                            onPress={() => animateOut()}
+                            style={{ backgroundColor: cfg.color, borderRadius: 14, paddingVertical: 14, width: "100%", alignItems: "center" }}
+                        >
+                            <Text style={{ fontFamily: "Jost_700Bold", fontSize: 14, color: "#0a0a0a" }}>
+                                Got it
+                            </Text>
                         </TouchableOpacity>
                     )}
                 </Animated.View>
@@ -275,15 +305,29 @@ function AppSplash({ onDone }: { onDone: () => void }) {
     // screenOpacity: controls the entire splash container
     const screenOpacity = useSharedValue(1.0);
 
-    const skiaPaths = useMemo(() => {
-        return LOGO_PATHS.map(p => {
-            const skiaPath = Skia.Path.MakeFromSVGString(p.d);
-            return { path: skiaPath, fill: p.fill };
-        }).filter((p): p is { path: NonNullable<typeof p.path>; fill: string } => p.path !== null);
-    }, []);
+    const hasSkia = !!(Skia && Skia.Path && Skia.Path.MakeFromSVGString && Canvas);
 
-    const verticalOutline = useMemo(() => Skia.Path.MakeFromSVGString(OUTLINE_VERTICAL)!, []);
-    const horizontalOutline = useMemo(() => Skia.Path.MakeFromSVGString(OUTLINE_HORIZONTAL)!, []);
+    const skiaPaths = useMemo(() => {
+        if (!hasSkia) return [];
+        try {
+            return LOGO_PATHS.map(p => {
+                const skiaPath = Skia.Path.MakeFromSVGString(p.d);
+                return { path: skiaPath, fill: p.fill };
+            }).filter((p): p is { path: NonNullable<typeof p.path>; fill: string } => p.path !== null);
+        } catch (_) {
+            return [];
+        }
+    }, [hasSkia]);
+
+    const verticalOutline = useMemo(() => {
+        if (!hasSkia) return null;
+        try { return Skia.Path.MakeFromSVGString(OUTLINE_VERTICAL); } catch (_) { return null; }
+    }, [hasSkia]);
+
+    const horizontalOutline = useMemo(() => {
+        if (!hasSkia) return null;
+        try { return Skia.Path.MakeFromSVGString(OUTLINE_HORIZONTAL); } catch (_) { return null; }
+    }, [hasSkia]);
 
     useEffect(() => {
         // PHASE 1 (0 — 2.5s): Trace the outlines. Scale pops closer simultaneously.
@@ -319,54 +363,61 @@ function AppSplash({ onDone }: { onDone: () => void }) {
             zIndex: 999,
         }, animatedOverlayStyle]}>
             <Reanimated.View style={animatedLogoStyle}>
-                <Canvas style={{ width: 160, height: 160 }}>
-                    <Group transform={[{ scale: 0.32 }]}>
+                {hasSkia && verticalOutline && horizontalOutline ? (
+                    <Canvas style={{ width: 160, height: 160 }}>
+                        <Group transform={[{ scale: 0.32 }]}>
 
-                        {/* === FILLS: invisible until Phase 2 starts === */}
-                        {/* Vertical panel fills */}
-                        <Group opacity={fillOpacity}>
-                            {skiaPaths.map((p, index) => {
-                                if (BASE_INDICES.has(index)) return null;
-                                return <SkiaPath key={`fv-${index}`} path={p.path} color={p.fill} />;
-                            })}
+                            {/* === FILLS: invisible until Phase 2 starts === */}
+                            {/* Vertical panel fills */}
+                            <Group opacity={fillOpacity}>
+                                {skiaPaths.map((p, index) => {
+                                    if (BASE_INDICES.has(index)) return null;
+                                    return <SkiaPath key={`fv-${index}`} path={p.path} color={p.fill} />;
+                                })}
+                            </Group>
+
+                            {/* Horizontal base panel fills */}
+                            <Group opacity={fillOpacity}>
+                                {skiaPaths.map((p, index) => {
+                                    if (!BASE_INDICES.has(index)) return null;
+                                    return <SkiaPath key={`fh-${index}`} path={p.path} color={p.fill} />;
+                                })}
+                            </Group>
+
+                            {/* === STROKES: fully visible from frame 1, trace from 0→1 === */}
+                            <Group opacity={strokeOpacity}>
+                                {/* Vertical Outline */}
+                                <SkiaPath
+                                    path={verticalOutline}
+                                    color="#E6C173"
+                                    style="stroke"
+                                    strokeWidth={2}
+                                    strokeCap="round"
+                                    strokeJoin="round"
+                                    start={0}
+                                    end={drawProgress}
+                                />
+                                {/* Horizontal Outline */}
+                                <SkiaPath
+                                    path={horizontalOutline}
+                                    color="#E6C173"
+                                    style="stroke"
+                                    strokeWidth={2}
+                                    strokeCap="round"
+                                    strokeJoin="round"
+                                    start={0}
+                                    end={drawProgress}
+                                />
+                            </Group>
+
                         </Group>
-
-                        {/* Horizontal base panel fills */}
-                        <Group opacity={fillOpacity}>
-                            {skiaPaths.map((p, index) => {
-                                if (!BASE_INDICES.has(index)) return null;
-                                return <SkiaPath key={`fh-${index}`} path={p.path} color={p.fill} />;
-                            })}
-                        </Group>
-
-                        {/* === STROKES: fully visible from frame 1, trace from 0→1 === */}
-                        <Group opacity={strokeOpacity}>
-                            {/* Vertical Outline */}
-                            <SkiaPath
-                                path={verticalOutline}
-                                color="#E6C173"
-                                style="stroke"
-                                strokeWidth={2}
-                                strokeCap="round"
-                                strokeJoin="round"
-                                start={0}
-                                end={drawProgress}
-                            />
-                            {/* Horizontal Outline */}
-                            <SkiaPath
-                                path={horizontalOutline}
-                                color="#E6C173"
-                                style="stroke"
-                                strokeWidth={2}
-                                strokeCap="round"
-                                strokeJoin="round"
-                                start={0}
-                                end={drawProgress}
-                            />
-                        </Group>
-
-                    </Group>
-                </Canvas>
+                    </Canvas>
+                ) : (
+                    <Image
+                        source={require("@/assets/logo/logo-bg.png")}
+                        style={{ width: 140, height: 140, resizeMode: "contain" }}
+                    />
+                )}
             </Reanimated.View>
         </Reanimated.View>
     );
@@ -386,32 +437,18 @@ function RootContent({ onLayout }: { onLayout?: () => void }) {
     usePushToken(session?.user?.id ?? null);
 
     useQuickActionCallback((action) => {
-        if (action?.id === "dont_remove") {
+        const actionKey = action?.id || (action as any)?.type;
+        if (actionKey === "dont_remove") {
             router.push("/(main)/chat" as any);
-        } else if (action?.id === "tell_us_whats_wrong") {
+        } else if (actionKey === "tell_us_whats_wrong") {
             router.push("/settings/report" as any);
         }
     });
 
     useEffect(() => {
-        QuickActions.setItems([
-            {
-                id: "dont_remove",
-                type: "dont_remove",
-                title: "Don't remove Lapeq 👋",
-                subtitle: "Give it a second chance",
-                icon: "love",
-                params: { href: "/(main)/chat" },
-            },
-            {
-                id: "tell_us_whats_wrong",
-                type: "tell_us_whats_wrong",
-                title: "Tell us what's wrong 💬",
-                subtitle: "Help us improve",
-                icon: "message",
-                params: { href: "/settings/report" },
-            },
-        ]).catch(() => {});
+        // Clear dynamic quick actions so they don't duplicate the static
+        // UIApplicationShortcutItems already defined in Info.plist (app.config.js)
+        QuickActions.setItems([]).catch(() => {});
     }, []);
 
     useEffect(() => {
@@ -558,8 +595,16 @@ function RootContent({ onLayout }: { onLayout?: () => void }) {
         const reqId = data?.target_id || data?.targetId || data?.request_id || data?.requestId;
         const notifType = data?.type || data?.notification_type;
         const notifId = data?.notif_id || data?.notifId;
+        const targetRoute = data?.route || data?.url;
+        const isClickable = data?.clickable !== false && data?.is_clickable !== false && targetRoute !== "none";
 
-        if (notifType === "chauffeur_assigned" || notifType === "trip_status") {
+        if (!isClickable || targetRoute === "none") {
+            return;
+        }
+
+        if (targetRoute) {
+            router.push(targetRoute as any);
+        } else if (notifType === "chauffeur_assigned" || notifType === "trip_status") {
             router.push("/(main)/coordination");
         } else if (notifType === "itinerary") {
             if (notifId) router.push({ pathname: "/itinerary-view", params: { notifId } } as any);
@@ -569,8 +614,6 @@ function RootContent({ onLayout }: { onLayout?: () => void }) {
             else router.push("/requests");
         } else if (notifType === "chat") {
             router.push({ pathname: "/(main)/chat", params: { mode: "concierge" } } as any);
-        } else if (data?.url) {
-            router.push(data.url);
         }
     }, [loading, showSplash, lastNotifResponse]);
 

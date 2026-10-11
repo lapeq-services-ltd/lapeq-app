@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from "react";
-import { useFocusEffect, useIsFocused } from "@react-navigation/native";
+import { useFocusEffect, useIsFocused } from "expo-router";
 import {
     View,
     Text,
@@ -26,7 +26,7 @@ import * as Haptics from "expo-haptics";
 let trialPopupShown = false;
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Bell, ChevronRight, Calendar, Plane, Car, HelpCircle, MessageCircle, LayoutGrid, Plus, Headphones, ClipboardList, Sparkles, Settings, FileText, X, Sun, Moon } from "lucide-react-native";
+import { Bell, ChevronRight, Calendar, Plane, Car, HelpCircle, MessageCircle, LayoutGrid, Plus, Headphones, ClipboardList, Sparkles, Settings, FileText, X, Sun, Moon, ArrowUpRight } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
 // Staff-only alert types (e.g. a superadmin's own profile matching the staff
@@ -853,16 +853,22 @@ export default function HomeScreen() {
                 <View style={{ marginHorizontal: -20, marginBottom: 28 }}>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
                         {[
-                            { label: "FOR HER", title: "Ladies\nConcierge", img: require("@/assets/images/queens.jpg"), route: "/services/ladies-concierge" },
-                            { label: "FOR HIM", title: "Gentlemens\nConcierge", img: require("@/assets/images/gents (1).jpg"), route: "/services/gentlemens-concierge" },
-                            { label: "EDITORIAL", title: "The LAPEQ\nJournal", img: require("@/assets/images/lagos-rooftop.jpg"), route: "/journal" },
+                            { label: "FOR HER", title: "Ladies\nConcierge", action: "Book Concierge →", img: require("@/assets/images/queens.jpg"), route: "/services/ladies-concierge" },
+                            { label: "FOR HIM", title: "Gentlemens\nConcierge", action: "Book Concierge →", img: require("@/assets/images/gents (1).jpg"), route: "/services/gentlemens-concierge" },
+                            { label: "EDITORIAL", title: "The LAPEQ\nJournal", action: "Read Stories →", img: require("@/assets/images/lagos-rooftop.jpg"), route: "/journal" },
                         ].map((item) => (
-                            <TouchableOpacity key={item.label} style={s.featCard} onPress={() => router.push(item.route as any)} activeOpacity={0.88}>
+                            <TouchableOpacity key={item.label} style={s.featCard} onPress={() => router.push(item.route as any)} activeOpacity={0.85}>
                                 <Image source={item.img} style={s.featImg} resizeMode="cover" />
                                 <View style={s.featOverlay} />
+                                <View style={s.featTopBadge}>
+                                    <ArrowUpRight size={14} color={C.primary} />
+                                </View>
                                 <View style={s.featContent}>
                                     <Text style={s.featLabel}>{item.label}</Text>
                                     <Text style={s.featTitle}>{item.title}</Text>
+                                    <View style={s.featActionChip}>
+                                        <Text style={s.featActionText}>{item.action}</Text>
+                                    </View>
                                 </View>
                             </TouchableOpacity>
                         ))}
@@ -1361,11 +1367,14 @@ const getStyles = (C: any, theme: string) => StyleSheet.create({
     trialUpgradeBtn: { width: "100%", paddingVertical: 16, borderRadius: 14, backgroundColor: C.primary, alignItems: "center" },
     trialUpgradeBtnText: { fontSize: 15, fontWeight: "700", color: "#ffffff" },
     trialSkip: { fontSize: 14, color: C.muted, fontWeight: "500" },
-    featCard: { width: 160, height: 130, borderRadius: 16, overflow: "hidden", position: "relative" },
+    featCard: { width: 175, height: 165, borderRadius: 18, overflow: "hidden", position: "relative", borderWidth: 1, borderColor: "rgba(201,168,76,0.35)" },
     featImg: { width: "100%", height: "100%", position: "absolute" },
-    featOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.48)" },
-    featContent: { position: "absolute", bottom: 0, left: 0, right: 0, padding: 14 },
+    featOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.52)" },
+    featTopBadge: { position: "absolute", top: 10, right: 10, width: 28, height: 28, borderRadius: 14, backgroundColor: "rgba(0,0,0,0.55)", borderWidth: 1, borderColor: "rgba(201,168,76,0.4)", alignItems: "center", justifyContent: "center" },
+    featContent: { position: "absolute", bottom: 0, left: 0, right: 0, padding: 12 },
     featLabel: { fontSize: 9, fontWeight: "800", color: C.primary, letterSpacing: 2, marginBottom: 4 },
-    featTitle: { fontSize: 15, fontWeight: "700", color: "#fff", lineHeight: 20 },
+    featTitle: { fontSize: 15, fontWeight: "700", color: "#fff", lineHeight: 19, marginBottom: 8 },
+    featActionChip: { alignSelf: "flex-start", paddingHorizontal: 9, paddingVertical: 4, borderRadius: 8, backgroundColor: "rgba(201,168,76,0.22)", borderWidth: 1, borderColor: "rgba(201,168,76,0.5)" },
+    featActionText: { fontSize: 11, fontWeight: "700", color: "#fff", fontFamily: "Jost_600SemiBold" },
 });
 

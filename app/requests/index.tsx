@@ -2,8 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, Image, Modal, Dimensions } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
-import { useFocusEffect } from "@react-navigation/native";
+import { useRouter, useFocusEffect } from "expo-router";
 import { ChevronLeft, ArrowRight, Car, Briefcase, Plane, HeartHandshake, FileText, Package, Clock, Calendar, MapPin, Building2, UtensilsCrossed, Ticket, Sparkles, Anchor, SlidersHorizontal } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
@@ -61,6 +60,10 @@ export default function RequestsScreen() {
         if (!resolvedId) return;
 
         try {
+            try {
+                await supabase.rpc("auto_cancel_expired_itineraries");
+            } catch (_) {}
+
             const [activeRes, cancelledRes] = await Promise.all([
                 supabase.from("requests").select("*").eq("user_id", resolvedId).neq("status", "cancelled").order("created_at", { ascending: false }),
                 supabase.from("requests").select("*").eq("user_id", resolvedId).eq("status", "cancelled").order("created_at", { ascending: false }),
